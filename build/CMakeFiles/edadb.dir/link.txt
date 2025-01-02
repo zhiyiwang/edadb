@@ -1,0 +1,1 @@
+/usr/bin/c++  -Wall -Wno-unused-variable -Wno-pessimizing-move -Wno-reorder -g -O0 -g CMakeFiles/edadb.dir/src/sqlite/sqlite3.c.o CMakeFiles/edadb.dir/src/edadb.cpp.o -o edadb  -Wl,-Bstatic -lsoci_sqlite3 -lsoci_core -Wl,-Bdynamic -ldl -lpthread 
