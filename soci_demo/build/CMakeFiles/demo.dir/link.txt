@@ -1,0 +1,1 @@
+/usr/bin/c++  -Wall -Wno-unused-variable -Wno-pessimizing-move -Wno-reorder -g -O0 -g CMakeFiles/demo.dir/src/sqlite/sqlite3.c.o CMakeFiles/demo.dir/src/demo.cpp.o -o demo  -Wl,-Bstatic -lsoci_sqlite3 -lsoci_core -Wl,-Bdynamic -ldl -lpthread 
