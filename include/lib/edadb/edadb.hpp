@@ -42,10 +42,14 @@
 #include <soci/soci.h>
 #include <soci/sqlite3/soci-sqlite3.h>
 
+#define EDADB_DEBUG 1 
+
 namespace edadb{
 
 //TABLE4CLASS((classname, primarykey, fields ...))
 // #define TABLE4CLASS(CLASS_ELEMS_TUP) 
+
+
 
 template<class T>
     class Singleton : public boost::noncopyable {
@@ -126,6 +130,15 @@ struct TypeMetaData {
 template<class T>
     struct SqlString {
     private:
+        struct fill{
+            std::stringstream& ss;  
+            fill(std::stringstream& ss) : ss(ss) {}  
+
+            void operator()(auto val){
+                ss << ", " << *val;
+            }
+        };
+
         struct CTForeachHelper {
         private:
             std::string& sql;
@@ -191,20 +204,68 @@ template<class T>
             }
         };
 
+        // struct UpdateRow {
+        // private:
+        //     std::string& sql;
+
+        // public:
+        //     UpdateRow(std::string& sql) : sql(sql) {}
+
+        //     template <typename O>
+        //     void operator()(O const& x) const
+        //     {
+        //         if (!sql.empty()) {
+        //             sql += ",";
+        //         }
+        //         sql += x.second + " = {}";
+        //     }
+        // };
+
+        // struct UpdateRowVal {
+        // private:
+        //     std::string sql;
+
+        // public:
+        //     UpdateRowVal(std::string sql) : sql(sql) {}
+
+        //     void operator()(auto x)
+        //     {
+        //         std::cout<<"sql = "<<sql<<"std::to_string = "<<std::to_string(*x);
+        //         sql = fmt::format(sql,std::to_string(*x));
+        //     }
+        // };
         struct UpdateRow {
         private:
-            std::string& sql;
+            std::vector<std::string>& vec;
+            std::string part;
 
         public:
-            UpdateRow(std::string& sql) : sql(sql) {}
+            UpdateRow(std::vector<std::string>& vec) : vec(vec) {}
 
             template <typename O>
-            void operator()(O const& x) const
+            void operator()(O const& x)
             {
-                if (!sql.empty()) {
-                    sql += ",";
+                part = "";
+                if (!vec.empty()) {
+                    part = ",";
                 }
-                sql += x.second + " = :" + x.second;
+                part += x.second + " = ";
+                vec.push_back(part);
+            }
+        };
+
+        struct UpdateRowVal {
+        private:
+            std::vector<std::string>& vec;
+            std::string part;
+        public:
+            UpdateRowVal(std::vector<std::string>& vec) : vec(vec) {}
+
+            void operator()(auto x)
+            {
+                part = "";
+                part += std::to_string(*x);
+                vec.push_back(part);
             }
         };
 
@@ -223,16 +284,18 @@ template<class T>
             return sql;
         }
 
-        static std::string const& insertRowStr() {
-            static const auto vecs = TypeMetaData<T>::tuple_type_pair();
-            static std::string sql;
-            if (sql.empty()) {
-                sql = "INSERT INTO \"{}\" (";
-                boost::fusion::for_each(vecs, SqlString<T>::InsertRowNames(sql));
-                sql += ") VALUES (";
-                boost::fusion::for_each(vecs, SqlString<T>::InsertRowVal(sql));
-                sql += ")";
-            }
+        std::string insertRowStr(T *obj) {
+            const auto vecs = TypeMetaData<T>::tuple_type_pair();
+            const auto vals = TypeMetaData<T>::getVal(obj);
+            std::stringstream ss;
+            std::string sql = "INSERT INTO \"{}\" (";
+            boost::fusion::for_each(vecs, SqlString<T>::InsertRowNames(sql));
+            sql += ") VALUES (";
+            sql += std::to_string(*(boost::fusion::at_c<0>(vals)));
+            ss.str(""); 
+            ss.clear();
+            boost::fusion::for_each(boost::fusion::pop_front(vals), fill(ss));
+            sql += ss.str() + ");";
             return sql;
         }
 
@@ -241,25 +304,38 @@ template<class T>
             return sql;
         }
 
-        static std::string const& deleteRowStr(){
+        static std::string const& deleteRowStr(T *obj){
             static const auto vecs = TypeMetaData<T>::tuple_type_pair();
+            const auto vals = TypeMetaData<T>::getVal(obj);
             auto &first_pair = boost::fusion::at_c<0>(vecs);
             static const std::string sql = "DELETE FROM \"{}\" WHERE " 
-            + first_pair.second + " = :" + first_pair.second;
+            + first_pair.second + " = " + std::to_string(*(boost::fusion::at_c<0>(vals)))+";";
             return sql;
         }
 
-        static std::string const& updateRowStr() {
-            static const auto vecs = TypeMetaData<T>::tuple_type_pair();
-            static std::string sql;
-            if (sql.empty()) {
-                sql = "UPDATE \"{}\" SET ";
+
+        std::string updateRowStr(T *obj) {
+            const auto vecs = TypeMetaData<T>::tuple_type_pair();
+            const auto vals = TypeMetaData<T>::getVal(obj);
+            std::stringstream ss;
+            std::string sql = "UPDATE \"{}\" SET ";
                 std::string sql1;
-                boost::fusion::for_each(vecs, SqlString<T>::UpdateRow(sql1));
+                std::vector<std::string>v1,v2;
+                // std::vector<std::string>sql_vec; // tobedone
+                // for (auto& x : vecs) {
+                //     if (!sql1.empty()) {
+                //         sql1 += ",";
+                //     }
+                //     sql1 += x.second + " = {}";
+                // }
+                boost::fusion::for_each(vecs, SqlString<T>::UpdateRow(v1));
+                boost::fusion::for_each(vals, SqlString<T>::UpdateRowVal(v2));
+                for(unsigned long i = 0;i<v1.size();i++){
+                    sql += v1[i] + v2[i];
+                }
                 auto &first_pair = boost::fusion::at_c<0>(vecs);
-                sql += sql1 + " WHERE "+ first_pair.second + " = :" + first_pair.second;
-                std::cout<<"vecs[0].second == "<<first_pair.second<<"\n";
-            }
+                sql += /*sql1 +*/ " WHERE "+ first_pair.second + " = " + std::to_string(*(boost::fusion::at_c<0>(vals)))+";";
+                // std::cout<<"vecs[0].second == "<<first_pair.second<<"\n";
             return sql;
         }
 
@@ -592,138 +668,136 @@ public:
 
 
 
-void print(){std::cout<<"edadb test line \n";}
+void dbgPrint(){std::cout<<"Edadb starting \n";}
+
 template<typename T>
-        class DbMap {
-            public:
-            //Members
-            std::string table_name;
-            
-
-            static bool connectToDb(const std::string& db_connect_str); 
-            void setTableName(std::string tab_name){
-                table_name = tab_name;
-            }
-            bool createTable(std::string tab_name);
-            bool insertToDb(T *obj);
-            bool deleteFromDb(T *obj);
-            bool updateDb(T *obj);
-            T * selectFromDb(std::string where_str);
-            template<typename Q>
-            T * selectWithPK(Q PK_val);
-            // T* selectFromDb(PK<T> key);
-            // std::vector<T>* selectFromDb();
-            ~DbMap();
-        };
-
-
-
-        template<typename T>
-        bool DbMap<T>::connectToDb(const std::string& db_connect_str){
-            auto ret = DbBackend::i().connect(db_connect_str);
-            return ret;
-        }
-
-        template<typename T> 
-        bool DbMap<T>::createTable(std::string tab_name){
-            const static std::string sql = fmt::format(SqlString<T>::createTableStr(), tab_name/*TypeMetaData<T>::class_name()*/);
-            try {
-                table_name = tab_name;
-                DbBackend::i().session() << sql;
-                return true;
-            }
-            catch (std::exception const & e) {
-                std::cerr << "createTable: " << e.what() << std::endl;
-                return false;
-            }
-            
-        }
-
-        template<typename T>
-        bool DbMap<T>::insertToDb(T *obj/*,std::string pk*/){
-            
-            const std::string sql = fmt::format(SqlString<T>::insertRowStr(), table_name);
-            SimpleObjHolder<T> obj_holder(obj);
-            // SimpleObjHolder<T> obj_holder(obj, pk);
-            try{
-                DbBackend::i().session()<<sql, soci::use(obj_holder); //boost 
-                return true;
-            }
-            catch (std::exception const& e) {
-                std::cerr << "insertToDb: " << e.what() << "\n";
-                return false;
-            }
-        }
-
-        template<typename T>
-        bool DbMap<T>::deleteFromDb(T *obj){
-            const static std::string sql = fmt::format(SqlString<T>::deleteRowStr(), table_name);
-            SimpleObjHolder<T> obj_holder(obj);
-            try {
-                DbBackend::i().session() << sql, soci::use(obj_holder);
-                std::cout<<"Delete it!\n";
-                return true;
-            }
-            catch (std::exception const & e) {
-                std::cerr << "deleteObj: " << e.what() << "\n";
-                return false;
-            }
-        }
-
-        template<typename T>
-        bool DbMap<T>::updateDb(T *obj){
-            const std::string sql = fmt::format(SqlString<T>::updateRowStr(),table_name);
-            SimpleObjHolder<T> obj_holder(obj);
-            try {
-                DbBackend::i().session() << sql, soci::use(obj_holder);
-                return true;
-            }
-            catch (std::exception const& e) {
-                std::cerr << "updateToDb: "<< e.what() << "\n";
-                return false;
-            }
-        }
-
-        template<typename T>
-        T* DbMap<T>::selectFromDb(std::string where_str){
-            static const std::string sql = fmt::format(SqlString<T>::selectRowStr(),table_name) +"where "+ where_str;
-            T* obj = new T();
-            SimpleObjHolder<T> obj_holder(obj);
-            try {
-                DbBackend::i().session() << sql,soci::into(obj_holder);
-                return obj;
-            }
-            catch (std::exception const& e) {
-                std::cerr << "selectFromDb: "<< e.what() << "\n";
-                delete obj;
-                return nullptr;
-            }
-        }
-
-        template<typename T>
+    class DbMap {
+      public:
+        //Members
+        std::string table_name;
+        
+      public:
+        static bool connectToDb(const std::string& db_connect_str); 
+        void setTableName(std::string tab_name){table_name = tab_name;}
+        bool createTable(std::string tab_name);
+        bool insertToDb(T *obj);
+        bool deleteFromDb(T *obj);
+        bool updateDb(T *obj);
+        bool selectFromDb(std::string where_str, T *obj);
         template<typename Q>
-        T * DbMap<T>::selectWithPK(Q PK_val){
-            static const std::string sql = fmt::format(SqlString<T>::selectRowStrPK(std::to_string(PK_val)),table_name);
-            T* obj = new T();
-            SimpleObjHolder<T> obj_holder(obj);
-            try {
-                DbBackend::i().session() << sql,soci::into(obj_holder);
-                return obj;
-                
-            }
-            catch (std::exception const& e) {
-                std::cerr << "selectFromDbPK: "<< e.what() << "\n";
-                delete obj;
-                return nullptr;
-            }
-        }
+        T * selectWithPK(Q PK_val);
+    };
 
-        template<typename T> 
-        DbMap<T>::~DbMap() {
+    template<typename T>
+    bool DbMap<T>::connectToDb(const std::string& db_connect_str){
+        auto ret = DbBackend::i().connect(db_connect_str);
+        return ret;
+    }
+
+    template<typename T> 
+    bool DbMap<T>::createTable(std::string tab_name){
+        table_name = tab_name;
+        const static std::string sql = fmt::format(SqlString<T>::createTableStr(), table_name);
+        #ifdef EDADB_DEBUG
+            std::cout<<sql<<"\n";
+        #endif
+        try {
+            DbBackend::i().session() << sql;
+            return true;
+        }
+        catch (std::exception const & e) {
+            std::cerr << "createTable: " << e.what() << std::endl;
+            return false;
+        }
+    }
+
+    template<typename T>
+    bool DbMap<T>::insertToDb(T *obj){
+        SqlString<T> sql_string;
+        const std::string sql = fmt::format(sql_string.insertRowStr(obj), table_name);
+        #ifdef EDADB_DEBUG
+            std::cout<<sql<<"\n";
+        #endif
+        try{
+            // DbBackend::i().session()<<sql, soci::use(obj_holder); //boost 
+            DbBackend::i().session()<<sql; //boost 
+            return true;
+        }
+        catch (std::exception const& e) {
+            std::cerr << "insertToDb: " << e.what() << "\n";
+            return false;
+        }
+    }
+
+    template<typename T>
+    bool DbMap<T>::deleteFromDb(T *obj){
+        const static std::string sql = fmt::format(SqlString<T>::deleteRowStr(obj), table_name);
+        #ifdef EDADB_DEBUG
+            std::cout<<sql<<"\n";
+        #endif
+        try {
+            DbBackend::i().session() << sql;
+            std::cout<<"Delete it!\n";
+            return true;
+        }
+        catch (std::exception const & e) {
+            std::cerr << "deleteObj: " << e.what() << "\n";
+            return false;
+        }
+    }
+
+    template<typename T>
+    bool DbMap<T>::updateDb(T *obj){
+        SqlString<T> sql_string;
+        const std::string sql = fmt::format(sql_string.updateRowStr(obj),table_name);
+        // SimpleObjHolder<T> obj_holder(obj);
+        #ifdef EDADB_DEBUG
+            std::cout<<sql<<"\n";
+        #endif
+        try {
+            DbBackend::i().session() << sql;
+            return true;
+        }
+        catch (std::exception const& e) {
+            std::cerr << "updateToDb: "<< e.what() << "\n";
+            return false;
+        }
+    }
+
+    template<typename T>
+    bool DbMap<T>::selectFromDb(std::string where_str, T *obj){
+        static const std::string sql = fmt::format(SqlString<T>::selectRowStr(),table_name) +"where "+ where_str;
+        
+        SimpleObjHolder<T> obj_holder(obj);
+        try {
+            DbBackend::i().session() << sql,soci::into(obj_holder);
+            return true;
+        }
+        catch (std::exception const& e) {
+            std::cerr << "selectFromDb: "<< e.what() << "\n";
+            return false;
+        }
+    }
+
+    template<typename T>
+    template<typename Q>
+    T * DbMap<T>::selectWithPK(Q PK_val){
+        static const std::string sql = fmt::format(SqlString<T>::selectRowStrPK(std::to_string(PK_val)),table_name);
+        T* obj = new T();
+        SimpleObjHolder<T> obj_holder(obj);
+        try {
+            DbBackend::i().session() << sql,soci::into(obj_holder);
+            return obj;
             
         }
+        catch (std::exception const& e) {
+            std::cerr << "selectFromDbPK: "<< e.what() << "\n";
+            delete obj;
+            return nullptr;
+        }
+    }
 
-}
+} // end of edadb namespace
 
 namespace soci{
     /// @class type_conversion
@@ -770,6 +844,10 @@ namespace soci{
 #define EXPAND_member_names(ELEMS_TUP) BOOST_PP_REPEAT(BOOST_PP_TUPLE_SIZE(ELEMS_TUP), EXPAND_member_names_I, ELEMS_TUP)
 
 #define GET_first_member(ELEMS_TUP) BOOST_PP_TUPLE_ELEM(0,ELEMS_TUP )
+
+#define GENERATE_ObjVal_I(z, n, CLASS_ELEMS_TUP) BOOST_PP_IF(n, BOOST_PP_COMMA, BOOST_PP_EMPTY)() &obj->BOOST_PP_TUPLE_ELEM(BOOST_PP_ADD(1, n), CLASS_ELEMS_TUP)
+#define GENERATE_ObjVal(CLASS_ELEMS_TUP) BOOST_PP_REPEAT(BOOST_PP_SUB(BOOST_PP_TUPLE_SIZE(CLASS_ELEMS_TUP), 1), GENERATE_ObjVal_I, CLASS_ELEMS_TUP)
+
 // /// @brief generate the query and query fields
 // #define DEFINE_CLASS_STATIC_VARS_QUERY_I(z, n, CLASS_ELEMS_TUP) boost::proto::terminal<edadb::query::QueryVariablePlaceholderIndex<n>>::type const F<BOOST_PP_TUPLE_ELEM(0, CLASS_ELEMS_TUP)>::BOOST_PP_TUPLE_ELEM(BOOST_PP_ADD(n, 1), CLASS_ELEMS_TUP);
 // #define DEFINE_CLASS_STATIC_VARS_QUERY(CLASS_ELEMS_TUP) BOOST_PP_REPEAT(BOOST_PP_SUB(BOOST_PP_TUPLE_SIZE(CLASS_ELEMS_TUP), 1), DEFINE_CLASS_STATIC_VARS_QUERY_I, CLASS_ELEMS_TUP)
@@ -781,33 +859,33 @@ namespace soci{
 /// Helper Macros End
 ///////////////////////////////////////////////////////////////////////////////
 
-/// SPECIALIZE_BUN_HELPER Start
+/// TABLE4CLASS Start
 #define TABLE4CLASS(CLASS_ELEMS_TUP) BOOST_FUSION_ADAPT_STRUCT( BOOST_PP_TUPLE_REM_CTOR(CLASS_ELEMS_TUP) ) \
 namespace edadb{\
 template<>\
 struct CppTypeToDbType<BOOST_PP_TUPLE_ELEM(0, CLASS_ELEMS_TUP)>{\
-static const DbTypes ret = DbTypes::kComposite;\
+    static const DbTypes ret = DbTypes::kComposite;\
 };\
-}\
-namespace edadb{\
 template<> struct IsComposite<BOOST_PP_TUPLE_ELEM(0, CLASS_ELEMS_TUP)> : boost::mpl::bool_<true> {};\
-template<>\
-struct TypeMetaData<BOOST_PP_TUPLE_ELEM(0, CLASS_ELEMS_TUP)>{\
-using TupType = boost::fusion::vector<GENERATE_TupType(CLASS_ELEMS_TUP)>;\
-using TupTypePairType = boost::fusion::vector<GENERATE_TupTypePair(CLASS_ELEMS_TUP)>;\
-using T = BOOST_PP_TUPLE_ELEM(0, CLASS_ELEMS_TUP);\
-inline static auto tuple_type_pair()->TupTypePairType const&{\
-static const TupTypePairType t{GENERATE_TupTypePairObj(CLASS_ELEMS_TUP)};\
-return t;\
-}\
-inline static std::string const& class_name(){\  
-static std::string const class_name = BOOST_STRINGIZE(BOOST_PP_TUPLE_ELEM(0, CLASS_ELEMS_TUP));\
-return class_name;\
-}\
-inline static const std::vector<std::string>& member_names(){\
-static const std::vector<std::string> names = {"oid_high", "oid_low" EXPAND_member_names(BOOST_PP_TUPLE_POP_FRONT( CLASS_ELEMS_TUP ))};\
-return names;\
-}\
+template<> struct TypeMetaData<BOOST_PP_TUPLE_ELEM(0, CLASS_ELEMS_TUP)>{\
+    using TupType = boost::fusion::vector<GENERATE_TupType(CLASS_ELEMS_TUP)>;\
+    using TupTypePairType = boost::fusion::vector<GENERATE_TupTypePair(CLASS_ELEMS_TUP)>;\
+    using T = BOOST_PP_TUPLE_ELEM(0, CLASS_ELEMS_TUP);\
+    inline static auto tuple_type_pair()->TupTypePairType const&{\
+        static const TupTypePairType t{GENERATE_TupTypePairObj(CLASS_ELEMS_TUP)};\
+        return t;\
+    }\
+    inline static std::string const& class_name(){\
+        static std::string const class_name = BOOST_STRINGIZE(BOOST_PP_TUPLE_ELEM(0, CLASS_ELEMS_TUP));\
+        return class_name;\
+    }\
+    inline static const std::vector<std::string>& member_names(){\
+        static const std::vector<std::string> names = {"oid_high", "oid_low" EXPAND_member_names(BOOST_PP_TUPLE_POP_FRONT( CLASS_ELEMS_TUP ))};\
+        return names;\
+    }\
+    inline static TupType getVal(BOOST_PP_TUPLE_ELEM(0, CLASS_ELEMS_TUP) * obj){\
+        return TupType(GENERATE_ObjVal(CLASS_ELEMS_TUP));\
+    }\
 };\
 }
 

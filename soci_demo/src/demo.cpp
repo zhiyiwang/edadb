@@ -268,9 +268,22 @@ struct IdbSite {
 
 TABLE4CLASS( (IdbSite, width, height) );
 
-
+struct func{
+    // func(int v):val(v){};
+    // int val;
+    void operator()(auto val){
+        std::cout<<val.second<<" ";
+    }
+};
 
 int main() {
+    
+// using TupType = boost::fusion::vector<GENERATE_TupType(CLASS_ELEMS_TUP)>;\
+// using TupTypePairType
+    boost::fusion::for_each(test::TypeMetaData<IdbSite>::TupType,func());
+
+    return 0;
+
     soci::session session;
     std::string sql;
     //connect

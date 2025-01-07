@@ -3,11 +3,10 @@ cmake_minimum_required(VERSION 3.6)
 project(edadb)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-unused-variable -Wno-pessimizing-move -Wno-reorder")
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g -std=c++20")
 
 set(CMAKE_BUILD_TYPE Debug)
 
-set(BLIB_HEADER include/blib)
 set(THIRD_PARTY_HEADER
     include/
     include/third_party
@@ -49,14 +48,12 @@ endif()
 add_definitions(-DBUN_SQLITE -DFMT_HEADER_ONLY)
 
 include_directories(include)
-include_directories(${BLIB_HEADER}) # tbd
 include_directories(${THIRD_PARTY_HEADER})
 include_directories(${INCLUDE_DIR})
 include_directories(${SOCI_INCLUDE})
 
 add_library(libsoci_sqlite3 STATIC IMPORTED)
-# add_library(libsoci_core STATIC IMPORTED include/blib/bun/QueryHelper.hpp)
-# passed
+
 
 # find_library(SOCI_LIB NAME libsoci_sqlite3 HINTS ${SOCI_LIBRARY})
 add_executable(edadb ${SOURCE_FILES})

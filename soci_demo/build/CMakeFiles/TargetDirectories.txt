@@ -1,3 +1,0 @@
-/home/ran/Codes/soci_demo/build/CMakeFiles/demo.dir
-/home/ran/Codes/soci_demo/build/CMakeFiles/edit_cache.dir
-/home/ran/Codes/soci_demo/build/CMakeFiles/rebuild_cache.dir
