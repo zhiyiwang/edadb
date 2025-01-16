@@ -60,31 +60,36 @@ template<class T>
         }
     };
 
-template<typename T>
-    struct ConvertCPPTypeToSOCISupportType {
-        using type = T;
-    };
+    template<typename T>
+        struct ConvertCPPTypeToSOCISupportType {
+            using type = T;
+        };
+
+    template<typename T>
+        struct ConvertCPPTypeToSOCISupportType<T*> {
+            using type = T;
+        };
 
     template<>
-    struct ConvertCPPTypeToSOCISupportType<float> {
-        using type = double;
-    };
+        struct ConvertCPPTypeToSOCISupportType<float> {
+            using type = double;
+        };
 
     template<>
-    struct ConvertCPPTypeToSOCISupportType<std::uint64_t> {
-        using type = unsigned long long;
-    };
+        struct ConvertCPPTypeToSOCISupportType<std::uint64_t> {
+            using type = unsigned long long;
+        };
 
     /// @brief Works for all stuff where the default type conversion operator is overloaded.
     template<typename T>
     typename ConvertCPPTypeToSOCISupportType<T>::type convertToSOCISupportedType(T const& val) {
-                        const auto ret = static_cast<typename ConvertCPPTypeToSOCISupportType<T>::type>(val);
+        const auto ret = static_cast<typename ConvertCPPTypeToSOCISupportType<T>::type>(val);
         return ret;
     }
 
     std::string convertToSOCISupportedType( char const* val) {
         const std::string ret = val;
-                        return ret;
+        return ret;
     }
 
 class DbBackend : public Singleton<DbBackend> {
@@ -132,10 +137,15 @@ template<class T>
     private:
         struct fill{
             std::stringstream& ss;  
-            fill(std::stringstream& ss) : ss(ss) {}  
+            int cnt;
+            fill(std::stringstream& ss_i) : ss(ss_i), cnt(0) {}  
 
             void operator()(auto val){
-                ss << ", " << *val;
+                if(cnt == 0)
+                    ss <<*val;
+                else
+                    ss << ", " << *val;
+                cnt++;
             }
         };
 
@@ -168,20 +178,22 @@ template<class T>
 
         struct InsertRowNames {
         private:
-            std::string& sql;
+            // std::string& sql;
+            std::stringstream* ss;  
             int cnt;
 
         public:
-            InsertRowNames(std::string& sql) : sql(sql),cnt(0) {}
+            InsertRowNames(std::stringstream* ss_i) : ss(ss_i), cnt(0) {}  
+            // InsertRowNames(std::& sql) : cnt(0) {}
 
             template <typename O>
             void operator()(O const& x) 
             {
-                cnt++;
-                if(cnt == 1) 
-                    sql += x.second;
+                if(cnt == 0) 
+                    *ss << x.second;
                 else
-                    sql += " , " + x.second;
+                    *ss << " , " << x.second;
+                cnt++;
             }
         };
 
@@ -254,17 +266,27 @@ template<class T>
             }
         };
 
+    
         struct UpdateRowVal {
         private:
             std::vector<std::string>& vec;
             std::string part;
         public:
             UpdateRowVal(std::vector<std::string>& vec) : vec(vec) {}
-
-            void operator()(auto x)
+        
+            template <typename O>
+            void operator()(O* x)
             {
                 part = "";
                 part += std::to_string(*x);
+                vec.push_back(part);
+            }
+
+            // template<typename std::string>
+            void operator()(std::string * x)
+            {
+                part = "";
+                part += *x;
                 vec.push_back(part);
             }
         };
@@ -288,15 +310,12 @@ template<class T>
             const auto vecs = TypeMetaData<T>::tuple_type_pair();
             const auto vals = TypeMetaData<T>::getVal(obj);
             std::stringstream ss;
-            std::string sql = "INSERT INTO \"{}\" (";
-            boost::fusion::for_each(vecs, SqlString<T>::InsertRowNames(sql));
-            sql += ") VALUES (";
-            sql += std::to_string(*(boost::fusion::at_c<0>(vals)));
-            ss.str(""); 
-            ss.clear();
-            boost::fusion::for_each(boost::fusion::pop_front(vals), fill(ss));
-            sql += ss.str() + ");";
-            return sql;
+            ss << "INSERT INTO \"{}\" (";
+            boost::fusion::for_each(vecs, SqlString<T>::InsertRowNames(&ss));
+            ss << ") VALUES (";
+            boost::fusion::for_each(vals, fill(ss));
+            ss << ");";
+            return ss.str();
         }
 
         static std::string const& dropTableStr() {
@@ -665,7 +684,44 @@ public:
     }
 };
 
+template<typename TA, bool IsComposite>
+    struct GetAllObjectsImpl {
+        inline static void impl(TA& x, const soci::row& row, const std::string& member_name/*, const std::string& /*oid_ref*/) {
+            x = row.get<typename ConvertCPPTypeToSOCISupportType<TA>::type>(member_name);
+        }
+    };
 
+template<typename T>
+struct GetAllObjects {
+    private:
+        const soci::row& _row;
+        const std::vector<std::string>& _member_names;
+        int _count;
+
+    public:
+        GetAllObjects(const soci::row& row) :_row(row),
+            _member_names(TypeMetaData<T>::member_names()), _count(2) {
+        }
+#if 0
+        template <typename O>
+        void operator()(O& x) const {
+            const std::string& member_name = _member_names.at(const_cast<GetAllObjects*>(this)->_count++);
+            GetAllObjectsImpl<O, IsComposite<O>::value>::impl(x, _row, member_name);
+            x = _row.get<typename ConvertCPPTypeToSOCISupportType<O>::type>(_member_names.at(const_cast<GetAllObjects*>(this)->_count++));
+        }
+#endif
+        template <typename O> 
+        void operator()(O& x){
+
+            const std::string& member_name = _member_names.at(_count);
+            std::cout<<member_name<<"\n";
+            
+            using SOCISupportType = typename ConvertCPPTypeToSOCISupportType<typename std::remove_pointer<O>::type>::type;
+            // std::cout<<"name = "<<typeid(x).name()<<"\n";
+            *x = _row.get<SOCISupportType>(member_name);
+            _count++;
+        }
+    };
 
 
 void dbgPrint(){std::cout<<"Edadb starting \n";}
@@ -675,6 +731,7 @@ template<typename T>
       public:
         //Members
         std::string table_name;
+        std::string select_header;
         
       public:
         static bool connectToDb(const std::string& db_connect_str); 
@@ -683,9 +740,9 @@ template<typename T>
         bool insertToDb(T *obj);
         bool deleteFromDb(T *obj);
         bool updateDb(T *obj);
-        bool selectFromDb(std::string where_str, T *obj);
+        bool selectFromDb(std::vector<T> *vec, std::string where_str = "");
         template<typename Q>
-        T * selectWithPK(Q PK_val);
+        bool selectWithPK(Q PK_val, T *obj);
     };
 
     template<typename T>
@@ -703,6 +760,7 @@ template<typename T>
         #endif
         try {
             DbBackend::i().session() << sql;
+            select_header = fmt::format(SqlString<T>::selectRowStr(),table_name);
             return true;
         }
         catch (std::exception const & e) {
@@ -716,7 +774,7 @@ template<typename T>
         SqlString<T> sql_string;
         const std::string sql = fmt::format(sql_string.insertRowStr(obj), table_name);
         #ifdef EDADB_DEBUG
-            std::cout<<sql<<"\n";
+            std::cout<<"insertToDb: sql "<<sql<<"\n";
         #endif
         try{
             // DbBackend::i().session()<<sql, soci::use(obj_holder); //boost 
@@ -765,12 +823,24 @@ template<typename T>
     }
 
     template<typename T>
-    bool DbMap<T>::selectFromDb(std::string where_str, T *obj){
-        static const std::string sql = fmt::format(SqlString<T>::selectRowStr(),table_name) +"where "+ where_str;
-        
-        SimpleObjHolder<T> obj_holder(obj);
+    bool DbMap<T>::selectFromDb(std::vector<T> *vec, std::string where_str){
+        std::string sql;
+        if(where_str.size() > 0) 
+            sql = select_header + "where "+ where_str; 
+        else 
+            sql = select_header;
+
         try {
-            DbBackend::i().session() << sql,soci::into(obj_holder);
+            std::cout<<sql<<std::endl;
+            soci::rowset<soci::row>rows = (DbBackend::i().session().prepare << sql);
+            vec->clear();
+            for(soci::rowset<soci::row>::const_iterator row_itr = rows.begin();row_itr != rows.end();++row_itr){
+                auto const& row = *row_itr;
+                T *a = new T;
+                auto vals = TypeMetaData<T>::getVal(a);
+                boost::fusion::for_each(vals,GetAllObjects<T>(row));
+                vec->emplace_back(std::move(*a));
+            }
             return true;
         }
         catch (std::exception const& e) {
@@ -781,21 +851,35 @@ template<typename T>
 
     template<typename T>
     template<typename Q>
-    T * DbMap<T>::selectWithPK(Q PK_val){
+    bool DbMap<T>::selectWithPK(Q PK_val, T *obj){
         static const std::string sql = fmt::format(SqlString<T>::selectRowStrPK(std::to_string(PK_val)),table_name);
-        T* obj = new T();
-        SimpleObjHolder<T> obj_holder(obj);
         try {
-            DbBackend::i().session() << sql,soci::into(obj_holder);
-            return obj;
-            
+            std::cout<<sql<<std::endl;
+            soci::rowset<soci::row>rows = (DbBackend::i().session().prepare << sql);
+            auto const& row = *rows.begin();
+            auto vals = TypeMetaData<T>::getVal(obj);
+            boost::fusion::for_each(vals,GetAllObjects<T>(row));
+            return true;
         }
         catch (std::exception const& e) {
             std::cerr << "selectFromDbPK: "<< e.what() << "\n";
-            delete obj;
-            return nullptr;
+            return false;
         }
     }
+
+    // template<typename T>
+    // template<typename Q>
+    // bool DbMap<T>::selectWithPK(Q PK_val, T *obj){
+    //     static const std::string sql = fmt::format(SqlString<T>::selectRowStrPK(std::to_string(PK_val)),table_name);
+    //     try {
+    //         DbBackend::i().session() << sql,soci::into(*obj);
+    //         return true;
+    //     }
+    //     catch (std::exception const& e) {
+    //         std::cerr << "selectFromDbPK: "<< e.what() << "\n";
+    //         return false;
+    //     }
+    // }
 
 } // end of edadb namespace
 

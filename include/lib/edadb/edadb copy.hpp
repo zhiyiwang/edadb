@@ -764,7 +764,6 @@ template<typename T>
         T* DbMap<T>::selectFromDb(std::string where_str){
             static const std::string sql = fmt::format(SqlString<T>::selectRowStr(),table_name) +"where "+ where_str;
             T* obj = new T();
-            SimpleObjHolder<T> obj_holder(obj);
             try {
                 DbBackend::i().session() << sql,soci::into(obj_holder);
                 return obj;
@@ -861,7 +860,7 @@ namespace soci{
 /// Helper Macros End
 ///////////////////////////////////////////////////////////////////////////////
 
-/// SPECIALIZE_BUN_HELPER Start
+/// TABLE4CLASS Start
 #define TABLE4CLASS(CLASS_ELEMS_TUP) BOOST_FUSION_ADAPT_STRUCT( BOOST_PP_TUPLE_REM_CTOR(CLASS_ELEMS_TUP) ) \
 namespace edadb{\
 template<>\

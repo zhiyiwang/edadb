@@ -1,6 +1,6 @@
 file(REMOVE_RECURSE
-  "CMakeFiles/edadb.dir/src/edadb.cpp.o"
-  "CMakeFiles/edadb.dir/src/edadb.cpp.o.d"
+  "CMakeFiles/edadb.dir/src/edadbTest1.cpp.o"
+  "CMakeFiles/edadb.dir/src/edadbTest1.cpp.o.d"
   "CMakeFiles/edadb.dir/src/sqlite/sqlite3.c.o"
   "CMakeFiles/edadb.dir/src/sqlite/sqlite3.c.o.d"
   "edadb"

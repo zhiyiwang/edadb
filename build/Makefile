@@ -132,29 +132,29 @@ edadb/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/edadb.dir/build.make CMakeFiles/edadb.dir/build
 .PHONY : edadb/fast
 
-src/edadb.o: src/edadb.cpp.o
-.PHONY : src/edadb.o
+src/edadbTest1.o: src/edadbTest1.cpp.o
+.PHONY : src/edadbTest1.o
 
 # target to build an object file
-src/edadb.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/edadb.dir/build.make CMakeFiles/edadb.dir/src/edadb.cpp.o
-.PHONY : src/edadb.cpp.o
+src/edadbTest1.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/edadb.dir/build.make CMakeFiles/edadb.dir/src/edadbTest1.cpp.o
+.PHONY : src/edadbTest1.cpp.o
 
-src/edadb.i: src/edadb.cpp.i
-.PHONY : src/edadb.i
+src/edadbTest1.i: src/edadbTest1.cpp.i
+.PHONY : src/edadbTest1.i
 
 # target to preprocess a source file
-src/edadb.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/edadb.dir/build.make CMakeFiles/edadb.dir/src/edadb.cpp.i
-.PHONY : src/edadb.cpp.i
+src/edadbTest1.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/edadb.dir/build.make CMakeFiles/edadb.dir/src/edadbTest1.cpp.i
+.PHONY : src/edadbTest1.cpp.i
 
-src/edadb.s: src/edadb.cpp.s
-.PHONY : src/edadb.s
+src/edadbTest1.s: src/edadbTest1.cpp.s
+.PHONY : src/edadbTest1.s
 
 # target to generate assembly for a file
-src/edadb.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/edadb.dir/build.make CMakeFiles/edadb.dir/src/edadb.cpp.s
-.PHONY : src/edadb.cpp.s
+src/edadbTest1.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/edadb.dir/build.make CMakeFiles/edadb.dir/src/edadbTest1.cpp.s
+.PHONY : src/edadbTest1.cpp.s
 
 src/sqlite/sqlite3.o: src/sqlite/sqlite3.c.o
 .PHONY : src/sqlite/sqlite3.o
@@ -189,9 +189,9 @@ help:
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
 	@echo "... edadb"
-	@echo "... src/edadb.o"
-	@echo "... src/edadb.i"
-	@echo "... src/edadb.s"
+	@echo "... src/edadbTest1.o"
+	@echo "... src/edadbTest1.i"
+	@echo "... src/edadbTest1.s"
 	@echo "... src/sqlite/sqlite3.o"
 	@echo "... src/sqlite/sqlite3.i"
 	@echo "... src/sqlite/sqlite3.s"
