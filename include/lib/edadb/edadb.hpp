@@ -34,9 +34,6 @@
 #include <boost/uuid/uuid_io.hpp>
 #include <soci/error.h>
 #include "lib/utils/MD5.hpp"
-// #include "blib/bun/impl/DbBackend.hpp"
-// #include "blib/bun/impl/DbLogger.hpp"
-// #include "blib/bun/impl/SimpleOID.hpp"
 #include "lib/edadb/impl/EdadbCppTypeToSQLString.hpp"
 // #include <sqlite3.h>
 #include <soci/soci.h>
@@ -140,11 +137,20 @@ template<class T>
             int cnt;
             fill(std::stringstream& ss_i) : ss(ss_i), cnt(0) {}  
 
-            void operator()(auto val){
-                if(cnt == 0)
-                    ss <<*val;
+            template<typename O>
+            void operator()(O val) {
+                if (cnt == 0)
+                    ss << *val;
                 else
                     ss << ", " << *val;
+                cnt++;
+            }
+
+            void operator()(std::string* val) {
+                if (cnt == 0)
+                    ss << "\'" << *val << "\'";
+                else
+                    ss << ", \'" << *val << "\'";
                 cnt++;
             }
         };
@@ -167,7 +173,6 @@ template<class T>
                 if (composite_type == type) {
                     type = "VARCHAR";
                 }
-                std::cout<<"operator print "<<x.second<<"\n";
                 if(cnt == 1) 
                     sql += x.second + " " + type + " PRIMARY KEY";  
                 else 
@@ -178,13 +183,11 @@ template<class T>
 
         struct InsertRowNames {
         private:
-            // std::string& sql;
             std::stringstream* ss;  
             int cnt;
 
         public:
             InsertRowNames(std::stringstream* ss_i) : ss(ss_i), cnt(0) {}  
-            // InsertRowNames(std::& sql) : cnt(0) {}
 
             template <typename O>
             void operator()(O const& x) 
@@ -274,6 +277,17 @@ template<class T>
         public:
             UpdateRowVal(std::vector<std::string>& vec) : vec(vec) {}
         
+            template <typename S>
+            std::string add_quotaion(S const& x)
+            {
+                return std::to_string(x);
+            }
+
+            std::string add_quotaion(std::string const& x)
+            {
+                return "\'" + x + "\'";
+            }
+
             template <typename O>
             void operator()(O* x)
             {
@@ -286,7 +300,7 @@ template<class T>
             void operator()(std::string * x)
             {
                 part = "";
-                part += *x;
+                part += add_quotaion(*x);
                 vec.push_back(part);
             }
         };
@@ -323,13 +337,24 @@ template<class T>
             return sql;
         }
 
-        static std::string const& deleteRowStr(T *obj){
-            static const auto vecs = TypeMetaData<T>::tuple_type_pair();
+        template<typename O>
+        std::string firstColumnVal(O val){
+            return std::to_string(val);
+        }
+        
+        std::string firstColumnVal(std::string val){
+            std::string str = "\'" + val + "\'";
+            return str;
+        }
+        
+        std::string deleteRowStr(T *obj){
+            const auto vecs = TypeMetaData<T>::tuple_type_pair();
             const auto vals = TypeMetaData<T>::getVal(obj);
             auto &first_pair = boost::fusion::at_c<0>(vecs);
-            static const std::string sql = "DELETE FROM \"{}\" WHERE " 
-            + first_pair.second + " = " + std::to_string(*(boost::fusion::at_c<0>(vals)))+";";
-            return sql;
+            std::stringstream ss;
+            ss << "DELETE FROM \"{}\" WHERE " +first_pair.second + 
+            " = " + firstColumnVal(*(boost::fusion::at_c<0>(vals))) + ";";
+            return ss.str();
         }
 
 
@@ -337,25 +362,16 @@ template<class T>
             const auto vecs = TypeMetaData<T>::tuple_type_pair();
             const auto vals = TypeMetaData<T>::getVal(obj);
             std::stringstream ss;
-            std::string sql = "UPDATE \"{}\" SET ";
-                std::string sql1;
-                std::vector<std::string>v1,v2;
-                // std::vector<std::string>sql_vec; // tobedone
-                // for (auto& x : vecs) {
-                //     if (!sql1.empty()) {
-                //         sql1 += ",";
-                //     }
-                //     sql1 += x.second + " = {}";
-                // }
-                boost::fusion::for_each(vecs, SqlString<T>::UpdateRow(v1));
-                boost::fusion::for_each(vals, SqlString<T>::UpdateRowVal(v2));
-                for(unsigned long i = 0;i<v1.size();i++){
-                    sql += v1[i] + v2[i];
-                }
-                auto &first_pair = boost::fusion::at_c<0>(vecs);
-                sql += /*sql1 +*/ " WHERE "+ first_pair.second + " = " + std::to_string(*(boost::fusion::at_c<0>(vals)))+";";
-                // std::cout<<"vecs[0].second == "<<first_pair.second<<"\n";
-            return sql;
+            ss << "UPDATE \"{}\" SET ";
+            std::vector<std::string>v1,v2;
+            boost::fusion::for_each(vecs, SqlString<T>::UpdateRow(v1));
+            boost::fusion::for_each(vals, SqlString<T>::UpdateRowVal(v2));
+            for(unsigned long i = 0;i<v1.size();i++){
+                ss << v1[i] + v2[i];
+            }
+            auto &first_pair = boost::fusion::at_c<0>(vecs);
+            ss <<  " WHERE "+ first_pair.second + " = " + firstColumnVal(*(boost::fusion::at_c<0>(vals))) + ";"; //如果不是std::string则隐式转换
+            return ss.str();
         }
 
         static std::string const& selectRowStr() {
@@ -714,7 +730,7 @@ struct GetAllObjects {
         void operator()(O& x){
 
             const std::string& member_name = _member_names.at(_count);
-            std::cout<<member_name<<"\n";
+            // std::cout<<member_name<<"\n";
             
             using SOCISupportType = typename ConvertCPPTypeToSOCISupportType<typename std::remove_pointer<O>::type>::type;
             // std::cout<<"name = "<<typeid(x).name()<<"\n";
@@ -774,7 +790,7 @@ template<typename T>
         SqlString<T> sql_string;
         const std::string sql = fmt::format(sql_string.insertRowStr(obj), table_name);
         #ifdef EDADB_DEBUG
-            std::cout<<"insertToDb: sql "<<sql<<"\n";
+            std::cout<<"insertToDb sql: "<<sql<<"\n";
         #endif
         try{
             // DbBackend::i().session()<<sql, soci::use(obj_holder); //boost 
@@ -789,7 +805,8 @@ template<typename T>
 
     template<typename T>
     bool DbMap<T>::deleteFromDb(T *obj){
-        const static std::string sql = fmt::format(SqlString<T>::deleteRowStr(obj), table_name);
+        SqlString<T> sql_string;
+        const std::string sql = fmt::format(sql_string.deleteRowStr(obj), table_name);
         #ifdef EDADB_DEBUG
             std::cout<<sql<<"\n";
         #endif
@@ -808,7 +825,6 @@ template<typename T>
     bool DbMap<T>::updateDb(T *obj){
         SqlString<T> sql_string;
         const std::string sql = fmt::format(sql_string.updateRowStr(obj),table_name);
-        // SimpleObjHolder<T> obj_holder(obj);
         #ifdef EDADB_DEBUG
             std::cout<<sql<<"\n";
         #endif
@@ -955,6 +971,7 @@ template<> struct TypeMetaData<BOOST_PP_TUPLE_ELEM(0, CLASS_ELEMS_TUP)>{\
     using TupType = boost::fusion::vector<GENERATE_TupType(CLASS_ELEMS_TUP)>;\
     using TupTypePairType = boost::fusion::vector<GENERATE_TupTypePair(CLASS_ELEMS_TUP)>;\
     using T = BOOST_PP_TUPLE_ELEM(0, CLASS_ELEMS_TUP);\
+    \
     inline static auto tuple_type_pair()->TupTypePairType const&{\
         static const TupTypePairType t{GENERATE_TupTypePairObj(CLASS_ELEMS_TUP)};\
         return t;\

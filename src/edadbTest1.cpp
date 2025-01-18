@@ -9,8 +9,9 @@ public:
   int height;
   int not_saved;
   
+  IdbSite() : name("Default"), width(123), height(456), not_saved(789) {}
 
-  IdbSite(std::string n, int w = 123,int h = 456,int t = 555) : name(n), width(w), height(h), not_saved(t){}
+  IdbSite(std::string n, int w = 123,int h = 456,int t = 789) : name(n), width(w), height(h), not_saved(t){}
 
   void print(){
     std::cout<<"IdbSite(name="<<name<<", width="<<width<<", height="<<height<<", not_saved="<<not_saved<<")\n";
@@ -42,6 +43,7 @@ int main() {
   db.insertToDb(&p4);
   db.insertToDb(&p5);
 
+
   std::vector<IdbSite> vec;
   db.selectFromDb(&vec);
   for(auto i : vec) i.print();
@@ -52,6 +54,7 @@ int main() {
   db.updateDb(p1);
 
   db.deleteFromDb(p2);
+
 
   vec.clear();
   db.selectFromDb(&vec);
