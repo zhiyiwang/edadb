@@ -160,7 +160,7 @@ template<class T>
             std::string& sql;
             int cnt;
         public:
-            CTForeachHelper(std::string& sql) : sql(sql), cnt(0) {std::cout<<"Create table constructor\n";}
+            CTForeachHelper(std::string& sql) : sql(sql), cnt(0) {}
 
             template <typename O>
             void operator()(O const& x) 
@@ -542,7 +542,7 @@ template<typename T>
             std::uint_fast32_t _count;
 
         public:
-            FromBase(soci::values const& val) :_val(val), _count(2) {} //the num of obj to skip
+            FromBase(soci::values const& val) :_val(val), _count(0) {} //_count is the num of obj to skip
 
             template<typename O>
             void operator()(O& x) const {
@@ -563,7 +563,7 @@ template<typename T>
             std::uint_fast32_t _count;
 
         public:
-            ToBase(soci::values& val) :_val(val), _count(2) {}
+            ToBase(soci::values& val) :_val(val), _count(0) {}
 
             template<typename O>
             void operator()(O const& x) const {
@@ -620,7 +620,7 @@ private:
         soci::indicator& _ind;
 
     public:
-        FromBase(soci::values const& val, edadb::SimpleOID const& oid, soci::indicator& ind) :_val(val), _oid(oid), _count(2), _ind(ind) {}
+        FromBase(soci::values const& val, edadb::SimpleOID const& oid, soci::indicator& ind) :_val(val), _oid(oid), _count(0), _ind(ind) {}
 
         template<typename O>
         void operator()(O& x) const {
@@ -678,7 +678,7 @@ private:
         soci::indicator& _ind;
 
     public:
-        ToBase(soci::values& val, /*edadb::SimpleOID const& oid,*/ soci::indicator& ind) :_val(val), /*_oid(oid),*/ _count(2), _ind(ind) {}
+        ToBase(soci::values& val, /*edadb::SimpleOID const& oid,*/ soci::indicator& ind) :_val(val), /*_oid(oid),*/ _count(0), _ind(ind) {}
 
         template<typename O>
         void operator()(O& x) const {
@@ -716,7 +716,7 @@ struct GetAllObjects {
 
     public:
         GetAllObjects(const soci::row& row) :_row(row),
-            _member_names(TypeMetaData<T>::member_names()), _count(2) {
+            _member_names(TypeMetaData<T>::member_names()), _count(0) {
         }
 #if 0
         template <typename O>
@@ -940,7 +940,7 @@ namespace soci{
 #define GENERATE_TupTypePairObj_I(z, n, CLASS_ELEMS_TUP) BOOST_PP_IF(n, BOOST_PP_COMMA, BOOST_PP_EMPTY)() boost::fusion::make_pair<edadb::StripQualifiersAndMakePointer<decltype(BOOST_PP_TUPLE_ELEM(0, CLASS_ELEMS_TUP) :: BOOST_PP_TUPLE_ELEM(BOOST_PP_ADD(1, n), CLASS_ELEMS_TUP))>::type>(BOOST_STRINGIZE(BOOST_PP_TUPLE_ELEM(BOOST_PP_ADD(1, n), CLASS_ELEMS_TUP)))
 #define GENERATE_TupTypePairObj(CLASS_ELEMS_TUP) BOOST_PP_REPEAT(BOOST_PP_SUB(BOOST_PP_TUPLE_SIZE(CLASS_ELEMS_TUP), 1), GENERATE_TupTypePairObj_I, CLASS_ELEMS_TUP)
 
-#define EXPAND_member_names_I(z, n, ELEMS_TUP) ,BOOST_STRINGIZE(BOOST_PP_TUPLE_ELEM(n, ELEMS_TUP))
+#define EXPAND_member_names_I(z, n, ELEMS_TUP) BOOST_PP_IF(n, BOOST_PP_COMMA, BOOST_PP_EMPTY)() BOOST_STRINGIZE(BOOST_PP_TUPLE_ELEM(n, ELEMS_TUP))
 #define EXPAND_member_names(ELEMS_TUP) BOOST_PP_REPEAT(BOOST_PP_TUPLE_SIZE(ELEMS_TUP), EXPAND_member_names_I, ELEMS_TUP)
 
 #define GET_first_member(ELEMS_TUP) BOOST_PP_TUPLE_ELEM(0,ELEMS_TUP )
@@ -981,7 +981,7 @@ template<> struct TypeMetaData<BOOST_PP_TUPLE_ELEM(0, CLASS_ELEMS_TUP)>{\
         return class_name;\
     }\
     inline static const std::vector<std::string>& member_names(){\
-        static const std::vector<std::string> names = {"oid_high", "oid_low" EXPAND_member_names(BOOST_PP_TUPLE_POP_FRONT( CLASS_ELEMS_TUP ))};\
+        static const std::vector<std::string> names = {EXPAND_member_names(BOOST_PP_TUPLE_POP_FRONT( CLASS_ELEMS_TUP ))};\
         return names;\
     }\
     inline static TupType getVal(BOOST_PP_TUPLE_ELEM(0, CLASS_ELEMS_TUP) * obj){\
