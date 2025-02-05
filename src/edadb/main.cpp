@@ -243,6 +243,15 @@ struct Person {
     std::string last_name;
     int age;
     int temp_id; // temnporary id, do not store in database
+
+public:
+    void to_string(void) {
+        std::cout << "ID: " << id 
+                << ", First Name: " << first_name
+                << ", Last Name: " << last_name
+                << ", Age: " << age;
+        std::cout << std::endl;
+    }
 };
 
 
@@ -290,7 +299,7 @@ int test_soci_orm (void) {
             Person p = {1, "Alice", "Smith", 30, 100};
             
             soci::statement st(sql);
-            st.exchange(soci::use(p));
+            st.exchange(soci::use(p)); // bind by object instead of values
             st.alloc();
             st.prepare(insert_sql);
             st.define_and_bind();
@@ -308,13 +317,8 @@ int test_soci_orm (void) {
             st.define_and_bind();
             st.execute(true);
 
-            std::cout << "ID: " << p.id 
-                    << ", First Name: " << p.first_name
-                    << ", Last Name: " << p.last_name
-                    << ", Age: " << p.age;
-            std::cout << std::endl;
+            p.to_string();
         }
-
 
         {
             std::cout << "Bulk insert operations using ORM" << std::endl;
@@ -323,17 +327,12 @@ int test_soci_orm (void) {
                 {3, "Charlie", "Brown", 35, 300}
             };
 
-            std::string sql_str =
-                "INSERT INTO person (id, first_name, last_name, age) VALUES (:id, :first_name, :last_name, :age)";
-
-            soci::statement st(sql);
-            std::size_t begin = 0, end = persons.size();
-            st.exchange(soci::use(persons));
-            st.alloc();
-            st.prepare(sql_str);
-            st.define_and_bind();
-            st.execute(true);
-
+            Person bind_person;
+            soci::statement st = (sql.prepare << insert_sql, soci::use(bind_person));
+            for (auto &p : persons) {
+                bind_person = p;
+                st.execute(true);
+            }
             std::cout << std::endl;
         }
 
@@ -343,22 +342,15 @@ int test_soci_orm (void) {
             std::cout << "SQL: " << sql_str << std::endl;
 
             std::vector<Person> persons;
-            persons.resize(batch_size);
+            Person bind_person;
+            soci::statement st = (sql.prepare << sql_str, soci::into(bind_person));
+            st.execute(false); // fetch all records
+            while (st.fetch()) {
+                persons.push_back(bind_person);
+            }
 
-            soci::statement st(sql);
-            st.exchange(soci::into(persons));
-            st.alloc();
-            st.prepare(sql_str);
-            st.define_and_bind();
-            st.execute(true);
-
-            for (size_t i = 0; i < persons.size(); ++i) {
-                std::cout << "ID: " << persons[i].id 
-                        << ", First Name: " << persons[i].first_name
-                        << ", Last Name: " << persons[i].last_name
-                        << ", Age: " << persons[i].age;
-                std::cout << std::endl;
-                break;
+            for (auto &p : persons) {
+                p.to_string();
             } 
             std::cout << std::endl;
         }
