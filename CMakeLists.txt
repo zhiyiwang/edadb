@@ -22,9 +22,11 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_VERBOSE_MAKEFILE ON)
 set(SOURCE_FILES
     src/sqlite/sqlite3.c
-    src/edadbTest1.cpp
+    # src/edadbTest1.cpp
+    src/edadbTest2.cpp
 	
-        include/lib/edadb/edadb.hpp
+        # include/lib/edadb/edadb.hpp
+        include/lib/edadb/edadbTest2.hpp
         include/lib/utils/MD5.hpp
         include/lib/utils/Singleton.hpp
 )

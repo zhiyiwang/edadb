@@ -20,7 +20,9 @@ public:
 };
 
 // TABLE4CLASS( (classname, primary_key, field_to_persist,...) );
-TABLE4CLASS( (IdbSite, name, width, height) );
+// TABLE4CLASS( IdbSite, "table_name", (name, width, height) );
+TABLE4CLASS_COLNAME( IdbSite, "table_name", (name, width, height), ("iname","iwidth","iheight") );
+    
 
 int main() {
   edadb::dbgPrint();
@@ -41,7 +43,7 @@ int main() {
   db.insertToDb(p2);
   db.insertToDb(p3);
   db.insertToDb(&p4);
-  db.insertToDb(&p5);
+  db.insertToDb(&p5); 
 
 
   std::vector<IdbSite> vec;

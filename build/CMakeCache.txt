@@ -221,38 +221,6 @@ CMAKE_STRIP:FILEPATH=/usr/bin/strip
 // Studio IDE projects all commands are done without /nologo.
 CMAKE_VERBOSE_MAKEFILE:BOOL=FALSE
 
-//Soci (http://soci.sourceforge.net) include directory
-Soci_INCLUDE_DIR:PATH=/usr/local/include/soci
-
-Soci_INCLUDE_DIRS:STRING=/usr/local/include/soci
-
-//Path to a library.
-Soci_LIBRARY:FILEPATH=/usr/local/lib/libsoci_core.so
-
-Soci_VERSION:STRING=4.1.0
-
-Soci_core_FOUND:BOOL=TRUE
-
-Soci_mysql_FOUND:BOOL=TRUE
-
-//Path to a library.
-Soci_mysql_PLUGIN:FILEPATH=/usr/local/lib/libsoci_mysql.so
-
-Soci_odbc_FOUND:BOOL=FALSE
-
-//Path to a library.
-Soci_odbc_PLUGIN:FILEPATH=Soci_odbc_PLUGIN-NOTFOUND
-
-Soci_postgresql_FOUND:BOOL=FALSE
-
-//Path to a library.
-Soci_postgresql_PLUGIN:FILEPATH=Soci_postgresql_PLUGIN-NOTFOUND
-
-Soci_sqlite3_FOUND:BOOL=TRUE
-
-//Path to a library.
-Soci_sqlite3_PLUGIN:FILEPATH=/usr/local/lib/libsoci_sqlite3.so
-
 //The directory containing a CMake configuration file for boost_filesystem.
 boost_filesystem_DIR:PATH=/usr/lib/x86_64-linux-gnu/cmake/boost_filesystem-1.74.0
 
@@ -426,20 +394,6 @@ CMAKE_UNAME:INTERNAL=/usr/bin/uname
 CMAKE_VERBOSE_MAKEFILE-ADVANCED:INTERNAL=1
 //Details about finding Boost
 FIND_PACKAGE_MESSAGE_DETAILS_Boost:INTERNAL=[/usr/lib/x86_64-linux-gnu/cmake/Boost-1.74.0/BoostConfig.cmake][cfound components: system filesystem program_options ][v1.74.0(1.65)]
-//Details about finding Soci
-FIND_PACKAGE_MESSAGE_DETAILS_Soci:INTERNAL=[/usr/local/include/soci][/usr/local/lib/libsoci_core.so][cfound components: sqlite3 ][v4.1.0(3.2)]
-//ADVANCED property for variable: Soci_INCLUDE_DIR
-Soci_INCLUDE_DIR-ADVANCED:INTERNAL=1
-//ADVANCED property for variable: Soci_LIBRARY
-Soci_LIBRARY-ADVANCED:INTERNAL=1
-//ADVANCED property for variable: Soci_mysql_PLUGIN
-Soci_mysql_PLUGIN-ADVANCED:INTERNAL=1
-//ADVANCED property for variable: Soci_odbc_PLUGIN
-Soci_odbc_PLUGIN-ADVANCED:INTERNAL=1
-//ADVANCED property for variable: Soci_postgresql_PLUGIN
-Soci_postgresql_PLUGIN-ADVANCED:INTERNAL=1
-//ADVANCED property for variable: Soci_sqlite3_PLUGIN
-Soci_sqlite3_PLUGIN-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: boost_filesystem_DIR
 boost_filesystem_DIR-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: boost_headers_DIR

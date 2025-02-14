@@ -132,29 +132,29 @@ edadb/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/edadb.dir/build.make CMakeFiles/edadb.dir/build
 .PHONY : edadb/fast
 
-src/edadbTest1.o: src/edadbTest1.cpp.o
-.PHONY : src/edadbTest1.o
+src/edadbTest2.o: src/edadbTest2.cpp.o
+.PHONY : src/edadbTest2.o
 
 # target to build an object file
-src/edadbTest1.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/edadb.dir/build.make CMakeFiles/edadb.dir/src/edadbTest1.cpp.o
-.PHONY : src/edadbTest1.cpp.o
+src/edadbTest2.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/edadb.dir/build.make CMakeFiles/edadb.dir/src/edadbTest2.cpp.o
+.PHONY : src/edadbTest2.cpp.o
 
-src/edadbTest1.i: src/edadbTest1.cpp.i
-.PHONY : src/edadbTest1.i
+src/edadbTest2.i: src/edadbTest2.cpp.i
+.PHONY : src/edadbTest2.i
 
 # target to preprocess a source file
-src/edadbTest1.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/edadb.dir/build.make CMakeFiles/edadb.dir/src/edadbTest1.cpp.i
-.PHONY : src/edadbTest1.cpp.i
+src/edadbTest2.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/edadb.dir/build.make CMakeFiles/edadb.dir/src/edadbTest2.cpp.i
+.PHONY : src/edadbTest2.cpp.i
 
-src/edadbTest1.s: src/edadbTest1.cpp.s
-.PHONY : src/edadbTest1.s
+src/edadbTest2.s: src/edadbTest2.cpp.s
+.PHONY : src/edadbTest2.s
 
 # target to generate assembly for a file
-src/edadbTest1.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/edadb.dir/build.make CMakeFiles/edadb.dir/src/edadbTest1.cpp.s
-.PHONY : src/edadbTest1.cpp.s
+src/edadbTest2.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/edadb.dir/build.make CMakeFiles/edadb.dir/src/edadbTest2.cpp.s
+.PHONY : src/edadbTest2.cpp.s
 
 src/sqlite/sqlite3.o: src/sqlite/sqlite3.c.o
 .PHONY : src/sqlite/sqlite3.o
@@ -189,9 +189,9 @@ help:
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
 	@echo "... edadb"
-	@echo "... src/edadbTest1.o"
-	@echo "... src/edadbTest1.i"
-	@echo "... src/edadbTest1.s"
+	@echo "... src/edadbTest2.o"
+	@echo "... src/edadbTest2.i"
+	@echo "... src/edadbTest2.s"
 	@echo "... src/sqlite/sqlite3.o"
 	@echo "... src/sqlite/sqlite3.i"
 	@echo "... src/sqlite/sqlite3.s"

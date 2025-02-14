@@ -155,28 +155,60 @@ template<class T>
             }
         };
 
-        struct CTForeachHelper {
+        struct CTForeachHelper { //create table
         private:
             std::string& sql;
             int cnt;
         public:
             CTForeachHelper(std::string& sql) : sql(sql), cnt(0) {}
 
+            // template<>
+            // struct CppTypeToDbType<myclass>{
+            //     static const DbTypes ret = DbTypes::kComposite;
+            // };
+            // CppTypeToDbType<O>::ret == DbTypes::kComposite;
+
             template <typename O>
             void operator()(O const& x) 
             {
                 cnt++;
                 using ObjType = typename std::remove_const<typename std::remove_pointer<typename O::first_type>::type>::type;
-                static const std::string composite_type = edadb::cppTypeEnumToDbTypeString<DbTypes::kComposite>();
                 std::string type = edadb::cppTypeToDbTypeString<typename edadb::ConvertCPPTypeToSOCISupportType<ObjType>::type>();
-                // If the type is of an object type then we will use VARCHAR to store the hash value
-                if (composite_type == type) {
-                    type = "VARCHAR";
-                }
+    
                 if(cnt == 1) 
-                    sql += x.second + " " + type + " PRIMARY KEY";  
-                else 
-                    sql += ", " + x.second + " " + type;
+                    sql += x.second + " " + type + " PRIMARY KEY";  // DbMap<subclass>
+                else {
+                    if (CppTypeToDbType<O>::ret == DbTypes::kComposite)
+                        sql += ", " + /*sqlstring<O>::*/createTableStrSubObj(x.second + "_");
+                    else 
+                        sql += ", " + x.second + " " + type;
+                }
+                
+            }
+        };
+
+        struct CTSOForeachHelper { // create table sub obj
+        private:
+            std::string& sql;
+            const std::string& prefix;
+            int cnt;
+        public:
+            CTSOForeachHelper(std::string& sql,const std::string& prefix) : sql(sql), prefix(prefix), cnt(0) {}
+
+            template <typename O>
+            void operator()(O const& x) 
+            {
+                cnt++;
+                using ObjType = typename std::remove_const<typename std::remove_pointer<typename O::first_type>::type>::type;
+                std::string type = edadb::cppTypeToDbTypeString<typename edadb::ConvertCPPTypeToSOCISupportType<ObjType>::type>();
+                if(cnt == 1) 
+                    sql += prefix + x.second + " " + type;  // DbMap<subclass>
+                else {
+                    if (CppTypeToDbType<O>::ret == DbTypes::kComposite)
+                        sql += ", " + /*sqlstring<O>::*/createTableStrSubObj(x.second + "_");
+                    else 
+                        sql += ", " + x.second + " " + type;
+                }
                 
             }
         };
@@ -200,7 +232,7 @@ template<class T>
             }
         };
 
-        struct InsertRowVal {
+        struct InsertRowVal { // 没用到？
         private:
             std::string& sql;
             int cnt;
@@ -306,6 +338,16 @@ template<class T>
         };
 
     public:
+        static std::string const& createTableStrSubObj(const std::string prefix) { // create_table_str
+            static const auto vecs = TypeMetaData<T>::tuple_type_pair();
+            static std::string sql;
+            if (sql.empty()) {
+                auto p = new SqlString<T>::CTSOForeachHelper(sql,prefix); //CTSOForeachHelper
+                boost::fusion::for_each(vecs, *p);
+            }
+            return sql;
+        }
+
         static std::string const& createTableStr() { // create_table_str
             static const auto vecs = TypeMetaData<T>::tuple_type_pair();
             static std::string sql;
@@ -702,7 +744,7 @@ public:
 
 template<typename TA, bool IsComposite>
     struct GetAllObjectsImpl {
-        inline static void impl(TA& x, const soci::row& row, const std::string& member_name/*, const std::string& /*oid_ref*/) {
+        inline static void impl(TA& x, const soci::row& row, const std::string& member_name/*, const std::string& oid_ref*/) {
             x = row.get<typename ConvertCPPTypeToSOCISupportType<TA>::type>(member_name);
         }
     };
@@ -948,62 +990,52 @@ namespace soci{
 #define GENERATE_ObjVal_I(z, n, CLASS_ELEMS_TUP) BOOST_PP_IF(n, BOOST_PP_COMMA, BOOST_PP_EMPTY)() &obj->BOOST_PP_TUPLE_ELEM(BOOST_PP_ADD(1, n), CLASS_ELEMS_TUP)
 #define GENERATE_ObjVal(CLASS_ELEMS_TUP) BOOST_PP_REPEAT(BOOST_PP_SUB(BOOST_PP_TUPLE_SIZE(CLASS_ELEMS_TUP), 1), GENERATE_ObjVal_I, CLASS_ELEMS_TUP)
 
-// /// @brief generate the query and query fields
-// #define DEFINE_CLASS_STATIC_VARS_QUERY_I(z, n, CLASS_ELEMS_TUP) boost::proto::terminal<edadb::query::QueryVariablePlaceholderIndex<n>>::type const F<BOOST_PP_TUPLE_ELEM(0, CLASS_ELEMS_TUP)>::BOOST_PP_TUPLE_ELEM(BOOST_PP_ADD(n, 1), CLASS_ELEMS_TUP);
-// #define DEFINE_CLASS_STATIC_VARS_QUERY(CLASS_ELEMS_TUP) BOOST_PP_REPEAT(BOOST_PP_SUB(BOOST_PP_TUPLE_SIZE(CLASS_ELEMS_TUP), 1), DEFINE_CLASS_STATIC_VARS_QUERY_I, CLASS_ELEMS_TUP)
-
-// #define GENERATE_CLASS_STATIC_VARS_QUERY_I(z, n, ELEMS_TUP) static boost::proto::terminal<edadb::query::QueryVariablePlaceholderIndex<n>>::type const BOOST_PP_TUPLE_ELEM(n, ELEMS_TUP);
-// #define GENERATE_CLASS_STATIC_VARS_QUERY(ELEMS_TUP) BOOST_PP_REPEAT(BOOST_PP_TUPLE_SIZE(ELEMS_TUP), GENERATE_CLASS_STATIC_VARS_QUERY_I, ELEMS_TUP)
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Helper Macros End
 ///////////////////////////////////////////////////////////////////////////////
 
 /// TABLE4CLASS Start
-#define TABLE4CLASS(CLASS_ELEMS_TUP) BOOST_FUSION_ADAPT_STRUCT( BOOST_PP_TUPLE_REM_CTOR(CLASS_ELEMS_TUP) ) \
+// TABLE4CLASS(IdbSite, ”tablename”, (name, width, height));
+
+#define TABLE4CLASS_COLNAME(myclass, tablename, CLASS_ELEMS_TUP, COLNAME_TUP) \
+BOOST_FUSION_ADAPT_STRUCT( myclass, BOOST_PP_TUPLE_REM_CTOR(CLASS_ELEMS_TUP) ) \
 namespace edadb{\
 template<>\
-struct CppTypeToDbType<BOOST_PP_TUPLE_ELEM(0, CLASS_ELEMS_TUP)>{\
+struct CppTypeToDbType<myclass>{\
     static const DbTypes ret = DbTypes::kComposite;\
 };\
-template<> struct IsComposite<BOOST_PP_TUPLE_ELEM(0, CLASS_ELEMS_TUP)> : boost::mpl::bool_<true> {};\
-template<> struct TypeMetaData<BOOST_PP_TUPLE_ELEM(0, CLASS_ELEMS_TUP)>{\
-    using TupType = boost::fusion::vector<GENERATE_TupType(CLASS_ELEMS_TUP)>;\
-    using TupTypePairType = boost::fusion::vector<GENERATE_TupTypePair(CLASS_ELEMS_TUP)>;\
-    using T = BOOST_PP_TUPLE_ELEM(0, CLASS_ELEMS_TUP);\
+template<> struct IsComposite<myclass> : boost::mpl::bool_<true> {};\
+template<> struct TypeMetaData<myclass>{\
+    using TupType = boost::fusion::vector<GENERATE_TupType(BOOST_PP_TUPLE_PUSH_FRONT(CLASS_ELEMS_TUP, myclass))>;\
+    using TupTypePairType = boost::fusion::vector<GENERATE_TupTypePair(BOOST_PP_TUPLE_PUSH_FRONT(CLASS_ELEMS_TUP, myclass))>;\
+    using T = myclass;\
     \
     inline static auto tuple_type_pair()->TupTypePairType const&{\
-        static const TupTypePairType t{GENERATE_TupTypePairObj(CLASS_ELEMS_TUP)};\
+        static const TupTypePairType t{GENERATE_TupTypePairObj(BOOST_PP_TUPLE_PUSH_FRONT(CLASS_ELEMS_TUP, myclass))};\
         return t;\
     }\
     inline static std::string const& class_name(){\
-        static std::string const class_name = BOOST_STRINGIZE(BOOST_PP_TUPLE_ELEM(0, CLASS_ELEMS_TUP));\
+        static std::string const class_name = BOOST_STRINGIZE(myclass);\
         return class_name;\
     }\
+    inline static std::string const& table_name(){\
+        static std::string const table_name = tablename;\
+        return table_name;\
+    }\
     inline static const std::vector<std::string>& member_names(){\
-        static const std::vector<std::string> names = {EXPAND_member_names(BOOST_PP_TUPLE_POP_FRONT( CLASS_ELEMS_TUP ))};\
+        static const std::vector<std::string> names = {EXPAND_member_names(CLASS_ELEMS_TUP)};\
         return names;\
     }\
-    inline static TupType getVal(BOOST_PP_TUPLE_ELEM(0, CLASS_ELEMS_TUP) * obj){\
-        return TupType(GENERATE_ObjVal(CLASS_ELEMS_TUP));\
+    inline static const std::vector<std::string>& column_names(){\
+        static const std::vector<std::string> names = {BOOST_PP_TUPLE_REM_CTOR(COLNAME_TUP)};\
+        return names;\
+    }\
+    inline static TupType getVal(myclass * obj){\
+        return TupType(GENERATE_ObjVal(BOOST_PP_TUPLE_PUSH_FRONT(CLASS_ELEMS_TUP, myclass)));\
     }\
 };\
 }
 
-#if 0
-template<>\
-inline auto to_json<BOOST_PP_TUPLE_ELEM(0, CLASS_ELEMS_TUP)>(BOOST_PP_TUPLE_ELEM(0, CLASS_ELEMS_TUP) const& value) -> std::string {\
-return QueryHelper<BOOST_PP_TUPLE_ELEM(0, CLASS_ELEMS_TUP)>::objToJson(value);\
-}\
-}\
-namespace edadb{ namespace query{\
-namespace {\
-template<>\
-struct F<BOOST_PP_TUPLE_ELEM(0, CLASS_ELEMS_TUP)> {\
-GENERATE_CLASS_STATIC_VARS_QUERY(BOOST_PP_TUPLE_POP_FRONT( CLASS_ELEMS_TUP ))\
-};\
-DEFINE_CLASS_STATIC_VARS_QUERY(CLASS_ELEMS_TUP)\
-}\
-}
-}
-#endif
+#define TABLE4CLASS(myclass, tablename, CLASS_ELEMS_TUP) \
+TABLE4CLASS_COLNAME(myclass, tablename, CLASS_ELEMS_TUP, (EXPAND_member_names(CLASS_ELEMS_TUP)))
