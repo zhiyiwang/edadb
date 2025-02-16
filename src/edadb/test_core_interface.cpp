@@ -16,7 +16,7 @@
 int test_core_interface(void) {
     try {
         // create session: connect to SQLite database
-        soci::session sql(soci::sqlite3, "core.db");
+        soci::session sql(soci::sqlite3, "core.intf.db");
 
         // sugar interface to create table 
         sql << "CREATE TABLE IF NOT EXISTS person (id INTEGER PRIMARY KEY, name TEXT, age INTEGER)";
