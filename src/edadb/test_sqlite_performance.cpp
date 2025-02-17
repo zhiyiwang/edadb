@@ -4,6 +4,7 @@
  * https://soci.sourceforge.net/doc/master/interfaces/
  */
 
+#include <assert.h>
 #include <vector>
 #include <string>
 #include <iostream>
@@ -32,7 +33,7 @@ int test_sqlite_performance(uint64_t recd_num, uint64_t query_num)
 
     // create table
     const char* create_table_sql =
-        "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT, age INTEGER);";
+        "CREATE TABLE IF NOT EXISTS person (id INTEGER PRIMARY KEY, name TEXT, age INTEGER);";
     if (sqlite3_exec(db, create_table_sql, 0, 0, 0) != SQLITE_OK) {
         std::cerr << "Can't create table: " << sqlite3_errmsg(db) << std::endl;
         sqlite3_close(db);
@@ -42,7 +43,7 @@ int test_sqlite_performance(uint64_t recd_num, uint64_t query_num)
     auto start = std::chrono::high_resolution_clock::now();
 
     //  insert data
-    const char* insert_sql = "INSERT INTO users (id, name, age) VALUES (?, ?, ?);";
+    const char* insert_sql = "INSERT INTO person (id, name, age) VALUES (?, ?, ?);";
     if (sqlite3_prepare_v2(db, insert_sql, -1, &stmt, 0) != SQLITE_OK) {
         std::cerr << "Failed to prepare insert statement: " << sqlite3_errmsg(db) << std::endl;
         sqlite3_close(db);
@@ -58,6 +59,10 @@ int test_sqlite_performance(uint64_t recd_num, uint64_t query_num)
             std::cerr << "Execution failed: " << sqlite3_errmsg(db) << std::endl;
         } 
 
+        // number of rows modified by the last statement
+        int inst_num = sqlite3_changes(db);  
+        assert(inst_num == 1);
+
         sqlite3_reset(stmt);  // reset the prepared statement
     }
 
@@ -70,20 +75,37 @@ int test_sqlite_performance(uint64_t recd_num, uint64_t query_num)
     // query data
     uint64_t id_sum = 0, age_sum = 0, name_len = 0; 
     for (uint64_t i = 0; i < query_num; ++i) {
-        const char* select_sql = "SELECT id, name, age FROM users;";
+        const char* select_sql = "SELECT id, name, age FROM person;";
         if (sqlite3_prepare_v2(db, select_sql, -1, &stmt, 0) != SQLITE_OK) {
             std::cerr << "Failed to prepare select statement: " << sqlite3_errmsg(db) << std::endl;
             sqlite3_close(db);
             return 1;
         }
 
+        // get column number and type
+        int col_num = sqlite3_column_count(stmt);  
+        assert(col_num == 3); 
+        assert(sqlite3_column_type(stmt, 0) == SQLITE_INTEGER);  
+        assert(sqlite3_column_type(stmt, 1) == SQLITE_TEXT);
+        assert(sqlite3_column_type(stmt, 2) == SQLITE_INTEGER);
+
+        std::string id_str  (sqlite3_column_name(stmt, 0));
+        std::string name_str(sqlite3_column_name(stmt, 1));
+        std::string age_str (sqlite3_column_name(stmt, 2));
+        assert(id_str == "id" && name_str == "name" && age_str == "age");
+
         // iterate over the result set
         while (sqlite3_step(stmt) == SQLITE_ROW) {
-            int id = sqlite3_column_int(stmt, 0);  // get column id 
-            const char* name = (const char*)sqlite3_column_text(stmt, 1);  // get column name
-            int age = sqlite3_column_int(stmt, 2);  // get column age
+            // get values for each column
+            int id = sqlite3_column_int(stmt, 0);  
+            const char* name = (const char*)sqlite3_column_text(stmt, 1); 
+            int age = sqlite3_column_int(stmt, 2);  
 
-            id_sum += id, age_sum += age, name_len += *name - 'A' + 5;
+            id_sum += id, age_sum += age, name_len += *name - 'A' + 5; // "Alice" -> 5
+
+            // number of rows modified by the last statement
+            int inst_num = sqlite3_changes(db);  
+            assert(inst_num == 0);
         }
 
         sqlite3_finalize(stmt);  // finalize the prepared statement

@@ -14,6 +14,7 @@ set(CMAKE_CXX_STANDARD 17)
 
 ## # enable debug 
 ## set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_BUILD_TYPE Release)
 
 # Add the thirdparty directory for external libraries
 add_subdirectory(src)
