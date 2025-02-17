@@ -11,24 +11,26 @@
 
 #include "test_funcs.h"
 
-
+/**
+ * @brief test the soci core interface performance using single value binding
+ */
 int test_core_value_performance(uint64_t recd_num, uint64_t query_num)
 {
     std::cout << "test_core_value_performance:" << std::endl;
 
     try {
         // create session: connect to SQLite database
-        soci::session sql(soci::sqlite3, "core.val.perf.db");
+        soci::session sql(soci::sqlite3, "core.value.perf.db");
+
+        // create table
+        sql << "CREATE TABLE IF NOT EXISTS person (id INTEGER PRIMARY KEY, name TEXT, age INTEGER)";
 
         uint64_t id = 0, age = 1;
         std::string name = "Alice";
 
         auto start = std::chrono::high_resolution_clock::now();
 
-        // create table
-        sql << "CREATE TABLE IF NOT EXISTS person (id INTEGER PRIMARY KEY, name TEXT, age INTEGER)";
-
-        // insert records
+        // insert records via single value binding
         {
             soci::statement st(sql);
             st.exchange(soci::use(id));
@@ -37,16 +39,16 @@ int test_core_value_performance(uint64_t recd_num, uint64_t query_num)
             st.alloc();
             st.prepare("INSERT INTO person (id, name, age) VALUES (:id, :name, :age)");
             st.define_and_bind();
-            // insert by updating the value of id, name, and age
+            // insert and updating the value of id, name, and age
             for (uint64_t i = 0; i < recd_num; ++i) {
                 st.execute(true);
-                id += 1, age += 1;
+                id += 1, age += 1; // ignore the name, which is std::string
             }
         }
 
         auto mid = std::chrono::high_resolution_clock::now();
 
-        // query records
+        // query records via single value binding
         uint64_t id_sum = 0, age_sum = 0, name_len = 0; 
         for (uint64_t i = 0; i < query_num; ++i)
         {
@@ -57,12 +59,13 @@ int test_core_value_performance(uint64_t recd_num, uint64_t query_num)
             st.alloc();
             st.prepare("SELECT id, name, age FROM person");
             st.define_and_bind();
-            st.execute(false);
+            st.execute(false); // read all records
             while (st.fetch()) {
                 id_sum += id, age_sum += age, name_len += name.length();
             }
         }
-        std::cout << "ID Sum: " << id_sum << ", Age Sum: " << age_sum << ", Name Length: " << name_len << std::endl;
+        std::cout << "ID Sum: " << id_sum << ", Age Sum: " << age_sum
+            << ", Name Length: " << name_len << std::endl;
 
         auto end = std::chrono::high_resolution_clock::now();
 
@@ -79,31 +82,30 @@ int test_core_value_performance(uint64_t recd_num, uint64_t query_num)
 
 
 
-int test_core_vector_performance(uint64_t recd_num, uint64_t query_num)
+int test_core_bulk_performance(uint64_t recd_num, uint64_t query_num)
 {
-    std::cout << "test_core_vector_performance:" << std::endl;
+    uint64_t bulk_size = 20; 
+    uint64_t run_num = recd_num / bulk_size;
+    std::cout << "test_core_bulk_performance: use bulk_size: " << bulk_size
+        << ", run_num: " << run_num << std::endl;
 
     try {
         // create session: connect to SQLite database
-        soci::session sql(soci::sqlite3, "core.vec.perf.db");
-
-        uint64_t bulk_size = 20; 
-        uint64_t id = 0, age = 30;
-        std::string name = "Alice";
-
-        auto start = std::chrono::high_resolution_clock::now();
+        soci::session sql(soci::sqlite3, "core.bulk.perf.db");
 
         // create table
         sql << "CREATE TABLE IF NOT EXISTS person (id INTEGER PRIMARY KEY, name TEXT, age INTEGER)";
 
+        auto start = std::chrono::high_resolution_clock::now();
+
         // insert records
         {
-            std::vector<int> ids, ages; 
-            std::vector<std::string> names;
+            std::string name = "Alice";
+            std::vector<std::string> names(bulk_size, name);
+            uint64_t id = 0, age = 1;
+            std::vector<int> ids(bulk_size, id), ages(bulk_size, age);
             for (uint64_t i = 0; i < bulk_size; ++i) {
-                ids.push_back(id + i);
-                names.push_back(name);
-                ages.push_back(age + i);
+                ids[i] = id + i, ages[i] = age + i;
             }
 
             soci::statement st(sql);
@@ -114,36 +116,34 @@ int test_core_vector_performance(uint64_t recd_num, uint64_t query_num)
             st.prepare("INSERT INTO person (id, name, age) VALUES (:id, :name, :age)");
             st.define_and_bind();
             // insert by updating the value of id, name, and age
-            uint64_t run = recd_num / bulk_size;
-            std::cout << "Run: " << run << std::endl;
-            for (uint64_t i = 0; i < run; ++i)
+            for (uint64_t i = 0; i < run_num; ++i)
             {
-                std::cout << "Run Index: " << i << std::endl;
-                std::cout << ids.size() << std::endl;
-                std::cout << names.size() << std::endl;
-                std::cout << ages.size() << std::endl;
+//                std::cout << "Run Index: " << i 
+//                    << "  ids size " << ids.size() 
+//                    << ", names size " << names.size()
+//                    << ", ages size " << ages.size() << std::endl;
+//                std::cout << "Index: " << i << ", ID: " << ids[j] << ", Name: " << names[j]
+//                    << ", Age: " << ages[j] << std::endl;
+//                std::cout << std::flush;
                 st.execute(true);
 
                 for (uint64_t j = 0; j < bulk_size; ++j) {
                     ids[j] += bulk_size, ages[j] += bulk_size;
-                    std::cout << "Index: " << i << ", ID: " << ids[j] << ", Name: " << names[j] << ", Age: " << ages[j] << std::endl;
                 }
             }
         }
-        return 0;
 
         auto mid = std::chrono::high_resolution_clock::now();
 
         // query records
         std::vector<int> ids, ages; 
         std::vector<std::string> names;
-        ids.resize  (bulk_size);
-        names.resize(bulk_size);
-        ages.resize (bulk_size);
 
         uint64_t id_sum = 0, age_sum = 0, name_len = 0; 
         for (uint64_t i = 0; i < query_num; ++i)
         {
+            ids.resize(bulk_size), names.resize(bulk_size), ages.resize(bulk_size);
+
             soci::statement st(sql);
             st.exchange(soci::into(ids));
             st.exchange(soci::into(names));
@@ -156,14 +156,20 @@ int test_core_vector_performance(uint64_t recd_num, uint64_t query_num)
                 for (uint64_t j = 0; j < bulk_size; ++j) {
                     id_sum += ids[j], age_sum += ages[j], name_len += names[j].length();
                 }
+
+                ids.resize(bulk_size), names.resize(bulk_size), ages.resize(bulk_size);
             }
         }
         std::cout << "ID Sum: " << id_sum << ", Age Sum: " << age_sum << ", Name Length: " << name_len << std::endl;
 
         auto end = std::chrono::high_resolution_clock::now();
 
-        std::cout << "Insert Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(mid - start).count() << " ms" << std::endl;
-        std::cout << "Query Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - mid).count() << " ms" << std::endl;
+        std::cout << "Insert Time: "
+            << std::chrono::duration_cast<std::chrono::milliseconds>(mid - start).count() << " ms" 
+            << std::endl;
+        std::cout << "Query Time: "
+            << std::chrono::duration_cast<std::chrono::milliseconds>(end - mid).count() << " ms"
+            << std::endl;
         std::cout << std::endl;
     } catch (const std::exception &e) {
         std::cerr << "Exception: " << e.what() << std::endl;
@@ -171,7 +177,7 @@ int test_core_vector_performance(uint64_t recd_num, uint64_t query_num)
     }
 
     return 0;
-} // test_core_value_performance
+} // test_core_bulk_performance
 
 
 
@@ -183,7 +189,7 @@ int test_core_performance(uint64_t recd_num, uint64_t query_num) {
 
     test_core_value_performance(recd_num, query_num);
 
-//    test_core_vector_performance(recd_num, query_num);
+    test_core_bulk_performance (recd_num, query_num);
 
     return 0;
 } // test_core_performance

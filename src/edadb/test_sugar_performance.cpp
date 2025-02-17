@@ -42,15 +42,20 @@ int test_sugar_performance(uint64_t recd_num, uint64_t query_num) {
 
         auto mid = std::chrono::high_resolution_clock::now();
 
-
         uint64_t id_sum = 0, age_sum = 0, name_len = 0; 
         for (uint64_t i = 0; i < query_num; ++i) {
             // query records
             soci::rowset<soci::row> rs = sql.prepare << "SELECT id, name, age FROM person";
             for (const auto& row : rs) {
+                // get the column values via names
                 int id = row.get<int>("id");
                 std::string name = row.get<std::string>("name");
                 int age = row.get<int>("age");
+
+                // // get the column values via positions
+                // int id = row.get<int>(0);
+                // std::string name = row.get<std::string>(1);
+                // int age = row.get<int>(2);
 
                 id_sum += id, age_sum += age, name_len += name.length();
             }
@@ -59,8 +64,12 @@ int test_sugar_performance(uint64_t recd_num, uint64_t query_num) {
 
         auto end = std::chrono::high_resolution_clock::now();
 
-        std::cout << "Insert Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(mid - start).count() << " ms" << std::endl;
-        std::cout << "Query Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - mid).count() << " ms" << std::endl;
+        std::cout << "Insert Time: "
+            << std::chrono::duration_cast<std::chrono::milliseconds>(mid - start).count() << " ms"
+            << std::endl;
+        std::cout << "Query Time: "
+            << std::chrono::duration_cast<std::chrono::milliseconds>(end - mid).count() << " ms"
+            << std::endl;
         std::cout << std::endl;
     } catch (const std::exception &e) {
         std::cerr << "Exception: " << e.what() << std::endl;

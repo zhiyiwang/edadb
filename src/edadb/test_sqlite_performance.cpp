@@ -31,15 +31,17 @@ int test_sqlite_performance(uint64_t recd_num, uint64_t query_num)
     }
 
     // create table
-    const char* create_table_sql = "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT, age INTEGER);";
+    const char* create_table_sql =
+        "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT, age INTEGER);";
     if (sqlite3_exec(db, create_table_sql, 0, 0, 0) != SQLITE_OK) {
         std::cerr << "Can't create table: " << sqlite3_errmsg(db) << std::endl;
         sqlite3_close(db);
         return 1;
     }
 
-    //  insert data
     auto start = std::chrono::high_resolution_clock::now();
+
+    //  insert data
     const char* insert_sql = "INSERT INTO users (id, name, age) VALUES (?, ?, ?);";
     if (sqlite3_prepare_v2(db, insert_sql, -1, &stmt, 0) != SQLITE_OK) {
         std::cerr << "Failed to prepare insert statement: " << sqlite3_errmsg(db) << std::endl;
@@ -50,7 +52,7 @@ int test_sqlite_performance(uint64_t recd_num, uint64_t query_num)
     for (uint64_t i = 0; i < recd_num; ++i) {
         sqlite3_bind_int(stmt, 1, i);  // bind id
         sqlite3_bind_text(stmt, 2, "Alice", -1, SQLITE_STATIC);  // bind name
-        sqlite3_bind_int(stmt, 3, 1 + i);  // bind age
+        sqlite3_bind_int(stmt, 3, i + 1);  // bind age
 
         if (sqlite3_step(stmt) != SQLITE_DONE) {
             std::cerr << "Execution failed: " << sqlite3_errmsg(db) << std::endl;
@@ -81,19 +83,24 @@ int test_sqlite_performance(uint64_t recd_num, uint64_t query_num)
             const char* name = (const char*)sqlite3_column_text(stmt, 1);  // get column name
             int age = sqlite3_column_int(stmt, 2);  // get column age
 
-            id_sum += id, age_sum += age, name_len += 1;
+            id_sum += id, age_sum += age, name_len += *name - 'A' + 5;
         }
 
         sqlite3_finalize(stmt);  // finalize the prepared statement
     }
-    std::cout << "ID Sum: " << id_sum << ", Age Sum: " << age_sum << ", Name Length: " << name_len << std::endl;
+    std::cout << "ID Sum: " << id_sum << ", Age Sum: " << age_sum 
+        << ", Name Length: " << name_len << std::endl;
 
     auto end = std::chrono::high_resolution_clock::now();
 
     sqlite3_close(db);  // close the database
 
-    std::cout << "Insert Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(mid - start).count() << " ms" << std::endl;
-    std::cout << "Query Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - mid).count() << " ms" << std::endl;
+    std::cout << "Insert Time: "
+        << std::chrono::duration_cast<std::chrono::milliseconds>(mid - start).count() << " ms"
+        << std::endl;
+    std::cout << "Query Time: "
+        << std::chrono::duration_cast<std::chrono::milliseconds>(end - mid).count() << " ms"
+        << std::endl;
 
     return 0;
 } // test_sqlite_performance
