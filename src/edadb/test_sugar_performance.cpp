@@ -16,20 +16,18 @@
  * @brief test the soci sugar interface performance
  * https://soci.sourceforge.net/doc/master/interfaces/
  */
-int test_sugar_performance(uint64_t recd_num, uint64_t query_num) {
-
+int test_sugar_performance(uint64_t recd_num, uint64_t query_num)
+{
     std::cout << "test_sugar_performance:" << std::endl;
 
     try {
-        // create session: connect to SQLite database
+        // create session and table
         soci::session sql(soci::sqlite3, "sugar.perf.db");
+        sql << perf_create_table_sql;
 
-        // create table
-        sql << "CREATE TABLE IF NOT EXISTS person (id INTEGER PRIMARY KEY, name TEXT, age INTEGER)";
-
-        auto start = std::chrono::high_resolution_clock::now();
 
         // insert records
+        auto start_insert = std::chrono::high_resolution_clock::now();
         std::string name = "Alice";
         for (uint64_t i = 0; i < recd_num; ++i) {
             // insert records
@@ -40,12 +38,11 @@ int test_sugar_performance(uint64_t recd_num, uint64_t query_num) {
             sql << sql_str;
         } 
 
-        auto mid = std::chrono::high_resolution_clock::now();
-
+        auto start_scan = std::chrono::high_resolution_clock::now();
         uint64_t id_sum = 0, age_sum = 0, name_len = 0; 
         for (uint64_t i = 0; i < query_num; ++i) {
             // query records
-            soci::rowset<soci::row> rs = sql.prepare << "SELECT id, name, age FROM person";
+            soci::rowset<soci::row> rs = sql.prepare << perf_scan_table_sql;
             for (const auto& row : rs) {
                 // get the column values via names
                 int id = row.get<int>("id");
@@ -60,16 +57,40 @@ int test_sugar_performance(uint64_t recd_num, uint64_t query_num) {
                 id_sum += id, age_sum += age, name_len += name.length();
             }
         } 
+        std::cout << ">> Scan all records result:";
         std::cout << "ID Sum: " << id_sum << ", Age Sum: " << age_sum << ", Name Length: " << name_len << std::endl;
+
+
+        std::cout << ">> Lookup result: ";
+        auto start_lookup = std::chrono::high_resolution_clock::now();
+        for (uint64_t i = 0; i < query_num; ++i) {
+            // query records
+            soci::rowset<soci::row> rs =
+                sql.prepare << perf_lookup_table_sql;
+            for (const auto& row : rs) {
+                // get the column values via names
+                int id = row.get<int>("id");
+                std::string name = row.get<std::string>("name");
+                int age = row.get<int>("age");
+
+                // // get the column values via positions
+                // int id = row.get<int>(0);
+                // std::string name = row.get<std::string>(1);
+                // int age = row.get<int>(2);
+
+                if (i == 0) 
+                    std::cout << id << ", " << name << ", " << age << std::endl;
+            }
+        }
 
         auto end = std::chrono::high_resolution_clock::now();
 
         std::cout << "Insert Time: "
-            << std::chrono::duration_cast<std::chrono::milliseconds>(mid - start).count() << " ms"
-            << std::endl;
-        std::cout << "Query Time: "
-            << std::chrono::duration_cast<std::chrono::milliseconds>(end - mid).count() << " ms"
-            << std::endl;
+            << std::chrono::duration_cast<std::chrono::milliseconds>(start_scan - start_insert).count() << " ms" << std::endl;
+        std::cout << "Scan Time: "
+            << std::chrono::duration_cast<std::chrono::milliseconds>(start_lookup - start_scan).count() << " ms" << std::endl;
+        std::cout << "Lookup Time: "
+            << std::chrono::duration_cast<std::chrono::milliseconds>(end - start_lookup).count() << " ms" << std::endl;
         std::cout << std::endl;
     } catch (const std::exception &e) {
         std::cerr << "Exception: " << e.what() << std::endl;

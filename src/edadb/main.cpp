@@ -22,7 +22,7 @@ int main(void) {
     //// soci performance test ////
     if (1) {
         // record number to insert into database
-        uint64_t recd_num = 10000;
+        uint64_t recd_num  = 10000;
         // query number to run "select * from table", since the single query is too fast
         uint64_t query_num = 10000;
 
