@@ -5,11 +5,78 @@ make[1]: Entering directory '/home/ran/Codes/edadb/build'
 make  -f CMakeFiles/edadb.dir/build.make CMakeFiles/edadb.dir/depend
 make[2]: Entering directory '/home/ran/Codes/edadb/build'
 cd /home/ran/Codes/edadb/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/ran/Codes/edadb /home/ran/Codes/edadb /home/ran/Codes/edadb/build /home/ran/Codes/edadb/build /home/ran/Codes/edadb/build/CMakeFiles/edadb.dir/DependInfo.cmake --color=
+Consolidate compiler generated dependencies of target edadb
 make[2]: Leaving directory '/home/ran/Codes/edadb/build'
 make  -f CMakeFiles/edadb.dir/build.make CMakeFiles/edadb.dir/build
 make[2]: Entering directory '/home/ran/Codes/edadb/build'
-make[2]: Nothing to be done for 'CMakeFiles/edadb.dir/build'.
+[ 33%] Building CXX object CMakeFiles/edadb.dir/src/edadbTest3.cpp.o
+/usr/bin/c++ -DBUN_SQLITE -DFMT_HEADER_ONLY -I/home/ran/Codes/edadb/include -I/home/ran/Codes/edadb/include/third_party -I/home/ran/Codes/edadb/include/third_party/hdr -I/home/ran/Codes/edadb/include/third_party/json -I/home/ran/Codes/edadb/include/third_party/msgpack -I/home/ran/Codes/edadb/include/third_party/rapidjson -I/home/ran/Codes/edadb/include/third_party/spdlog -I/home/ran/Codes/edadb/include/third_party/sqlite -I/home/ran/Codes/edadb/include/third_party/unqlite -Wall -Wno-unused-variable -Wno-pessimizing-move -Wno-reorder -g -O0 -g -std=c++20 -std=gnu++14 -MD -MT CMakeFiles/edadb.dir/src/edadbTest3.cpp.o -MF CMakeFiles/edadb.dir/src/edadbTest3.cpp.o.d -o CMakeFiles/edadb.dir/src/edadbTest3.cpp.o -c /home/ran/Codes/edadb/src/edadbTest3.cpp
+In file included from /home/ran/Codes/edadb/src/edadbTest3.cpp:1:
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest3.hpp: In member function ‘void edadb::SqlString<T>::fill::operator()(O)’:
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest3.hpp:153:24: warning: ‘if constexpr’ only available with ‘-std=c++17’ or ‘-std=gnu++17’
+  153 |                     if constexpr (std::is_class<ObjType>::value && (!std::is_same<ObjType, std::string>::value)){
+      |                        ^~~~~~~~~
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest3.hpp:161:24: warning: ‘if constexpr’ only available with ‘-std=c++17’ or ‘-std=gnu++17’
+  161 |                     if constexpr (std::is_class<ObjType>::value && (!std::is_same<ObjType, std::string>::value)){
+      |                        ^~~~~~~~~
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest3.hpp: In member function ‘void edadb::SqlString<T>::fillSO::operator()(O)’:
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest3.hpp:189:24: warning: ‘if constexpr’ only available with ‘-std=c++17’ or ‘-std=gnu++17’
+  189 |                     if constexpr (std::is_class<ObjType>::value && (!std::is_same<ObjType, std::string>::value)){
+      |                        ^~~~~~~~~
+In file included from /home/ran/Codes/edadb/src/edadbTest3.cpp:1:
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest3.hpp: In member function ‘void edadb::SqlString<T>::InsertRowNamesSO::operator()(const O&)’:
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest3.hpp:324:26: error: ‘ss’ was not declared in this scope
+  324 |                         *ss += " , " + prefix + x.second;
+      |                          ^~
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest3.hpp: In member function ‘void edadb::SqlString<T>::UpdateRow::operator()(const O&)’:
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest3.hpp:369:24: warning: ‘if constexpr’ only available with ‘-std=c++17’ or ‘-std=gnu++17’
+  369 |                     if constexpr (std::is_class<ObjType>::value && (!std::is_same<ObjType, std::string>::value)){
+      |                        ^~~~~~~~~
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest3.hpp: In member function ‘void edadb::SqlString<T>::UpdateRowSO::operator()(const O&)’:
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest3.hpp:410:24: warning: ‘if constexpr’ only available with ‘-std=c++17’ or ‘-std=gnu++17’
+  410 |                     if constexpr (std::is_class<ObjType>::value && (!std::is_same<ObjType, std::string>::value)){
+      |                        ^~~~~~~~~
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest3.hpp: In member function ‘void edadb::SqlString<T>::UpdateRowVal::operator()(O)’:
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest3.hpp:470:20: warning: ‘if constexpr’ only available with ‘-std=c++17’ or ‘-std=gnu++17’
+  470 |                 if constexpr (std::is_class<ObjType>::value && (!std::is_same<ObjType, std::string>::value)){
+      |                    ^~~~~~~~~
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest3.hpp: In member function ‘void edadb::SqlString<T>::UpdateRowValSO::operator()(O*)’:
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest3.hpp:511:20: warning: ‘if constexpr’ only available with ‘-std=c++17’ or ‘-std=gnu++17’
+  511 |                 if constexpr (std::is_class<ObjType>::value && (!std::is_same<ObjType, std::string>::value)){
+      |                    ^~~~~~~~~
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest3.hpp: In function ‘std::string edadb::createTableStrSubObj(const string&)’:
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest3.hpp:620:12: warning: ‘if constexpr’ only available with ‘-std=c++17’ or ‘-std=gnu++17’
+  620 |         if constexpr (std::is_class<T>::value && (!std::is_same<T, std::string>::value)){
+      |            ^~~~~~~~~
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest3.hpp: In function ‘std::string edadb::InsertStrSubObj(const string&)’:
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest3.hpp:637:12: warning: ‘if constexpr’ only available with ‘-std=c++17’ or ‘-std=gnu++17’
+  637 |         if constexpr (std::is_class<T>::value && (!std::is_same<T, std::string>::value)){
+      |            ^~~~~~~~~
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest3.hpp: In function ‘std::string edadb::SubObjVal(T*)’:
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest3.hpp:650:12: warning: ‘if constexpr’ only available with ‘-std=c++17’ or ‘-std=gnu++17’
+  650 |         if constexpr (std::is_class<T>::value && (!std::is_same<T, std::string>::value)){
+      |            ^~~~~~~~~
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest3.hpp: In instantiation of ‘std::string edadb::SqlString<T>::insertRowStr(T*) [with T = IdbSite; std::string = std::__cxx11::basic_string<char>]’:
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest3.hpp:1044:68:   required from ‘bool edadb::DbMap<T>::insertToDb(T*) [with T = IdbSite]’
+/home/ran/Codes/edadb/src/edadbTest3.cpp:72:16:   required from here
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest3.hpp:551:43: error: no matching function for call to ‘edadb::SqlString<IdbSite>::fill::fill(std::string*)’
+  551 |             boost::fusion::for_each(vals, fill(&str));
+      |                                           ^~~~~~~~~~
+In file included from /home/ran/Codes/edadb/src/edadbTest3.cpp:1:
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest3.hpp:146:13: note: candidate: ‘edadb::SqlString<T>::fill::fill(std::string&) [with T = IdbSite; std::string = std::__cxx11::basic_string<char>]’
+  146 |             fill(std::string& str_i) : str(str_i), cnt(0) {}
+      |             ^~~~
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest3.hpp:146:31: note:   no known conversion for argument 1 from ‘std::string*’ {aka ‘std::__cxx11::basic_string<char>*’} to ‘std::string&’ {aka ‘std::__cxx11::basic_string<char>&’}
+  146 |             fill(std::string& str_i) : str(str_i), cnt(0) {}
+      |                  ~~~~~~~~~~~~~^~~~~
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest3.hpp:143:16: note: candidate: ‘constexpr edadb::SqlString<IdbSite>::fill::fill(const edadb::SqlString<IdbSite>::fill&)’
+  143 |         struct fill{
+      |                ^~~~
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest3.hpp:143:16: note:   no known conversion for argument 1 from ‘std::string*’ {aka ‘std::__cxx11::basic_string<char>*’} to ‘const edadb::SqlString<IdbSite>::fill&’
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest3.hpp:143:16: note: candidate: ‘constexpr edadb::SqlString<IdbSite>::fill::fill(edadb::SqlString<IdbSite>::fill&&)’
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest3.hpp:143:16: note:   no known conversion for argument 1 from ‘std::string*’ {aka ‘std::__cxx11::basic_string<char>*’} to ‘edadb::SqlString<IdbSite>::fill&&’
+make[2]: *** [CMakeFiles/edadb.dir/build.make:93: CMakeFiles/edadb.dir/src/edadbTest3.cpp.o] Error 1
 make[2]: Leaving directory '/home/ran/Codes/edadb/build'
-[100%] Built target edadb
+make[1]: *** [CMakeFiles/Makefile2:86: CMakeFiles/edadb.dir/all] Error 2
 make[1]: Leaving directory '/home/ran/Codes/edadb/build'
-/usr/bin/cmake -E cmake_progress_start /home/ran/Codes/edadb/build/CMakeFiles 0
+make: *** [Makefile:94: all] Error 2
