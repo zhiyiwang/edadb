@@ -5,7 +5,6 @@ make[1]: Entering directory '/home/ran/Codes/edadb/build'
 make  -f CMakeFiles/edadb.dir/build.make CMakeFiles/edadb.dir/depend
 make[2]: Entering directory '/home/ran/Codes/edadb/build'
 cd /home/ran/Codes/edadb/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/ran/Codes/edadb /home/ran/Codes/edadb /home/ran/Codes/edadb/build /home/ran/Codes/edadb/build /home/ran/Codes/edadb/build/CMakeFiles/edadb.dir/DependInfo.cmake --color=
-Consolidate compiler generated dependencies of target edadb
 make[2]: Leaving directory '/home/ran/Codes/edadb/build'
 make  -f CMakeFiles/edadb.dir/build.make CMakeFiles/edadb.dir/build
 make[2]: Entering directory '/home/ran/Codes/edadb/build'
