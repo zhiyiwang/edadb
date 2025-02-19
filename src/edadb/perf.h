@@ -1,35 +1,14 @@
 /**
- * @file test_funcs.h
- * @brief test functions for the soci interface
- * https://soci.sourceforge.net/doc/master/interfaces/
+ * @file perf.h
+ * @brief test functions for the soci interface performance
  */
 
-#ifndef TEST_FUNCS_H
-#define TEST_FUNCS_H
+#ifndef PERF_H
+#define PERF_H
 
-#include <stdint.h>
-#include <chrono> // time measurement
+// time measurement
+#include <chrono> 
 #include <string>
-
-//// test the soci interface //// 
-
-/**
- * @brief test the soci interface
- * https://soci.sourceforge.net/doc/master/interfaces/
- */
-int test_sugar_interface(void);
-
-/**
- * @brief test the soci core interface
- * https://soci.sourceforge.net/doc/master/interfaces/
- */
-int test_core_interface(void);
-
-/**
- * @brief test the soci orm interface
- * https://soci.sourceforge.net/doc/master/types/#object-relational-mapping
- */
-int test_soci_orm(void);
 
 
 //// test the soci interface performance ////
@@ -61,5 +40,11 @@ int test_core_performance(uint64_t recd_num, uint64_t query_num);
  */
 int test_sqlite_performance(uint64_t recd_num, uint64_t query_num);
 
+/**
+ * @brief test the soci interface performance
+ * @return 0 if successful, 1 otherwise
+ */
+int test_soci_performance(uint64_t recd_num, uint64_t query_num);
 
-#endif // TEST_FUNCS_H
+
+#endif // PERF_H

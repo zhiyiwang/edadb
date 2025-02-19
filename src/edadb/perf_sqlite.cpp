@@ -9,7 +9,7 @@
 #include <iostream>
 #include <sqlite3.h>
 
-#include "test_funcs.h"
+#include "perf.h"
 
 /**
  * @brief test the soci sqlite3 interface performance

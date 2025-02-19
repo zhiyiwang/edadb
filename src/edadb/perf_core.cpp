@@ -9,7 +9,7 @@
 #include <soci/soci.h>
 #include <soci/sqlite3/soci-sqlite3.h>
 
-#include "test_funcs.h"
+#include "perf.h"
 
 /**
  * @brief test the soci core interface performance using single value binding
