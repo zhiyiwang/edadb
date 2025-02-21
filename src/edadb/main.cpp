@@ -9,8 +9,8 @@
 
 int main(void) {
 
-    //// soci interface func test ////
-    test_soci_interface();
+//    //// soci interface func test ////
+//    test_soci_interface();
 
     //// soci performance test ////
     uint64_t recd_num  = 10000;

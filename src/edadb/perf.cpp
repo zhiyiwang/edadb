@@ -11,11 +11,17 @@
   */
 int test_soci_performance(uint64_t recd_num, uint64_t query_num)
 {
-    test_sugar_performance(recd_num, query_num);
+    test_sugar_performance_str(recd_num, query_num);
+    test_sugar_performance_int(recd_num, query_num);
 
-    test_core_performance(recd_num, query_num);
+    test_core_value_performance_str(recd_num, query_num);
+    test_core_value_performance_int(recd_num, query_num);
 
-    test_sqlite_performance(recd_num, query_num);
+    test_core_vector_performance_str(recd_num, query_num);
+    test_core_vector_performance_int(recd_num, query_num);
+
+    test_sqlite_performance_str(recd_num, query_num);
+    test_sqlite_performance_int(recd_num, query_num);
 
     return 0;
 } // test_soci_performance
