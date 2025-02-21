@@ -9,10 +9,9 @@ The repository @ https://github.com/zhiyiwang/orm
 git clone git@github.com:zhiyiwang/orm.git
 cd orm
 git submodule update --init --recursive
-mkdir build
-cd build
-cmake ..
-make
+mkdir build && cd build && cmake .. && make -j all
+cmake .. && make -j all
+nohup ./bin/soci_test > mynohup.log 2>&1 && sudo shutdown -h now &
 ```
 
 

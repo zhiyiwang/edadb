@@ -15,7 +15,9 @@ int main(void) {
     //// soci performance test ////
     uint64_t recd_num  = 10000;
     uint64_t query_num = 10000;
-    test_soci_performance(10000, 10000);
+    for (int i = 0; i < 5; i++) {
+        test_soci_performance(recd_num, query_num);
+    }
 
     return 0;
 }
