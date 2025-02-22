@@ -3,6 +3,8 @@
  * https://soci.sourceforge.net/doc/master/interfaces/
  */
 
+#include <iostream>
+
 #include "intfc.h"
 #include "perf.h"
 
@@ -13,11 +15,19 @@ int main(void) {
 //    test_soci_interface();
 
     //// soci performance test ////
+    uint64_t run_num = 5;
     uint64_t recd_num  = 10000;
     uint64_t query_num = 10000;
-    for (int i = 0; i < 5; i++) {
+    for (uint64_t i = 0; i < run_num; i++) {
         test_soci_performance(recd_num, query_num);
+
+        // keep the last db file
+        if ((i + 1 < run_num) && (system("rm -f *.db") != 0)) {
+            std::cerr << "Failed to remove db files" << std::endl;
+            return 1;
+        }
     }
+
 
     return 0;
 }
