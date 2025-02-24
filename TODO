@@ -1,0 +1,4 @@
+1. chang perf programs:
+    1> test workflow + virtual functions
+    2> workflow is call create, insert, scan and lookup functions
+    3> virtual function is soci/sqlite3 call implementation functions

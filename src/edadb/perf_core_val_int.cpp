@@ -18,6 +18,7 @@ int test_core_value_performance_int(uint64_t recd_num, uint64_t query_num)
     try {
         // create session and table
         soci::session sql(soci::sqlite3, "core.value.perf.int.db");
+        sql.set_query_context_logging_mode(soci::log_context::never);
         const char* create_table_sql = 
             "CREATE TABLE IF NOT EXISTS person (id INTEGER PRIMARY KEY, int1 INTEGER, int2 INTEGER, int3 INTEGER);";
         sql << create_table_sql;
@@ -71,9 +72,11 @@ int test_core_value_performance_int(uint64_t recd_num, uint64_t query_num)
                 int1_sum += int1, int2_sum += int2, int3_sum += int3;
             }
         }
-        std::cout << ">> Scan all records result:";
-        std::cout << "ID Sum: " << id_sum << ", int1 Sum: " << int1_sum
-            << ", int2 Sum: " << int2_sum << ", int3 Sum: " << int3_sum << std::endl;
+        if (PERF_OUTPUT_SQL_RESULT) {           
+            std::cout << ">> Scan all records result:";
+            std::cout << "ID Sum: " << id_sum << ", int1 Sum: " << int1_sum
+                << ", int2 Sum: " << int2_sum << ", int3 Sum: " << int3_sum << std::endl;
+        }
 
 
         // lookup records via single value binding
@@ -93,7 +96,7 @@ int test_core_value_performance_int(uint64_t recd_num, uint64_t query_num)
             st.define_and_bind();
             st.execute(false); // read all records
             while (st.fetch()) {
-                if (i == 0) {
+                if (PERF_OUTPUT_SQL_RESULT && (i == 0)) {
                     std::cout << ">> Lookup result: ";
                     std::cout << id << ", " << int1 << ", " << int2 << ", " << int3 << std::endl;
                 }
@@ -101,12 +104,19 @@ int test_core_value_performance_int(uint64_t recd_num, uint64_t query_num)
         }
 
         auto end = std::chrono::high_resolution_clock::now();
-        std::cout << "Insert Time: "
-            << std::chrono::duration_cast<std::chrono::milliseconds>(start_scan - start_insert).count() << " ms" << std::endl;
-        std::cout << "Scan Time: "
-            << std::chrono::duration_cast<std::chrono::milliseconds>(start_lookup - start_scan).count() << " ms" << std::endl;
-        std::cout << "Lookup Time: "
-            << std::chrono::duration_cast<std::chrono::milliseconds>(end - start_lookup).count() << " ms" << std::endl;
+        auto insert_eslapse = std::chrono::duration_cast<std::chrono::milliseconds>(start_scan - start_insert).count();
+        auto scan_eslapse = std::chrono::duration_cast<std::chrono::milliseconds>(start_lookup - start_scan).count();
+        auto lookup_eslapse = std::chrono::duration_cast<std::chrono::milliseconds>(end - start_lookup).count();
+        if (PERF_OUTPUT_SQL_RESULT) {
+            std::cout << "Insert Time: " << insert_eslapse << " ms" << std::endl;
+            std::cout << "Scan Time: " << scan_eslapse << " ms" << std::endl;
+            std::cout << "Lookup Time: " << lookup_eslapse << " ms" << std::endl;
+        }
+        else {
+            std::cout << insert_eslapse << std::endl;
+            std::cout << scan_eslapse   << std::endl;
+            std::cout << lookup_eslapse << std::endl;
+        }
         std::cout << std::endl;
     } catch (const std::exception &e) {
         std::cerr << "Exception: " << e.what() << std::endl;

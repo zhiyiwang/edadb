@@ -15,7 +15,7 @@ int main(void) {
 //    test_soci_interface();
 
     //// soci performance test ////
-    uint64_t run_num = 5;
+    uint64_t run_num = 1;
     uint64_t recd_num  = 10000;
     uint64_t query_num = 10000;
     for (uint64_t i = 0; i < run_num; i++) {
@@ -31,4 +31,3 @@ int main(void) {
 
     return 0;
 }
-

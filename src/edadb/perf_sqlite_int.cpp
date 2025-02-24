@@ -120,9 +120,11 @@ int test_sqlite_performance_int(uint64_t recd_num, uint64_t query_num)
 
         sqlite3_finalize(stmt);  // finalize the prepared statement
     }
-    std::cout << ">> Scan all records result:" ;
-    std::cout << "ID Sum: " << id_sum << ", int1 Sum: " << int1_sum;
-    std::cout << ", int2 Sum: " << int2_sum << ", int3 Sum: " << int3_sum << std::endl;
+    if (PERF_OUTPUT_SQL_RESULT) {
+        std::cout << ">> Scan all records result:" ;
+        std::cout << "ID Sum: " << id_sum << ", int1 Sum: " << int1_sum;
+        std::cout << ", int2 Sum: " << int2_sum << ", int3 Sum: " << int3_sum << std::endl;
+    }
 
 
     auto start_lookup = std::chrono::high_resolution_clock::now();
@@ -157,7 +159,7 @@ int test_sqlite_performance_int(uint64_t recd_num, uint64_t query_num)
             int int2 = sqlite3_column_int(stmt, 2);
             int int3 = sqlite3_column_int(stmt, 3);
 
-            if (i == 0) {
+            if (PERF_OUTPUT_SQL_RESULT && (i == 0)) {
                 std::cout << ">> Lookup result: ";
                 std::cout << id << ", " << int1 << ", " << int2 << ", " << int3 << std::endl;
             }
@@ -174,12 +176,19 @@ int test_sqlite_performance_int(uint64_t recd_num, uint64_t query_num)
     auto end = std::chrono::high_resolution_clock::now();
     sqlite3_close(db);  // close the database
 
-    std::cout << "Insert Time: "
-        << std::chrono::duration_cast<std::chrono::milliseconds>(start_scan - start_insert).count() << " ms" << std::endl;
-    std::cout << "Scan Time: "
-        << std::chrono::duration_cast<std::chrono::milliseconds>(start_lookup - start_scan).count() << " ms" << std::endl;
-    std::cout << "Lookup Time: "
-        << std::chrono::duration_cast<std::chrono::milliseconds>(end - start_lookup).count() << " ms" << std::endl;
+    auto insert_eslapse = std::chrono::duration_cast<std::chrono::milliseconds>(start_scan - start_insert).count();
+    auto scan_eslapse = std::chrono::duration_cast<std::chrono::milliseconds>(start_lookup - start_scan).count();
+    auto lookup_eslapse = std::chrono::duration_cast<std::chrono::milliseconds>(end - start_lookup).count();
+    if (PERF_OUTPUT_SQL_RESULT) {
+        std::cout << "Insert Time: " << insert_eslapse << " ms" << std::endl;
+        std::cout << "Scan Time: " << scan_eslapse << " ms" << std::endl;
+        std::cout << "Lookup Time: " << lookup_eslapse << " ms" << std::endl;
+    }
+    else {
+        std::cout << insert_eslapse << std::endl;
+        std::cout << scan_eslapse   << std::endl;
+        std::cout << lookup_eslapse << std::endl;
+    }
     std::cout << std::endl;
 
     return 0;
