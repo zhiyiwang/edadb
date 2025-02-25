@@ -41,10 +41,11 @@
 
 #define EDADB_DEBUG 1 
 
-namespace edadb{
+/*
+* 成员是vector 或者 pointer
+*/
 
-//TABLE4CLASS((classname, primarykey, fields ...))
-// #define TABLE4CLASS(CLASS_ELEMS_TUP) 
+namespace edadb{
 
 
 
@@ -121,6 +122,11 @@ struct TypeMetaData {
     static boost::fusion::vector<boost::fusion::pair<void, std::string>> const& tuple_type_pair();
 };
 
+template<typename T> // for TABLE2TABLE_1_N_VEC
+struct RelationMap{
+
+};
+
 
 template <typename T>
     std::string createTableStrSubObj(const std::string& prefix);
@@ -140,9 +146,9 @@ template<class T>
     struct SqlString {
     public:
         struct fill{
-            std::stringstream& ss;  
+            std::string& str;  
             int cnt;
-            fill(std::stringstream& ss_i) : ss(ss_i), cnt(0) {}  
+            fill(std::string& str_i) : str(str_i), cnt(0) {}  
 
             template<typename O>
             void operator()(O val) {
@@ -153,32 +159,32 @@ template<class T>
                         std::cout<<"illegal\n";
                     }
                     else
-                        ss << ", \'" << *val << "\'"; 
+                        str += ", \'" + /* *val */std::to_string(*val) + "\'"; 
                 }
                 else{
                     // if(type == "__COMPOSITE__"){
                     if constexpr (std::is_class<ObjType>::value && (!std::is_same<ObjType, std::string>::value)){
                         // ss << ", \'" << *val << "\'";
-                        ss << edadb::SubObjVal<ObjType>(val);
+                        str += edadb::SubObjVal<ObjType>(val);
                     }
                     else
-                        ss << ", \'" << *val << "\'"; 
+                        str += ", \'" + /* *val */std::to_string(*val) + "\'"; 
                 }
             }
 
             void operator()(std::string* val) {
                 cnt++;
                 if (cnt == 1)
-                    ss << "\'" << *val << "\'";
+                    str += "\'" + *val + "\'";
                 else
-                    ss << ", \'" << *val << "\'"; // string 不是kComposite 不能是subclass
+                    str += ", \'" + *val + "\'"; // string 不是kComposite 不能是subclass
             }
         };
         
         struct fillSO{
-            std::stringstream& ss;  
+            std::string& str;  
             // int cnt;
-            fillSO(std::stringstream& ss_i) : ss(ss_i)/*, cnt(0)*/ {}  
+            fillSO(std::string& str_i) : str(str_i)/*, cnt(0)*/ {}  
 
             template<typename O>
             void operator()(O val) {
@@ -187,14 +193,14 @@ template<class T>
                 
                     if constexpr (std::is_class<ObjType>::value && (!std::is_same<ObjType, std::string>::value)){
                         // ss << ", \'" << *val << "\'";
-                        ss << edadb::SubObjVal<ObjType>(val);
+                        str += edadb::SubObjVal<ObjType>(val);
                     }
                     else
-                        ss << ", \'" << *val << "\'"; 
+                        str += ", \'" + /* *val */std::to_string(*val) + "\'"; 
             }
 
             void operator()(std::string* val) {
-                    ss << ", \'" << *val << "\'"; // string 不是kComposite 不能是subclass
+                    str += ", \'" + *val + "\'"; // string 不是kComposite 不能是subclass
             }
         };
 
@@ -229,8 +235,6 @@ template<class T>
                     if (ret == DbTypes::kComposite) // 尽量减少字符串比较
                     // if (type == "__COMPOSITE__") // CppTypeToDbType<O>::ret 不能直接判等
                     {
-                        // ObjType tmp;
-                        // std::cout<<tmp.sid<<" "<<tmp.data<<"\n";
                         sql += ", " + edadb::createTableStrSubObj<ObjType>(x.second + "_");
                     }
                     else 
@@ -270,11 +274,12 @@ template<class T>
 
         struct InsertRowNames {
         private:
-            std::stringstream* ss;  
+            // std::stringstream* ss;  
+            std::string* str;
             int cnt;
 
         public:
-            InsertRowNames(std::stringstream* ss_i) : ss(ss_i), cnt(0) {}  
+            InsertRowNames(std::string* str_i) : str(str_i), cnt(0) {}  
 
             template <typename O>
             void operator()(O const& x) 
@@ -283,15 +288,15 @@ template<class T>
                 using ObjType = typename std::remove_const<typename std::remove_pointer<typename O::first_type>::type>::type;
                 std::string type = edadb::cppTypeToDbTypeString<typename edadb::ConvertCPPTypeToSOCISupportType<ObjType>::type>();
                 if(cnt == 1) 
-                    *ss << x.second; // primary key 不能是subclass
+                    *str += x.second; // primary key 不能是subclass
                 else{
                     edadb::DbTypes tmp = CppTypeToDbType<ObjType>::ret;
                     if(tmp == DbTypes::kComposite){
                     // if(type == "__COMPOSITE__"){
-                        *ss << " , " << edadb::InsertStrSubObj<ObjType>(x.second + "_");
+                        *str += " , " + edadb::InsertStrSubObj<ObjType>(x.second + "_");
                     }
                     else{
-                        *ss << " , " << x.second;
+                        *str += " , " + x.second;
                     }
                 }
             }
@@ -299,12 +304,12 @@ template<class T>
 
         struct InsertRowNamesSO {
         private:
-            std::stringstream* ss;  
+            std::string* str;  
             const std::string& prefix;
             int cnt;
 
         public:
-            InsertRowNamesSO(std::stringstream* ss_i,const std::string& prefix) : ss(ss_i), prefix(prefix), cnt(0) {}  
+            InsertRowNamesSO(std::string* str_i,const std::string& prefix) : str(str_i), prefix(prefix), cnt(0) {}  
 
             template <typename O>
             void operator()(O const& x) 
@@ -313,42 +318,19 @@ template<class T>
                 using ObjType = typename std::remove_const<typename std::remove_pointer<typename O::first_type>::type>::type;
                 std::string type = edadb::cppTypeToDbTypeString<typename edadb::ConvertCPPTypeToSOCISupportType<ObjType>::type>();
                 if(cnt == 1) 
-                    *ss << prefix + x.second; // primary key 不能是subclass
+                    *str += prefix + x.second; // primary key 不能是subclass
                 else{
                     edadb::DbTypes tmp = CppTypeToDbType<ObjType>::ret;
                     if(tmp == DbTypes::kComposite){
                     // if(type == "__COMPOSITE__"){
-                        *ss << " , " << edadb::InsertStrSubObj<ObjType>(prefix + x.second + "_");
+                        *str += " , " + edadb::InsertStrSubObj<ObjType>(prefix + x.second + "_");
                     }
                     else{
-                        *ss << " , " << prefix + x.second;
+                        *str += " , " + prefix + x.second;
                     }
                 }
             }
         };
-
-        // struct InsertRowVal {
-        // private:
-        //     std::string& sql;
-        //     int cnt;
-
-        // public:
-        //     InsertRowVal(std::string& sql) : sql(sql),cnt(0) {}
-
-        //     template <typename O>
-        //     void operator()(O const& x) 
-        //     {
-        //         cnt++;
-        //         if(cnt == 1) 
-        //             sql += ":" + x.second; // primary key 不能是subclass
-        //         else{
-        //             if(CppTypeToDbType<O>::ret == DbTypes::kComposite)
-        //                 sql += " , :" + createTableStrSubObj(x.second + "_");
-        //             else
-        //                 sql += " , :" + x.second;
-        //         }
-        //     }
-        // };
 
         struct UpdateRow {
         private:
@@ -372,7 +354,6 @@ template<class T>
                         auto p = new typename SqlString<T>::UpdateRowSO(vec,prefix);
                         boost::fusion::for_each(vecs, *p);
                     }
-                    
                 }
                 else{
                     part = "";
@@ -422,23 +403,6 @@ template<class T>
                     
             }
         };
-    
-        // struct UpdateRowVal {
-        // private:
-        //     std::vector<std::string>& vec;
-        //     std::string part;
-        // public:
-        //     UpdateRowVal(std::vector<std::string>& vec) : vec(vec) {}
-        
-        //     template <typename S>
-        //     std::string add_quotaion(S const& x)
-        //     {
-        //         return std::to_string(x);
-        //         else
-        //             part += x.second + " = ";
-        //         vec.push_back(part);
-        //     }
-        // };
 
     
         struct UpdateRowVal {
@@ -543,13 +507,14 @@ template<class T>
         std::string insertRowStr(T *obj) {
             const auto vecs = TypeMetaData<T>::tuple_type_pair();
             const auto vals = TypeMetaData<T>::getVal(obj);
-            std::stringstream ss;
-            ss << "INSERT INTO \"{}\" (";
-            boost::fusion::for_each(vecs, SqlString<T>::InsertRowNames(&ss));
-            ss << ") VALUES (";
-            boost::fusion::for_each(vals, fill(ss));
-            ss << ");";
-            return ss.str();
+            std::string str = "INSERT INTO \"{}\" (";
+            /*std::stringstream ss;
+            ss << "INSERT INTO \"{}\" (";*/
+            boost::fusion::for_each(vecs, SqlString<T>::InsertRowNames(&str));
+            str += ") VALUES (";
+            boost::fusion::for_each(vals, fill(str));
+            str += ");";
+            return str;
         }
 
         static std::string const& dropTableStr() {
@@ -571,27 +536,28 @@ template<class T>
             const auto vecs = TypeMetaData<T>::tuple_type_pair();
             const auto vals = TypeMetaData<T>::getVal(obj);
             auto &first_pair = boost::fusion::at_c<0>(vecs);
-            std::stringstream ss;
-            ss << "DELETE FROM \"{}\" WHERE " +first_pair.second + 
+            // std::stringstream ss;
+            std::string str;
+            str += "DELETE FROM \"{}\" WHERE " +first_pair.second + 
             " = " + firstColumnVal(*(boost::fusion::at_c<0>(vals))) + ";";
-            return ss.str();
+            return str;
         }
 
 
         std::string updateRowStr(T *obj) {
             const auto vecs = TypeMetaData<T>::tuple_type_pair();
             const auto vals = TypeMetaData<T>::getVal(obj);
-            std::stringstream ss;
-            ss << "UPDATE \"{}\" SET ";
+            // std::stringstream ss;
+            std::string str = "UPDATE \"{}\" SET ";
             std::vector<std::string>v1,v2;
             boost::fusion::for_each(vecs, SqlString<T>::UpdateRow(v1));
             boost::fusion::for_each(vals, SqlString<T>::UpdateRowVal(v2));
             for(unsigned long i = 0;i<v1.size();i++){
-                ss << v1[i] + v2[i];
+                str += v1[i] + v2[i];
             }
             auto &first_pair = boost::fusion::at_c<0>(vecs);
-            ss <<  " WHERE "+ first_pair.second + " = " + firstColumnVal(*(boost::fusion::at_c<0>(vals))) + ";"; //如果不是std::string则隐式转换
-            return ss.str();
+            str +=  " WHERE "+ first_pair.second + " = " + firstColumnVal(*(boost::fusion::at_c<0>(vals))) + ";"; //如果不是std::string则隐式转换
+            return str;
         }
 
         static std::string const& selectRowStr() {
@@ -609,6 +575,87 @@ template<class T>
 
     };
 
+template<typename T, typename Q>
+    struct SqlStringT2T{
+      public:
+        struct CTForeachHelperT2T { //create table
+            private:
+                std::string& sql;
+                int cnt;
+            public:
+                CTForeachHelperT2T(std::string& sql) : sql(sql), cnt(0) {}
+
+                template <typename O>
+                void operator()(O const& x) 
+                {
+                    cnt++;
+                    using ObjType = typename std::remove_const<typename std::remove_pointer<typename O::first_type>::type>::type;
+                    std::string type = edadb::cppTypeToDbTypeString<typename edadb::ConvertCPPTypeToSOCISupportType<ObjType>::type>();
+
+                    // if(cnt == 1) 
+                        // sql += x.second + " " + type + " PRIMARY KEY";  // DbMap<subclass>
+                    // else {
+                        edadb::DbTypes ret = CppTypeToDbType<ObjType>::ret;
+                        if (ret == DbTypes::kComposite) // 尽量减少字符串比较
+                        {
+                            sql += ", " + edadb::createTableStrSubObj<ObjType>(x.second + "_");
+                        }
+                        else 
+                            sql += ", " + x.second + " " + type;
+                    // }
+                }
+            };
+      public:
+        static std::string const& createTableStr() { // create_table_str
+            static const auto vecs_T = TypeMetaData<T>::tuple_type_pair();
+            static const auto vecs_Q = TypeMetaData<Q>::tuple_type_pair();
+            auto &first_pair_T = boost::fusion::at_c<0>(vecs_T);
+            auto &first_pair_Q = boost::fusion::at_c<0>(vecs_Q);
+
+            // using decay_t = typename decay<T>::type; decay_t移除const,volatile,引用 移除指针在后面ConvertCPPTypeToSOCISupportType()
+            using FirstType_T = std::decay_t<decltype(boost::fusion::at_c<0>(typename TypeMetaData<T>::TupType()))>;
+            using FirstType_Q = std::decay_t<decltype(boost::fusion::at_c<0>(typename TypeMetaData<Q>::TupType()))>;
+
+            std::string type_T = edadb::cppTypeToDbTypeString<typename edadb::ConvertCPPTypeToSOCISupportType<FirstType_T>::type>();
+            // std::string type_Q = edadb::cppTypeToDbTypeString<typename edadb::ConvertCPPTypeToSOCISupportType<FirstType_Q>::type>();
+            static std::string sql;
+            if (sql.empty()) {
+
+                sql = "CREATE TABLE IF NOT EXISTS \"{}\" (";
+                sql += TypeMetaData<T>::class_name() + "_" + first_pair_T.second + " " + type_T;
+                
+                auto p = new typename SqlStringT2T<T,Q>::CTForeachHelperT2T(sql); //CTForeachHelper
+                boost::fusion::for_each(vecs_Q, *p);
+                sql += ", PRIMARY KEY (" + TypeMetaData<T>::class_name() + "_" + first_pair_T.second + ", " + first_pair_Q.second + ")"; 
+                sql += ", FOREIGN KEY (" + TypeMetaData<T>::class_name() + "_" + first_pair_T.second + ") REFERENCES " + TypeMetaData<T>::class_name() + "(" + first_pair_T.second + ") ON DELETE CASCADE";
+                sql += ")";
+            }
+            return sql;
+        }
+
+        std::string insertRowStr(T *obj1, Q *obj2) {
+            // 获取 obj1 的主键值
+            const auto vecs_T = TypeMetaData<T>::tuple_type_pair();
+            const auto vals_T = TypeMetaData<T>::getVal(obj1);
+            auto& first_pair_T = boost::fusion::at_c<0>(vecs_T);
+            auto& first_val_T = boost::fusion::at_c<0>(vals_T);
+
+            // 获取 obj2 的列和值
+            const auto vecs_Q = TypeMetaData<Q>::tuple_type_pair();
+            const auto vals_Q = TypeMetaData<Q>::getVal(obj2);
+            std::string str = "INSERT INTO \"{}\" (";
+            /*std::stringstream ss;
+            ss << "INSERT INTO \"{}\" (";*/
+            str += TypeMetaData<T>::class_name() + "_" + first_pair_T.second + ", ";
+            boost::fusion::for_each(vecs_Q, typename SqlString<Q>::InsertRowNames(&str));
+            str += ") VALUES (";
+            str += "\'" + *first_val_T + "\', ";
+            boost::fusion::for_each(vals_Q, typename SqlString<Q>::fill(str));
+            str += ");";
+            return str;
+        }
+        
+    };
 
 
 template <typename T>
@@ -630,29 +677,31 @@ template <typename T>
 template <typename T>
     std::string InsertStrSubObj(const std::string& prefix) {
 
-        std::stringstream ss;
+        // std::stringstream ss;
+        std::string str;
         if constexpr (std::is_class<T>::value && (!std::is_same<T, std::string>::value)){
             /*const */auto vecs = TypeMetaData<T>::tuple_type_pair();
-                auto p = new typename SqlString<T>::InsertRowNamesSO(&ss, prefix);// CTSOForeachHelper
+                auto p = new typename SqlString<T>::InsertRowNamesSO(&str, prefix);// CTSOForeachHelper
                 boost::fusion::for_each(vecs, *p);
         }
         
-        return ss.str();
+        return str;
     }
 
 template <typename T>
     std::string SubObjVal(T* obj){
-        std::stringstream ss;
+        // std::stringstream ss;
+        std::string str;
         if constexpr (std::is_class<T>::value && (!std::is_same<T, std::string>::value)){
 
             const auto vals = TypeMetaData<T>::getVal(obj);
             // const auto vecs = TypeMetaData<T>::tuple_type_pair();
-            auto p = new typename SqlString<T>::fillSO(ss);// CTSOForeachHelper
+            auto p = new typename SqlString<T>::fillSO(str);// CTSOForeachHelper
             boost::fusion::for_each(vals, *p);
             delete p;
         }
         
-        return ss.str();
+        return str;
     }
 
 // template <typename T>
@@ -1008,6 +1057,8 @@ template<typename T>
         bool selectFromDb(std::vector<T> *vec, std::string where_str = "");
         template<typename Q>
         bool selectWithPK(Q PK_val, T *obj);
+
+        bool insertToDbAll(T *obj1);
     };
 
     template<typename T>
@@ -1051,6 +1102,7 @@ template<typename T>
         }
     }
 
+    
     template<typename T>
     bool DbMap<T>::deleteFromDb(T *obj){
         SqlString<T> sql_string;
@@ -1129,6 +1181,100 @@ template<typename T>
         }
         catch (std::exception const& e) {
             std::cerr << "selectFromDbPK: "<< e.what() << "\n";
+            return false;
+        }
+    }
+
+    template<typename T, typename Q>
+    class DbMapT2T {
+      public:
+        //Members
+        std::string table_name;
+        std::string select_header;
+        
+      public:
+        static bool connectToDb(const std::string& db_connect_str); 
+        void setTableName(std::string tab_name){table_name = tab_name;}
+        bool createTable(/*std::string tab_name = ""*/);
+        bool insertToDb(T *obj1, Q *obj2);
+        // bool deleteFromDb(T *obj);
+        // bool updateDb(T *obj);
+        // bool selectFromDb(std::vector<T> *vec, std::string where_str = "");
+    };
+
+    template<typename T, typename Q>
+    bool DbMapT2T<T,Q>::connectToDb(const std::string& db_connect_str){
+        auto ret = DbBackend::i().connect(db_connect_str);
+        return ret;
+    }
+
+    template<typename T, typename Q>
+    bool DbMapT2T<T,Q>::createTable(/*std::string tab_name*/){ // 这里有默认参数 tab_name = ""
+        // if(tab_name == ""){ // 这里名字不允许修改只能是这个，
+            std::cout<<TypeMetaData<T>::class_name()<<" "<<TypeMetaData<T>::class_name()<<"\n";
+            std::string tab_name = fmt::format("{}_{}",TypeMetaData<T>::class_name(),TypeMetaData<Q>::class_name());
+        // }
+        table_name = tab_name;
+        const static std::string sql = fmt::format(SqlStringT2T<T,Q>::createTableStr(), table_name);
+        #ifdef EDADB_DEBUG
+            std::cout<<"createTable sql: "<<sql<<"\n";
+        #endif
+        try {
+            DbBackend::i().session() << sql;
+            // select_header = fmt::format(SqlString<T>::selectRowStr(),table_name);
+            return true;
+        }
+        catch (std::exception const & e) {
+            std::cerr << "createTable: " << e.what() << std::endl;
+            return false;
+        }
+    }
+
+    template<typename T, typename Q>
+    bool DbMapT2T<T,Q>::insertToDb(T *obj1, Q *obj2){
+        SqlStringT2T<T,Q> sql_string;
+        const std::string sql = fmt::format(sql_string.insertRowStr(obj1,obj2), table_name);
+        #ifdef EDADB_DEBUG
+            std::cout<<"insertToDb sql: "<<sql<<"\n";
+        #endif
+        try{
+            DbBackend::i().session()<<sql; //boost 
+            return true;
+        }
+        catch (std::exception const& e) {
+            std::cerr << "insertToDb: " << e.what() << "\n";
+            return false;
+        }
+    }
+    
+    template<typename T>
+    struct InsertAllHelper {
+        T* obj; // 指向 myclass1 对象的指针
+        InsertAllHelper(T* obj) : obj(obj) {}
+        template<typename F>
+        void operator()(F& field) const {
+            using FieldType = std::decay_t<decltype(field)>;
+    
+            using ValueType = typename std::decay_t<decltype(*field)>::value_type; // 获取 std::vector 的元素类型
+            for (auto& item : *field) {
+                DbMapT2T<T, ValueType> dbT2T; // 是不是可以搞一个全局的
+                dbT2T.setTableName(TypeMetaData<T>::class_name() + "_" + TypeMetaData<ValueType>::class_name());
+                dbT2T.insertToDb(obj, &item);
+            }
+        }
+
+    };
+
+    template<typename T>
+    bool DbMap<T>::insertToDbAll(T *obj){
+        try{
+            auto arrays = RelationMap<T>::getVal(obj);
+            auto p = new InsertAllHelper<T>(obj);
+            boost::fusion::for_each(arrays,*p);
+            return true;
+        }
+        catch (std::exception const& e) {
+            std::cerr << "insertToDb: " << e.what() << "\n";
             return false;
         }
     }
@@ -1235,3 +1381,39 @@ template<> struct TypeMetaData<myclass>{\
 
 #define TABLE4CLASS(myclass, tablename, CLASS_ELEMS_TUP) \
 TABLE4CLASS_COLNAME(myclass, tablename, CLASS_ELEMS_TUP, (EXPAND_member_names(CLASS_ELEMS_TUP)))
+
+
+
+#define TABLE2TABLE_1_N_VEC(myclass1, ARRAY_FIELD_TUP) \
+namespace edadb{\
+    template<>\
+        struct RelationMap<myclass1> { \
+        using TupType = boost::fusion::vector<GENERATE_TupType(BOOST_PP_TUPLE_PUSH_FRONT(ARRAY_FIELD_TUP, myclass1))>;\
+        inline static TupType getVal(myclass1 * obj){\
+            return TupType(GENERATE_ObjVal(BOOST_PP_TUPLE_PUSH_FRONT(ARRAY_FIELD_TUP, myclass1)));\
+        }\
+    };\
+}
+
+#if 0
+
+#define TABLE2TABLE_1_N_VEC(myclass1, CLASS_ELEMS_TUP, ARRAY_FIELD_TUP) 
+
+#define TABLE2TABLE_1_N_VEC(myclass1,myclass2,myclass1_array_field) \
+namespace edadb{\
+    template<>\
+    struct RelationMap<myclass1> { \
+        static std::vector<std::pair<std::string, std::string>> relation; \
+        inline static void add_relation() { \
+            relation.push_back({#myclass1, #myclass2}); \
+        } \
+    }; \
+    std::vector<std::pair<std::string, std::string>> RelationMap<myclass1>::relation; \
+    struct RelationMapInitializer_##myclass1##_##myclass2 { \
+        RelationMapInitializer_##myclass1##_##myclass2() { \
+            RelationMap<myclass1>::add_relation(); \
+        } \
+    }; \
+    static RelationMapInitializer_##myclass1##_##myclass2 relationMapInitializer_##myclass1##_##myclass2; \
+}
+#endif

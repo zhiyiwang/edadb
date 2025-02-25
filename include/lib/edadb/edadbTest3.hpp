@@ -41,10 +41,11 @@
 
 #define EDADB_DEBUG 1 
 
-namespace edadb{
+/*
+* ss 和 string 的速度
+*/
 
-//TABLE4CLASS((classname, primarykey, fields ...))
-// #define TABLE4CLASS(CLASS_ELEMS_TUP) 
+namespace edadb{
 
 
 
@@ -140,9 +141,9 @@ template<class T>
     struct SqlString {
     public:
         struct fill{
-            std::stringstream& ss;  
+            std::string& str;  
             int cnt;
-            fill(std::stringstream& ss_i) : ss(ss_i), cnt(0) {}  
+            fill(std::string& str_i) : str(str_i), cnt(0) {}  
 
             template<typename O>
             void operator()(O val) {
@@ -153,32 +154,32 @@ template<class T>
                         std::cout<<"illegal\n";
                     }
                     else
-                        ss << ", \'" << *val << "\'"; 
+                        str += ", \'" + /* *val */std::to_string(*val) + "\'"; 
                 }
                 else{
                     // if(type == "__COMPOSITE__"){
                     if constexpr (std::is_class<ObjType>::value && (!std::is_same<ObjType, std::string>::value)){
                         // ss << ", \'" << *val << "\'";
-                        ss << edadb::SubObjVal<ObjType>(val);
+                        str += edadb::SubObjVal<ObjType>(val);
                     }
                     else
-                        ss << ", \'" << *val << "\'"; 
+                        str += ", \'" + /* *val */std::to_string(*val) + "\'"; 
                 }
             }
 
             void operator()(std::string* val) {
                 cnt++;
                 if (cnt == 1)
-                    ss << "\'" << *val << "\'";
+                    str += "\'" + *val + "\'";
                 else
-                    ss << ", \'" << *val << "\'"; // string 不是kComposite 不能是subclass
+                    str += ", \'" + *val + "\'"; // string 不是kComposite 不能是subclass
             }
         };
         
         struct fillSO{
-            std::stringstream& ss;  
+            std::string& str;  
             // int cnt;
-            fillSO(std::stringstream& ss_i) : ss(ss_i)/*, cnt(0)*/ {}  
+            fillSO(std::string& str_i) : str(str_i)/*, cnt(0)*/ {}  
 
             template<typename O>
             void operator()(O val) {
@@ -187,14 +188,14 @@ template<class T>
                 
                     if constexpr (std::is_class<ObjType>::value && (!std::is_same<ObjType, std::string>::value)){
                         // ss << ", \'" << *val << "\'";
-                        ss << edadb::SubObjVal<ObjType>(val);
+                        str += edadb::SubObjVal<ObjType>(val);
                     }
                     else
-                        ss << ", \'" << *val << "\'"; 
+                        str += ", \'" + /* *val */std::to_string(*val) + "\'"; 
             }
 
             void operator()(std::string* val) {
-                    ss << ", \'" << *val << "\'"; // string 不是kComposite 不能是subclass
+                    str += ", \'" + *val + "\'"; // string 不是kComposite 不能是subclass
             }
         };
 
@@ -229,8 +230,6 @@ template<class T>
                     if (ret == DbTypes::kComposite) // 尽量减少字符串比较
                     // if (type == "__COMPOSITE__") // CppTypeToDbType<O>::ret 不能直接判等
                     {
-                        // ObjType tmp;
-                        // std::cout<<tmp.sid<<" "<<tmp.data<<"\n";
                         sql += ", " + edadb::createTableStrSubObj<ObjType>(x.second + "_");
                     }
                     else 
@@ -270,11 +269,12 @@ template<class T>
 
         struct InsertRowNames {
         private:
-            std::stringstream* ss;  
+            // std::stringstream* ss;  
+            std::string* str;
             int cnt;
 
         public:
-            InsertRowNames(std::stringstream* ss_i) : ss(ss_i), cnt(0) {}  
+            InsertRowNames(std::string* str_i) : str(str_i), cnt(0) {}  
 
             template <typename O>
             void operator()(O const& x) 
@@ -283,15 +283,15 @@ template<class T>
                 using ObjType = typename std::remove_const<typename std::remove_pointer<typename O::first_type>::type>::type;
                 std::string type = edadb::cppTypeToDbTypeString<typename edadb::ConvertCPPTypeToSOCISupportType<ObjType>::type>();
                 if(cnt == 1) 
-                    *ss << x.second; // primary key 不能是subclass
+                    *str += x.second; // primary key 不能是subclass
                 else{
                     edadb::DbTypes tmp = CppTypeToDbType<ObjType>::ret;
                     if(tmp == DbTypes::kComposite){
                     // if(type == "__COMPOSITE__"){
-                        *ss << " , " << edadb::InsertStrSubObj<ObjType>(x.second + "_");
+                        *str += " , " + edadb::InsertStrSubObj<ObjType>(x.second + "_");
                     }
                     else{
-                        *ss << " , " << x.second;
+                        *str += " , " + x.second;
                     }
                 }
             }
@@ -299,12 +299,12 @@ template<class T>
 
         struct InsertRowNamesSO {
         private:
-            std::stringstream* ss;  
+            std::string* str;  
             const std::string& prefix;
             int cnt;
 
         public:
-            InsertRowNamesSO(std::stringstream* ss_i,const std::string& prefix) : ss(ss_i), prefix(prefix), cnt(0) {}  
+            InsertRowNamesSO(std::string* str_i,const std::string& prefix) : str(str_i), prefix(prefix), cnt(0) {}  
 
             template <typename O>
             void operator()(O const& x) 
@@ -313,15 +313,15 @@ template<class T>
                 using ObjType = typename std::remove_const<typename std::remove_pointer<typename O::first_type>::type>::type;
                 std::string type = edadb::cppTypeToDbTypeString<typename edadb::ConvertCPPTypeToSOCISupportType<ObjType>::type>();
                 if(cnt == 1) 
-                    *ss << prefix + x.second; // primary key 不能是subclass
+                    *str += prefix + x.second; // primary key 不能是subclass
                 else{
                     edadb::DbTypes tmp = CppTypeToDbType<ObjType>::ret;
                     if(tmp == DbTypes::kComposite){
                     // if(type == "__COMPOSITE__"){
-                        *ss << " , " << edadb::InsertStrSubObj<ObjType>(prefix + x.second + "_");
+                        *str += " , " + edadb::InsertStrSubObj<ObjType>(prefix + x.second + "_");
                     }
                     else{
-                        *ss << " , " << prefix + x.second;
+                        *str += " , " + prefix + x.second;
                     }
                 }
             }
@@ -543,13 +543,14 @@ template<class T>
         std::string insertRowStr(T *obj) {
             const auto vecs = TypeMetaData<T>::tuple_type_pair();
             const auto vals = TypeMetaData<T>::getVal(obj);
-            std::stringstream ss;
-            ss << "INSERT INTO \"{}\" (";
-            boost::fusion::for_each(vecs, SqlString<T>::InsertRowNames(&ss));
-            ss << ") VALUES (";
-            boost::fusion::for_each(vals, fill(ss));
-            ss << ");";
-            return ss.str();
+            std::string str = "INSERT INTO \"{}\" (";
+            /*std::stringstream ss;
+            ss << "INSERT INTO \"{}\" (";*/
+            boost::fusion::for_each(vecs, SqlString<T>::InsertRowNames(&str));
+            str += ") VALUES (";
+            boost::fusion::for_each(vals, fill(str));
+            str += ");";
+            return str;
         }
 
         static std::string const& dropTableStr() {
@@ -571,27 +572,28 @@ template<class T>
             const auto vecs = TypeMetaData<T>::tuple_type_pair();
             const auto vals = TypeMetaData<T>::getVal(obj);
             auto &first_pair = boost::fusion::at_c<0>(vecs);
-            std::stringstream ss;
-            ss << "DELETE FROM \"{}\" WHERE " +first_pair.second + 
+            // std::stringstream ss;
+            std::string str;
+            str += "DELETE FROM \"{}\" WHERE " +first_pair.second + 
             " = " + firstColumnVal(*(boost::fusion::at_c<0>(vals))) + ";";
-            return ss.str();
+            return str;
         }
 
 
         std::string updateRowStr(T *obj) {
             const auto vecs = TypeMetaData<T>::tuple_type_pair();
             const auto vals = TypeMetaData<T>::getVal(obj);
-            std::stringstream ss;
-            ss << "UPDATE \"{}\" SET ";
+            // std::stringstream ss;
+            std::string str = "UPDATE \"{}\" SET ";
             std::vector<std::string>v1,v2;
             boost::fusion::for_each(vecs, SqlString<T>::UpdateRow(v1));
             boost::fusion::for_each(vals, SqlString<T>::UpdateRowVal(v2));
             for(unsigned long i = 0;i<v1.size();i++){
-                ss << v1[i] + v2[i];
+                str += v1[i] + v2[i];
             }
             auto &first_pair = boost::fusion::at_c<0>(vecs);
-            ss <<  " WHERE "+ first_pair.second + " = " + firstColumnVal(*(boost::fusion::at_c<0>(vals))) + ";"; //如果不是std::string则隐式转换
-            return ss.str();
+            str +=  " WHERE "+ first_pair.second + " = " + firstColumnVal(*(boost::fusion::at_c<0>(vals))) + ";"; //如果不是std::string则隐式转换
+            return str;
         }
 
         static std::string const& selectRowStr() {
@@ -630,29 +632,31 @@ template <typename T>
 template <typename T>
     std::string InsertStrSubObj(const std::string& prefix) {
 
-        std::stringstream ss;
+        // std::stringstream ss;
+        std::string str;
         if constexpr (std::is_class<T>::value && (!std::is_same<T, std::string>::value)){
             /*const */auto vecs = TypeMetaData<T>::tuple_type_pair();
-                auto p = new typename SqlString<T>::InsertRowNamesSO(&ss, prefix);// CTSOForeachHelper
+                auto p = new typename SqlString<T>::InsertRowNamesSO(&str, prefix);// CTSOForeachHelper
                 boost::fusion::for_each(vecs, *p);
         }
         
-        return ss.str();
+        return str;
     }
 
 template <typename T>
     std::string SubObjVal(T* obj){
-        std::stringstream ss;
+        // std::stringstream ss;
+        std::string str;
         if constexpr (std::is_class<T>::value && (!std::is_same<T, std::string>::value)){
 
             const auto vals = TypeMetaData<T>::getVal(obj);
             // const auto vecs = TypeMetaData<T>::tuple_type_pair();
-            auto p = new typename SqlString<T>::fillSO(ss);// CTSOForeachHelper
+            auto p = new typename SqlString<T>::fillSO(str);// CTSOForeachHelper
             boost::fusion::for_each(vals, *p);
             delete p;
         }
         
-        return ss.str();
+        return str;
     }
 
 // template <typename T>

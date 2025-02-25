@@ -835,7 +835,6 @@ template<typename T>
             std::cout<<"insertToDb sql: "<<sql<<"\n";
         #endif
         try{
-            // DbBackend::i().session()<<sql, soci::use(obj_holder); //boost 
             DbBackend::i().session()<<sql; //boost 
             return true;
         }
@@ -997,6 +996,8 @@ namespace soci{
 
 /// TABLE4CLASS Start
 // TABLE4CLASS(IdbSite, ”tablename”, (name, width, height));
+
+using TupType = boost::fusion::vector<myclass::name, myclass::width, myclass::height>;
 
 #define TABLE4CLASS_COLNAME(myclass, tablename, CLASS_ELEMS_TUP, COLNAME_TUP) \
 BOOST_FUSION_ADAPT_STRUCT( myclass, BOOST_PP_TUPLE_REM_CTOR(CLASS_ELEMS_TUP) ) \
