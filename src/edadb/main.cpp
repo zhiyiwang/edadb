@@ -10,7 +10,6 @@
 
 
 int main(void) {
-
 //    //// soci interface func test ////
 //    test_soci_interface();
 
@@ -27,7 +26,6 @@ int main(void) {
             return 1;
         }
     }
-
 
     return 0;
 }

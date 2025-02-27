@@ -16,5 +16,13 @@ set(CMAKE_CXX_STANDARD 17)
 ## set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_BUILD_TYPE Release)
 
+## make -D flags
+## set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DPERF_SQLITE_API_ONLY")
+
+## set make macro value
+## add_definitions(-DPERF_SQLITE_BIND_ONLY=1)
+add_definitions(-DPERF_SQLITE_STEP_ONLY=1)
+
+
 # Add the thirdparty directory for external libraries
 add_subdirectory(src)
