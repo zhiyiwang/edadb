@@ -11,6 +11,7 @@
   */
 int test_soci_performance(uint64_t recd_num, uint64_t query_num)
 {
+#ifndef PERF_SQLITE_API_ONLY
     test_sugar_performance_str(recd_num, query_num);
     test_sugar_performance_int(recd_num, query_num);
 
@@ -22,6 +23,11 @@ int test_soci_performance(uint64_t recd_num, uint64_t query_num)
 
     test_sqlite_performance_str(recd_num, query_num);
     test_sqlite_performance_int(recd_num, query_num);
+#else
+    // only test the sqlite3 interface performance
+    test_sqlite_performance_str(recd_num, query_num);
+    test_sqlite_performance_int(recd_num, query_num);
+#endif
 
     return 0;
 } // test_soci_performance

@@ -58,6 +58,12 @@ int test_sqlite_performance_str(uint64_t recd_num, uint64_t query_num)
         sqlite3_bind_text(stmt, 3, "Bob", -1, SQLITE_STATIC);  // bind str2
         sqlite3_bind_text(stmt, 4, "Charlie", -1, SQLITE_STATIC);  // bind str3
 
+#ifdef PERF_SQLITE_API_ONLY
+        // use sqlite3 c++ api to get one record, when i == 0
+        // but bind the values many times
+        if (i == 0) {
+#endif
+
         if (sqlite3_step(stmt) != SQLITE_DONE) {
             std::cerr << "Execution failed: " << sqlite3_errmsg(db) << std::endl;
         } 
@@ -67,6 +73,10 @@ int test_sqlite_performance_str(uint64_t recd_num, uint64_t query_num)
         assert(inst_num == 1);
 
         sqlite3_reset(stmt);  // reset the prepared statement
+
+#ifdef PERF_SQLITE_API_ONLY
+        }
+#endif
     }
     sqlite3_finalize(stmt); // finalize the prepared statement
 
@@ -101,6 +111,23 @@ int test_sqlite_performance_str(uint64_t recd_num, uint64_t query_num)
         std::string str3_str(sqlite3_column_name(stmt, 3));
         assert(id_str == "id" && str1_str == "str1" && str2_str == "str2" && str3_str == "str3");
 
+#ifdef PERF_SQLITE_API_ONLY
+        // use sqlite3 c++ api to get one record, when i == 0
+        // but get the values many times
+        if ((i == 0) && (sqlite3_step(stmt) == SQLITE_ROW)) {
+            for (int j = 0; j < recd_num; ++j) {
+                // get values for each column
+                int id = sqlite3_column_int(stmt, 0);  
+                const char* str1 = (const char*)sqlite3_column_text(stmt, 1);
+                const char* str2 = (const char*)sqlite3_column_text(stmt, 2);
+                const char* str3 = (const char*)sqlite3_column_text(stmt, 3);
+
+                id_sum += id;
+                str1_len += strlen(str1), str2_len += strlen(str2), str3_len += strlen(str3);
+            }
+        }
+#else
+
         // iterate over the result set
         while (sqlite3_step(stmt) == SQLITE_ROW) {
             // get values for each column
@@ -116,6 +143,7 @@ int test_sqlite_performance_str(uint64_t recd_num, uint64_t query_num)
             int inst_num = sqlite3_changes(db);  
             assert(inst_num == 0);
         }
+#endif
 
         sqlite3_finalize(stmt);  // finalize the prepared statement
     }
