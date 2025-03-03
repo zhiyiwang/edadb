@@ -11,7 +11,7 @@
   */
 int test_soci_performance(uint64_t recd_num, uint64_t query_num)
 {
-#if ((PERF_SQLITE_BIND_ONLY == 0) && (PERF_SQLITE_STEP_ONLY == 0))
+#if ((PERF_SQLITE_VALUE_ONLY == 0) && (PERF_SQLITE_STEP_ONLY == 0))
     test_sugar_performance_str(recd_num, query_num);
     test_sugar_performance_int(recd_num, query_num);
 

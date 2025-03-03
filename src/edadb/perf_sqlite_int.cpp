@@ -13,7 +13,7 @@
 
 int test_sqlite_performance_int(uint64_t recd_num, uint64_t query_num)
 {
-#if ((PERF_SQLITE_BIND_ONLY == 0) && (PERF_SQLITE_STEP_ONLY == 0))
+#if ((PERF_SQLITE_VALUE_ONLY == 0) && (PERF_SQLITE_STEP_ONLY == 0))
     std::cout << "\033[1;31mPerformance: sqlite3 interface for int\033[0m" << std::endl;
 #endif
 
@@ -54,33 +54,14 @@ int test_sqlite_performance_int(uint64_t recd_num, uint64_t query_num)
         return 1;
     }
 
-#if ((PERF_SQLITE_BIND_ONLY == 0) && (PERF_SQLITE_STEP_ONLY == 0))
+#if (PERF_SQLITE_VALUE_ONLY == 1)
     for (uint64_t i = 0; i < recd_num; ++i) {
         sqlite3_bind_int(stmt, 1, i);  // bind id
         sqlite3_bind_int(stmt, 2, i);  // bind int1
         sqlite3_bind_int(stmt, 3, i+1);  // bind int2
         sqlite3_bind_int(stmt, 4, i+2);  // bind int3
 
-        if (sqlite3_step(stmt) != SQLITE_DONE) {
-            std::cerr << "Execution failed: " << sqlite3_errmsg(db) << std::endl;
-        } 
-
-        // number of rows modified by the last statement
-        int inst_num = sqlite3_changes(db);  
-        assert(inst_num == 1);
-
-        sqlite3_reset(stmt);  // reset the prepared statement
-    } 
-#elif (PERF_SQLITE_BIND_ONLY == 1)
-    for (uint64_t i = 0; i < recd_num; ++i) {
-        if (i == 0) {
-            sqlite3_bind_int(stmt, 1, i);  // bind id
-            sqlite3_bind_int(stmt, 2, i);  // bind int1
-            sqlite3_bind_int(stmt, 3, i+1);  // bind int2
-            sqlite3_bind_int(stmt, 4, i+2);  // bind int3
-        }
-
-        if (i==0) {
+        if (0) {
             if (sqlite3_step(stmt) != SQLITE_DONE) {
                 std::cerr << "Execution failed: " << sqlite3_errmsg(db) << std::endl;
             } 
@@ -111,8 +92,24 @@ int test_sqlite_performance_int(uint64_t recd_num, uint64_t query_num)
 
         sqlite3_reset(stmt);  // reset the prepared statement
     }
-#endif
+#else
+    for (uint64_t i = 0; i < recd_num; ++i) {
+        sqlite3_bind_int(stmt, 1, i);  // bind id
+        sqlite3_bind_int(stmt, 2, i);  // bind int1
+        sqlite3_bind_int(stmt, 3, i+1);  // bind int2
+        sqlite3_bind_int(stmt, 4, i+2);  // bind int3
 
+        if (sqlite3_step(stmt) != SQLITE_DONE) {
+            std::cerr << "Execution failed: " << sqlite3_errmsg(db) << std::endl;
+        } 
+
+        // number of rows modified by the last statement
+        int inst_num = sqlite3_changes(db);  
+        assert(inst_num == 1);
+
+        sqlite3_reset(stmt);  // reset the prepared statement
+    } 
+#endif
 
     sqlite3_finalize(stmt); // finalize the prepared statement
 
@@ -148,20 +145,26 @@ int test_sqlite_performance_int(uint64_t recd_num, uint64_t query_num)
         std::string int3_str(sqlite3_column_name(stmt, 3));
         assert(id_str == "id" && int1_str == "int1" && int2_str == "int2" && int3_str == "int3");
 
-#ifdef PERF_SQLITE_API_ONLY
-        // use sqlite3 c++ api to get one record, when i == 0
+#if (PERF_SQLITE_VALUE_ONLY == 1)
+        // use sqlite3 c++ api to get the first row, 
         // but get the values many times
-        if ((i == 0) && (sqlite3_step(stmt) == SQLITE_ROW)) {
-            for (int j = 0; j < recd_num; ++j) {
-                // get values for each column
-                int id = sqlite3_column_int(stmt, 0);  
-                int int1 = sqlite3_column_int(stmt, 1);
-                int int2 = sqlite3_column_int(stmt, 2);
-                int int3 = sqlite3_column_int(stmt, 3);
+        assert (sqlite3_step(stmt) == SQLITE_ROW); 
+        
+        for (int j = 0; j < recd_num; ++j) {
+            // get values for each column
+            int id = sqlite3_column_int(stmt, 0);  
+            int int1 = sqlite3_column_int(stmt, 1);
+            int int2 = sqlite3_column_int(stmt, 2);
+            int int3 = sqlite3_column_int(stmt, 3);
 
-                id_sum += id;
-                int1_sum += int1, int2_sum += int2, int3_sum += int3;
-            }
+            id_sum += id;
+            int1_sum += int1, int2_sum += int2, int3_sum += int3;
+        }
+#elif (PERF_SQLITE_STEP_ONLY == 1)
+        while (sqlite3_step(stmt) == SQLITE_ROW) {
+            // get values from column id 
+            int id = sqlite3_column_int(stmt, 0);  
+            id_sum += id;
         }
 #else
         // iterate over the result set
@@ -248,8 +251,8 @@ int test_sqlite_performance_int(uint64_t recd_num, uint64_t query_num)
         std::cout << "Lookup Time: " << lookup_eslapse << " ms" << std::endl;
     }
     else {
-        std::cout << insert_eslapse << std::endl;
-        std::cout << scan_eslapse   << std::endl;
+        std::cout << insert_eslapse << ",";
+        std::cout << scan_eslapse   << ",";
         std::cout << lookup_eslapse << std::endl;
     }
     std::cout << std::endl;
