@@ -18,8 +18,8 @@ set(CMAKE_BUILD_TYPE Release)
 
 
 ## set make macro value
-## add_definitions(-DPERF_SQLITE_VALUE_ONLY=1)
-add_definitions(-DPERF_SQLITE_STEP_ONLY=1)
+add_definitions(-DPERF_SQLITE_VALUE_ONLY=0)
+add_definitions(-DPERF_SQLITE_STEP_ONLY=0)
 
 # Add the thirdparty directory for external libraries
 add_subdirectory(src)

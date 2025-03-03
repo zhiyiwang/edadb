@@ -30,7 +30,7 @@ int test_sqlite_performance_str(uint64_t recd_num, uint64_t query_num)
 
     // create table
     const char* create_table_sql = 
-        "CREATE TABLE IF NOT EXISTS person (id INTEGER PRIMARY KEY, str1 TEXT, str2 TEXT, str3 TEXT);";
+        "CREATE TABLE IF NOT EXISTS person (id INTEGER PRIMARY KEY, str1 TEXT, str2 TEXT, str3 TEXT) STRICT;";
     if (sqlite3_exec(db, create_table_sql, 0, 0, 0) != SQLITE_OK) {
         std::cerr << "Can't create table: " << sqlite3_errmsg(db) << std::endl;
         sqlite3_close(db);
