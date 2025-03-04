@@ -24,10 +24,10 @@ set(SOURCE_FILES
     src/sqlite/sqlite3.c
     # src/edadbTest1.cpp
     
-    src/edadbTest4.cpp
+    src/edadbTest5.cpp
 	
         # include/lib/edadb/edadb.hpp
-        include/lib/edadb/edadbTest4.hpp
+        include/lib/edadb/edadbTest5.hpp
         include/lib/utils/MD5.hpp
         include/lib/utils/Singleton.hpp
 )

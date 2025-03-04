@@ -1,4 +1,5 @@
-#include "lib/edadb/edadbTest3.hpp"
+// #include "lib/edadb/edadbTest3.hpp"
+#include "lib/edadb/edadbTest4.hpp"
 /*
 * ss 和 string 的速度
 */

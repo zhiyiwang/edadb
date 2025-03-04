@@ -1,6 +1,6 @@
 #include "lib/edadb/edadbTest4.hpp"
 /*
-* 成员是vector 或者 pointer
+* 成员是vector createTable insertToDb第一版
 */
 
 /// @class SubClass // example 
@@ -94,10 +94,22 @@ class IdbSites {
 // TABLE4CLASS( SubClass, "",(sid,data1,data2));
 // TABLE4CLASS( IdbSite, "table_name", (name, width, height, subobj) );
 TABLE4CLASS( IdbSite, "table_name", (name, width, height) );
-TABLE4CLASS( Array2, "table_name", (name, width, height) );
+TABLE4CLASS( Array2, "array_table_name", (name, width, height) );
 TABLE4CLASS( IdbSites, "", (name) );
 
 TABLE2TABLE_1_N_VEC( IdbSites, (idbsite_array, array2_array) );
+
+/*
+// 可以定义一个宏，自动定义 TABLE4CLASS 和 TABLE2TABLE_1_N_VEC
+// 比如 TABLE4CLASSWVEC( IdbSites,"table_name", (name...), (columnname...), (idbsite_array, array2_array) );
+// 会形成TABLE4CLASS( IdbSites,"table_name", (name...), (columnname...) );
+// 和 TABLE2TABLE_1_N_VEC( IdbSites, (idbsite_array, array2_array) );
+// 定义一个新的类 DbMapAll<typename T> {
+//包含了 DbMap<T> 和 每一个DbMapT2T<T1,T2>
+//}
+这样在应用程序中只要创建DbMapAll对象 这样就解决  insertToDbAll完全可以在DbMapAll里实现
+DbMapAll如有必要可以定义在宏中，声明和部分定义在宏中，宏外部定义
+*/
 
 int main() {
 
@@ -115,22 +127,22 @@ int main() {
   IdbSites p9("Sites4");
   IdbSites p10("Sites5");
 
-  edadb::DbMap<IdbSite> db2;
-  edadb::DbMap<IdbSites> db1;
+  edadb::DbMap<IdbSite> db2; // 改成db_表名 db_IdbSite
+  edadb::DbMap<IdbSites> db1; // db_IdbSites
 
-  edadb::DbMapT2T<IdbSites,IdbSite> db_v; // v for vector
+  edadb::DbMapT2T<IdbSites,IdbSite> db_v; // v for vector 必须体现数组变量名 才能区分多个IdbSite
   db2.connectToDb("sqlite.db");
   db2.createTable("IdbSite_table");
   db1.createTable("IdbSites_table");
   // db_v.createTable("IdbSites_IdbSite_table");
-  db_v.createTable();
+  db_v.createTable(); // '_'
   // edadb::DbMap<SubClass> subdb;
   // subdb.createTable("SubClass_table");
   // const auto vecs = edadb::TypeMetaData<SubClass>::tuple_type_pair();
 
   std::cout<<"\n-----------insert 5 IdbSite records-------------\n";
 
-  db2.insertToDb(p1);
+  db2.insertToDb(p1); // 可以 
   db2.insertToDb(p2);
   db2.insertToDb(p3);
   db2.insertToDb(&p4);
