@@ -31,7 +31,7 @@ set(SOURCE_FILES
         include/lib/utils/MD5.hpp
         include/lib/utils/Singleton.hpp
 )
-list(APPEND CMAKE_MODULE_PATH "/home/ran/soci/cmake/modules")
+# list(APPEND CMAKE_MODULE_PATH "/home/ran/soci/cmake/modules")
 # set(CMAKE_PREFIX_PATH "/home/ran/soci/cmake" ${CMAKE_PREFIX_PATH})
 
 include(FindBoost)
@@ -40,13 +40,13 @@ find_package(Boost 1.65 COMPONENTS system filesystem program_options REQUIRED)
 # include(FindSoci)
 # find_package(Soci 3.2 COMPONENTS sqlite3 REQUIRED)
 
-include_directories( ${Boost_INCLUDE_DIR} ${SOCI_INCLUDE_DIR} )
+# include_directories( ${Boost_INCLUDE_DIR} ${SOCI_INCLUDE_DIR} )
 
-if(${SOCI_FOUND})
-  link_directories(${SOCI_LIBRARY} ${SOCI_sqlite3_PLUGIN})
-else()
-  message(WARNING "SOCI not found")
-endif()
+# if(${SOCI_FOUND})
+#   link_directories(${SOCI_LIBRARY} ${SOCI_sqlite3_PLUGIN})
+# else()
+#   message(WARNING "SOCI not found")
+# endif()
 
 add_definitions(-DBUN_SQLITE -DFMT_HEADER_ONLY)
 

@@ -1,0 +1,15 @@
+0. sudo apt install libboost-all-dev
+1. cd edadb_path/include/third_party 
+    git clone https://github.com/SOCI/soci.git
+    cd soci
+    mkdir build && cd build
+    cmake .. \
+        -DSOCI_STATIC=ON \
+        -DSOCI_SQLITE3=ON
+    make -j
+    sudo make install
+2.  cd edadb_path/build
+    cmake ..
+    make -j
+    ./edadb
+

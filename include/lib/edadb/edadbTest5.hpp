@@ -1540,8 +1540,9 @@ template<typename T>
 
 
     template<typename T>
-    class DbMapAll{
+    class DbMapAll{ // class DbMapAll 出现在宏定义里面 
         private:
+        //宏 
             DbMap<T> db_map;
             std::unordered_map<std::string, DbMapT2T_Base*> dbMap_T2Ts;
             std::unordered_map<std::string, std::string> field_name_2_table_name;

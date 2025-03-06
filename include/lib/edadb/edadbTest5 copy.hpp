@@ -1538,67 +1538,40 @@ template<typename T>
     // }
 
 
-
+    //TABLE4CLASSWVEC( IdbSites, "", (name), (idbsite_array, array2_array) );
     template<typename T>
-    class DbMapAll{
+    class DbMapAll{ // class DbMapAll 出现在宏定义里面 更新gitlab
+        后写readme
         private:
+        //宏 
             DbMap<T> db_map;
-            std::unordered_map<std::string, DbMapT2T_Base*> dbMap_T2Ts;
-            std::unordered_map<std::string, std::string> field_name_2_table_name;
+            DbMapT2T<T, IdbSite> dbmap_idbsite_array;
+            DbMapT2T<T, Array2> dbmap_array2_array;
         public:
             DbMapAll(){
 
             }
-            static bool connectToDb(const std::string& db_connect_str);
-            bool createTable(std::string tab_name){return db_map.createTable(tab_name);}
             bool insertToDb(T *obj){return db_map.insertToDb(obj);}
-            bool deleteFromDb(T *obj){return db_map.deleteFromDb(obj);}
-            bool updateDb(T *obj){return db_map.updateDb(obj);}
-            bool selectFromDb(std::vector<T> *vec, std::string where_str = ""){return db_map.selectFromDb(vec, where_str);}
             
-            //Array
-            /*
-            template<typename Q>
-            bool createTableT2T(Q* arr_obj,std::string tab_name){// 不允许自定义了
-                auto dbMapT2T = new DbMapT2T<T,Q>();
-                dbMapT2T->setTableName(tab_name);
-                dbMap_T2Ts.insert(std::make_pair(tab_name, dbMapT2T));
-                return dbMapT2T->createTable(tab_name);
-            }
-            */
-           bool createTableT2TALL(T* obj){
-                auto arrays = RelationMap<T>::getVal(obj);
-                int cnt = 0;
-                auto field_name = RelationMap<T>::field_names();
-                // for(auto& i : arrays){
-                boost::fusion::for_each(arrays, [&](auto& i){
-                    using ValueType = typename std::decay_t<decltype(*i)>::value_type;
-                    std::string tab_name = db_map.table_name + "." + field_name.at(cnt++);
-                    auto dbMapT2T = new DbMapT2T<T, ValueType>();
-                    dbMapT2T->setTableName(tab_name);
-                    dbMap_T2Ts.insert(std::make_pair(tab_name, dbMapT2T));
-                    dbMapT2T->createTable(tab_name);
-                });
-                return true;
+            bool insertToDb_idbsite_array(T *obj1, Q *obj2){
+                return dbmap_idbsite_array.insertToDb(obj1, obj2);
             }
 
-            template<typename Q> // array_class is Q 必须先 createTableT2TALL
-            bool insertArrayEleToDb(T* obj, Q* arr_obj, std::string arr_field_name){
-                auto arr_tab_name = db_map.table_name + "." + arr_field_name;
-                auto dbMapT2T = dbMap_T2Ts.at(arr_tab_name);
-                return dbMapT2T->insertToDb(obj, arr_obj);
+            bool insertToDb_array2_array(T *obj1, Q *obj2){
+                return dbmap_array2_array.insertToDb(obj1, obj2);
             }
+
+            
+            
 
             bool insertToDbAll(T *obj){
                 try{
                     insertToDb(obj); // 改一下实现变成 insert or ignore into ...
-                    auto field_name = RelationMap<T>::field_names();
-                    for(auto& i : dbMap_T2Ts){
-                        int cnt = 0;
-                        auto arrays = RelationMap<T>::getVal(obj);
-                        std::string tab_name = db_map.table_name + "." + field_name.at(cnt++);
-                        auto p = new InsertAllHelper<T>(obj,dbMap_T2Ts[tab_name]);
-                        boost::fusion::for_each(arrays,*p);
+                    for(auto i : obj->idbsite_array){
+                        insertToDb_idbsite_array(obj, &i);
+                    }
+                    for(auto i : obj->array2_array){
+                        insertToDb_array2_array(obj, &i);
                     }
                     return true;
                 }
@@ -1607,83 +1580,37 @@ template<typename T>
                     return false;
                 }
             }
-            
-            template<typename Q>
-            bool deleteFromArrDb(T* obj, Q* arr_obj, std::string arr_field_name){
-                auto arr_tab_name = db_map.table_name + "." + arr_field_name;
-                auto dbMapT2T = dbMap_T2Ts.at(arr_tab_name);
-                return dbMapT2T->deleteFromDb(obj, arr_obj);
-            }
+    };
 
-            template<typename Q>
-            bool updateArrDb(T* obj, Q* arr_obj, std::string arr_field_name){
-                auto arr_tab_name = db_map.table_name + "." + arr_field_name;
-                auto dbMapT2T = dbMap_T2Ts.at(arr_tab_name);
-                return dbMapT2T->updateDb(obj, arr_obj);
-            }
+//先写一个完整的实际的例子程序（保留，反复使用，宏太长不好看懂），然后再试着用宏替换
+#define GENERATE_ArrayFields_I(z, n, ARRAY_FIELD_TUP) \
+DbMapT2T<BOOST_PP_TUPLE_ELEM(0, ARRAY_FIELD_TUP), std::remove_reference<std::remove_cv<decltype(BOOST_PP_TUPLE_ELEM(0, ARRAY_FIELD_TUP) :: BOOST_PP_TUPLE_ELEM(BOOST_PP_ADD(1, n), ARRAY_FIELD_TUP))>::type>::type> BOOST_PP_TUPLE_ELEM(BOOST_PP_ADD(1, n), ARRAY_FIELD_TUP)_dbmap;\
 
-            bool updateDbAll(T *obj){
-                try{
-                    updateDb(obj);
-                    auto table_name = RelationMap<T>::field_names();
-                    for(auto& i : dbMap_T2Ts){
-                        int cnt = 0;
-                        auto arrays = RelationMap<T>::getVal(obj);
-                        auto p = new UpdateAllHelper<T>(obj,dbMap_T2Ts[table_name.at(cnt++)]);
-                        boost::fusion::for_each(arrays,*p);
-                    }
-                    return true;
-                }
-                catch (std::exception const& e) {
-                    std::cerr << "updateDbAll: " << e.what() << "\n";
-                    return false;
-                }
-            }
-
-            template<typename Q>
-            bool selectFromArrDb(std::vector<Q>* vec, std::string where_str, std::string arr_field_name){
-                auto arr_tab_name = db_map.table_name + "." + arr_field_name;
-                auto dbMapT2T = dbMap_T2Ts.at(arr_tab_name);
-                std::vector<void*> void_results;
-                if (!dbMapT2T->selectFromDb(&void_results, where_str)) {
-                    return false;
-                }
-
-                vec->clear();
-                for (auto& void_ptr : void_results) {
-                    Q* q_ptr = static_cast<Q*>(void_ptr);
-                    vec->emplace_back(std::move(*q_ptr));
-                    delete q_ptr; 
-                }
-            
-                return true;
-            }
-
-            bool selectFromDbAll(std::vector<T>* vec, std::string where_str) {
-                try {
-                    std::vector<T> main_table_results;
-                    db_map.selectFromDb(&main_table_results, where_str);
-            
-                    for (auto& main_obj : main_table_results) {
-                        auto table_name = RelationMap<T>::field_names();
-                        int cnt = 0;
-
-                        for (auto& [arr_tab_name, dbMapT2T] : dbMap_T2Ts) {
-                            std::string arr_field_name = table_name.at(cnt++);
-                            auto arrays = RelationMap<T>::getVal(&main_obj);
-                            auto p = new SelectAllHelper<T>(&main_obj, dbMapT2T, where_str);
-                            // auto helper = SelectAllHelper<T>(&main_obj, dbMapT2T, where_str);
-                            boost::fusion::for_each(arrays, *p);
-                        }
-                        vec->emplace_back(std::move(main_obj));
-                    }
-                    return true;
-                } catch (const std::exception& e) {
-                    std::cerr << "selectFromDbAll: " << e.what() << "\n";
-                    return false;
-                }
-            }
-
+#define TABLE4CLASSWVEC(myclass, tablename, CLASS_ELEMS_TUP,  ARRAY_FIELD_TUP) \
+TABLE4CLASSWVEC_COLNAME(myclass, tablename, CLASS_ELEMS_TUP, (EXPAND_member_names(CLASS_ELEMS_TUP)), ARRAY_FIELD_TUP) \ 
+template<typename myclass>\
+    class DbMapAll{\ 
+        private:\ 
+            DbMap<myclass> db_map;\
+            BOOST_PP_REPEAT(BOOST_PP_TUPLE_SIZE(ARRAY_FIELD_TUP), GENERATE_ArrayFields_I, BOOST_PP_TUPLE_PUSH_FRONT(ARRAY_FIELD_TUP, myclass))\
+        public:\
+            bool insertToDb(myclass *obj){return db_map.insertToDb(obj);}\
+            bool insertToDb_idbsite_array(myclass *obj1, IdbSite *obj2){\
+                return dbmap_idbsite_array.insertToDb(obj1, obj2);\
+            }\
+            bool insertToDb_array2_array(myclass *obj1, Array2 *obj2){\
+                return dbmap_array2_array.insertToDb(obj1, obj2);\
+            }\
+            bool insertToDbAll(myclass *obj){\
+                insertToDb(obj);\
+                for(auto i : obj->idbsite_array){\
+                    insertToDb_idbsite_array(obj, &i);\
+                }\
+                for(auto i : obj->array2_array){\
+                    insertToDb_array2_array(obj, &i);\
+                }\
+                return true;\
+            }\
     };
 
     template<typename T>
