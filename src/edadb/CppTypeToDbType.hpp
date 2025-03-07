@@ -1,7 +1,6 @@
 #pragma once
 
 ///////////////////////////////////////////////////////////////////////////////
-// This file is unused now
 /// @file CppTypeToSQLString.hpp    
 /// @author BrainlessLabs
 /// @version 0.3

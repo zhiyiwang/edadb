@@ -42,13 +42,21 @@ int main() {
     std::cout<<"\n";
 
 
+    edadb::TypeMetaDataValuePrinter<IdbSite> printer;
+
     IdbSite p1("Site1",100,110);
     // use getVal get TupType and output the values and the type of the values
-    auto tup = edadb::TypeMetaData<IdbSite>::getVal(&p1);
-    std::cout<<"IdbSite p1 values: ";
-    edadb::TypeMetaDataValuePrinter<IdbSite> printer(tup);
-    printer.print();
+    std::cout<<"IdbSite p1 values: " << std::endl;
+    
+    printer.print( edadb::TypeMetaData<IdbSite>::getVal(&p1) );
     std::cout<<"\n";
+
+    IdbSite p2("Site2",200,210);
+    std::cout<<"IdbSite p2 values: " << std::endl;
+    
+    printer.print(edadb::TypeMetaData<IdbSite>::getVal(&p2));
+    std::cout<<"\n";
+    
 
 
 //  IdbSite *p1 = new IdbSite("Site1",100,110);

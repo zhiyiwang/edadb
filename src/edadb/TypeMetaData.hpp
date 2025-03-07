@@ -1,3 +1,9 @@
+/**
+ * @file TypeMetaData.hpp
+ * @brief TypeMetaData.hpp provides a way to get the meta data of a class.
+ */
+
+
 #pragma once
 
 namespace edadb {
@@ -13,45 +19,15 @@ struct StripQualifiersAndMakePointer {
 };
 
 
-//// define the supported types
-template<typename T>
-struct ConvertCPPTypeToSupportType {
-    using type = T;
-};
-
-template<typename T>
-struct ConvertCPPTypeToSupportType<T*> {
-    using type = T;
-};
-
-template<>
-struct ConvertCPPTypeToSupportType<float> {
-    using type = double;
-};
-
-template<>
-struct ConvertCPPTypeToSupportType<std::uint64_t> {
-    using type = unsigned long long;
-};
-
-
-/// @brief Works for all stuff where the default type conversion operator is overloaded.
-template<typename T>
-typename ConvertCPPTypeToSupportType<T>::type convertToSupportedType(T const& val) {
-    const auto ret = static_cast<typename ConvertCPPTypeToSupportType<T>::type>(val);
-    return ret;
-}
-
-std::string convertToSupportedType(char const* val) {
-    const std::string ret = val;
-    return ret;
-}
-
-
 template<typename T>
 struct IsComposite : boost::mpl::bool_<false> {
 };
 
+
+/**
+ * @brief TypeMetaData provides a way to get the meta data of a class.
+ * @tparam T The class type.
+ */
 template<typename T>
 struct TypeMetaData {
     using MT = boost::fusion::vector<void>;
@@ -60,21 +36,14 @@ struct TypeMetaData {
 };
 
 
-
+/**
+ * @brief TypeMetaDataValuePrinter prints the values of a class.
+ * @tparam T The class type.
+ */
 template<typename T>
 struct TypeMetaDataValuePrinter {
+public:
     using TupType = typename TypeMetaData<T>::TupType;
-
-    explicit TypeMetaDataValuePrinter(const TupType& values)
-        : indexed_values(bindIndices(values)) {}
-
-    // bind index + values
-    static auto bindIndices(const TupType& values) {
-        constexpr std::size_t N = boost::fusion::result_of::size<TupType>::type::value;
-        using Indices = boost::mpl::range_c<int, 0, N>;
-        auto indices = boost::fusion::as_vector(Indices{});
-        return boost::fusion::zip(indices, values);
-    }
 
     // iterator and print the index and value 
     template <typename Pair>
@@ -94,12 +63,22 @@ struct TypeMetaDataValuePrinter {
         }
     }
 
-    void print() const {
+    void print(const TupType& values) {
+        constexpr std::size_t N = boost::fusion::result_of::size<TupType>::type::value;
+        using Indices = boost::mpl::range_c<int, 0, N>;
+        auto indices = boost::fusion::as_vector(Indices{});
+        auto indexed_values = boost::fusion::zip(indices, values);
         boost::fusion::for_each(indexed_values, *this);
     }
 
 private:
-    decltype(bindIndices(std::declval<TupType>())) indexed_values;
+    // bind index + values
+    static auto bindIndices(const TupType& values) {
+        constexpr std::size_t N = boost::fusion::result_of::size<TupType>::type::value;
+        using Indices = boost::mpl::range_c<int, 0, N>;
+        auto indices = boost::fusion::as_vector(Indices{});
+        return boost::fusion::zip(indices, values);
+    }
 }; // TypeMetaDataValuePrinter
 
 }  // namespace edadb
@@ -150,8 +129,8 @@ private:
 /// Helper Macros End
 ///////////////////////////////////////////////////////////////////////////////
 
-//using TupType = boost::fusion::vector<myclass::name, myclass::width, myclass::height>;
-
+// macro example:
+//   TABLE4CLASS_COLNAME(IdbSite, "table_name", (name, width, height), ("iname","iwidth","iheight"))
 #define TABLE4CLASS_COLNAME(myclass, tablename, CLASS_ELEMS_TUP, COLNAME_TUP) \
 BOOST_FUSION_ADAPT_STRUCT( myclass, BOOST_PP_TUPLE_REM_CTOR(CLASS_ELEMS_TUP) ) \
 namespace edadb{\
@@ -191,7 +170,8 @@ template<> struct TypeMetaData<myclass>{\
 };\
 }
 
-
+// macro example:
+//   TABLE4CLASS(IdbSite, "table_name", (name, width, height))
 #define TABLE4CLASS(myclass, tablename, CLASS_ELEMS_TUP) \
 TABLE4CLASS_COLNAME(myclass, tablename, CLASS_ELEMS_TUP, (EXPAND_member_names(CLASS_ELEMS_TUP)))
 
