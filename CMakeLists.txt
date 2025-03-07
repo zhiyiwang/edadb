@@ -9,7 +9,7 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH    ${PROJECT_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin)
 
-# Enable C++17 (or higher) for SOCI support
+# Enable C++17 (or higher) 
 set(CMAKE_CXX_STANDARD 17)
 
 # Add the thirdparty directory for external libraries
