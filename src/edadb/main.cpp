@@ -4,22 +4,21 @@
 /// @class IdbSite example 
 class IdbSite {
 public:
-  std::string name;
-  int width;
-  int height;
-  int not_saved;
+    std::string name;
+    int width;
+    int height;
+    int not_saved;
+    
+    IdbSite() : name("Default"), width(123), height(456), not_saved(789) {}
   
-  IdbSite() : name("Default"), width(123), height(456), not_saved(789) {}
-
-  IdbSite(std::string n, int w = 123, int h = 456, int t = 789) : name(n), width(w), height(h), not_saved(t){}
-
-  void print() {
-    std::cout<<"IdbSite(name="<<name<<", width="<<width<<", height="<<height<<", not_saved="<<not_saved<<")\n";
-  }
+    IdbSite(std::string n, int w = 123, int h = 456, int t = 789) : name(n), width(w), height(h), not_saved(t){}
   
+    void print() {
+      std::cout<<"IdbSite(name="<<name<<", width="<<width<<", height="<<height<<", not_saved="<<not_saved<<")\n";
+    }
 };
 
-TABLE4CLASS_COLNAME( IdbSite, "table_name", (name, width, height), ("iname","iwidth","iheight") );
+TABLE4CLASS_COLNAME( IdbSite, "table_name", (name, width, height), (":name",":width",":height") );
     
 
 int main() {
@@ -54,9 +53,18 @@ int main() {
     IdbSite p2("Site2",200,210);
     std::cout<<"IdbSite p2 values: " << std::endl;
     
-    printer.print(edadb::TypeMetaData<IdbSite>::getVal(&p2));
+    printer.print( edadb::TypeMetaData<IdbSite>::getVal(&p2) );
     std::cout<<"\n";
     
+
+    // sqlstatement
+    edadb::SqlStatement<IdbSite> sql_stmt;
+    std::cout << "Create Table SQL: " << sql_stmt.createTableStatement() << std::endl;
+    std::cout << "Insert p1 SQL: " << sql_stmt.insertStatement (&p1) << std::endl;
+    std::cout << "Insert p2 SQL: " << sql_stmt.insertStatement (&p2) << std::endl;
+    std::cout << "Scan SQL: " << sql_stmt.scanStatement() << std::endl;
+
+
 
 
 //  IdbSite *p1 = new IdbSite("Site1",100,110);

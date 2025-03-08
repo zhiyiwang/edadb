@@ -5,7 +5,7 @@ file(GLOB SOURCES "*.hpp" "*.cpp")
 add_executable(edadb main.cpp ${SOURCES})
 
 # Link SOCI and SQLite3 libraries to the executable
-target_link_libraries(edadb sqlite3)
+target_link_libraries(edadb PRIVATE sqlite3 fmt::fmt)
 
 ## # Specify the include directories for SOCI and SQLite3
 ## message(STATUS "SOCI_SOURCE_DIR[edadb]@ " ${soci_SOURCE_DIR})

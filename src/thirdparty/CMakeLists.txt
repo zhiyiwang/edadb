@@ -1,3 +1,7 @@
+add_subdirectory(fmt)
+
+
+
 ##  ###  SOCI 
 ##  # set SOCI compile options, then unset after compile
 ##  set(WITH_SQLITE3 ON CACHE BOOL "Enable SQLite3 support in SOCI")

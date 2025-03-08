@@ -47,4 +47,5 @@
 #include "CppTypeToDbType.hpp"
 #include "ConvertType.hpp"
 #include "TypeMetaData.hpp"
+#include "SqlStatement.hpp"
 
