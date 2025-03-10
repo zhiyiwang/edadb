@@ -74,15 +74,15 @@ int test_sqlite_lock(void) {
     }
 
 
-//    // multi process
-//    std::cout << "\nStarting multi-process test..." << std::endl;
-//    for (int i = 0; i < 3; ++i) {
-//        pid_t pid = fork();
-//        if (pid == 0) { 
-//            process_task();
-//            exit(0);
-//        }
-//    }
+    // multi process
+    std::cout << "\nStarting multi-process test..." << std::endl;
+    for (int i = 0; i < 3; ++i) {
+        pid_t pid = fork();
+        if (pid == 0) { 
+            process_task();
+            exit(0);
+        }
+    }
 
     // wait until all child processes finish
     int status;
