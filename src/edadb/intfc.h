@@ -10,6 +10,8 @@
 #include <stdint.h>
 #include <string>
 
+//////// test soci interface ////////
+
 /**
  * @brief test sugar interface
  * https://soci.sourceforge.net/doc/master/interfaces/
@@ -32,6 +34,13 @@ int test_soci_orm(void);
  * @brief test the soci interface 
  */
 int test_soci_interface(void);
+
+
+//////// test duckdb interface ////////
+/**
+ * @brief test the duckdb interface
+ */
+int test_duckdb_interface(void);
 
 
 #endif // INTFC_H

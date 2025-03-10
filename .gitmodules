@@ -1,3 +1,6 @@
 [submodule "src/thirdparty/soci"]
 	path = src/thirdparty/soci
 	url = git@github.com:SOCI/soci.git
+[submodule "src/thirdparty/duckdb"]
+	path = src/thirdparty/duckdb
+	url = git@github.com:duckdb/duckdb.git

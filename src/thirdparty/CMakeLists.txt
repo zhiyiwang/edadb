@@ -23,3 +23,13 @@ message(STATUS "soci_SOURCE_DIR[3ed-party] @ " ${soci_SOURCE_DIR})
 message(STATUS "soci_BINARY_DIR[3ed-party] @ " ${soci_BINARY_DIR})
 
 add_subdirectory(${soci_SOURCE_DIR} ${soci_BINARY_DIR})
+
+
+### DuckDB
+# Bring the populated content into the build
+set(duckdb_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/duckdb CACHE PATH "DuckDB source directory")
+set(duckdb_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/duckdb CACHE PATH "DuckDB binary directory")
+message(STATUS "duckdb_SOURCE_DIR[3ed-party] @ " ${duckdb_SOURCE_DIR})
+message(STATUS "duckdb_BINARY_DIR[3ed-party] @ " ${duckdb_BINARY_DIR})
+
+add_subdirectory(${duckdb_SOURCE_DIR} ${duckdb_BINARY_DIR})
