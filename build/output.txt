@@ -1,0 +1,76 @@
+/usr/bin/cmake -S/home/ran/Codes/edadb -B/home/ran/Codes/edadb/build --check-build-system CMakeFiles/Makefile.cmake 0
+/usr/bin/cmake -E cmake_progress_start /home/ran/Codes/edadb/build/CMakeFiles /home/ran/Codes/edadb/build//CMakeFiles/progress.marks
+make  -f CMakeFiles/Makefile2 all
+make[1]: Entering directory '/home/ran/Codes/edadb/build'
+make  -f CMakeFiles/edadb.dir/build.make CMakeFiles/edadb.dir/depend
+make[2]: Entering directory '/home/ran/Codes/edadb/build'
+cd /home/ran/Codes/edadb/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/ran/Codes/edadb /home/ran/Codes/edadb /home/ran/Codes/edadb/build /home/ran/Codes/edadb/build /home/ran/Codes/edadb/build/CMakeFiles/edadb.dir/DependInfo.cmake --color=
+Consolidate compiler generated dependencies of target edadb
+make[2]: Leaving directory '/home/ran/Codes/edadb/build'
+make  -f CMakeFiles/edadb.dir/build.make CMakeFiles/edadb.dir/build
+make[2]: Entering directory '/home/ran/Codes/edadb/build'
+[ 33%] Building CXX object CMakeFiles/edadb.dir/src/edadbTest8.cpp.o
+/usr/bin/c++ -DBUN_SQLITE -DFMT_HEADER_ONLY -I/home/ran/Codes/edadb/include -I/home/ran/Codes/edadb/include/third_party -I/home/ran/Codes/edadb/include/third_party/hdr -I/home/ran/Codes/edadb/include/third_party/json -I/home/ran/Codes/edadb/include/third_party/msgpack -I/home/ran/Codes/edadb/include/third_party/rapidjson -I/home/ran/Codes/edadb/include/third_party/spdlog -I/home/ran/Codes/edadb/include/third_party/sqlite -I/home/ran/Codes/edadb/include/third_party/unqlite -Wall -Wno-unused-variable -Wno-pessimizing-move -Wno-reorder -g -O0 -g -std=c++20 -std=gnu++14 -MD -MT CMakeFiles/edadb.dir/src/edadbTest8.cpp.o -MF CMakeFiles/edadb.dir/src/edadbTest8.cpp.o.d -o CMakeFiles/edadb.dir/src/edadbTest8.cpp.o -c /home/ran/Codes/edadb/src/edadbTest8.cpp
+In file included from /home/ran/Codes/edadb/src/edadbTest8.cpp:2:
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest8.hpp:1617:20: warning: backslash and newline separated by space
+ 1617 |     class DbMapAll{\
+      |                     
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest8.hpp:1618:17: warning: backslash and newline separated by space
+ 1618 |         private:\
+      |                  
+In file included from /home/ran/Codes/edadb/src/edadbTest8.cpp:2:
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest8.hpp: In member function ‘void edadb::SqlString<T>::fill::operator()(O)’:
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest8.hpp:160:24: warning: ‘if constexpr’ only available with ‘-std=c++17’ or ‘-std=gnu++17’
+  160 |                     if constexpr (std::is_class<ObjType>::value && (!std::is_same<ObjType, std::string>::value)){
+      |                        ^~~~~~~~~
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest8.hpp:168:24: warning: ‘if constexpr’ only available with ‘-std=c++17’ or ‘-std=gnu++17’
+  168 |                     if constexpr (std::is_class<ObjType>::value && (!std::is_same<ObjType, std::string>::value)){
+      |                        ^~~~~~~~~
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest8.hpp: In member function ‘void edadb::SqlString<T>::fillSO::operator()(O)’:
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest8.hpp:196:24: warning: ‘if constexpr’ only available with ‘-std=c++17’ or ‘-std=gnu++17’
+  196 |                     if constexpr (std::is_class<ObjType>::value && (!std::is_same<ObjType, std::string>::value)){
+      |                        ^~~~~~~~~
+In file included from /home/ran/Codes/edadb/src/edadbTest8.cpp:2:
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest8.hpp: In member function ‘void edadb::SqlString<T>::UpdateRow::operator()(const O&)’:
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest8.hpp:373:24: warning: ‘if constexpr’ only available with ‘-std=c++17’ or ‘-std=gnu++17’
+  373 |                     if constexpr (std::is_class<ObjType>::value && (!std::is_same<ObjType, std::string>::value)){
+      |                        ^~~~~~~~~
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest8.hpp: In member function ‘void edadb::SqlString<T>::UpdateRowSO::operator()(const O&)’:
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest8.hpp:413:24: warning: ‘if constexpr’ only available with ‘-std=c++17’ or ‘-std=gnu++17’
+  413 |                     if constexpr (std::is_class<ObjType>::value && (!std::is_same<ObjType, std::string>::value)){
+      |                        ^~~~~~~~~
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest8.hpp: In member function ‘void edadb::SqlString<T>::UpdateRowVal::operator()(O)’:
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest8.hpp:456:20: warning: ‘if constexpr’ only available with ‘-std=c++17’ or ‘-std=gnu++17’
+  456 |                 if constexpr (std::is_class<ObjType>::value && (!std::is_same<ObjType, std::string>::value)){
+      |                    ^~~~~~~~~
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest8.hpp: In member function ‘void edadb::SqlString<T>::UpdateRowValSO::operator()(O*)’:
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest8.hpp:497:20: warning: ‘if constexpr’ only available with ‘-std=c++17’ or ‘-std=gnu++17’
+  497 |                 if constexpr (std::is_class<ObjType>::value && (!std::is_same<ObjType, std::string>::value)){
+      |                    ^~~~~~~~~
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest8.hpp: In static member function ‘static const string& edadb::SqlStringT2T<T, Q>::createTableStr()’:
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest8.hpp:650:19: warning: typedef ‘using FirstType_Q = std::decay_t<decltype (at_c<0>(typename edadb::TypeMetaData<Q>::TupType()))>’ locally defined but not used [-Wunused-local-typedefs]
+  650 |             using FirstType_Q = std::decay_t<decltype(boost::fusion::at_c<0>(typename TypeMetaData<Q>::TupType()))>;
+      |                   ^~~~~~~~~~~
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest8.hpp: In function ‘std::string edadb::createTableStrSubObj(const string&, std::vector<std::__cxx11::basic_string<char> >&)’:
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest8.hpp:761:12: warning: ‘if constexpr’ only available with ‘-std=c++17’ or ‘-std=gnu++17’
+  761 |         if constexpr (std::is_class<T>::value && (!std::is_same<T, std::string>::value)){
+      |            ^~~~~~~~~
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest8.hpp: In function ‘std::string edadb::InsertStrSubObj(const string&)’:
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest8.hpp:778:12: warning: ‘if constexpr’ only available with ‘-std=c++17’ or ‘-std=gnu++17’
+  778 |         if constexpr (std::is_class<T>::value && (!std::is_same<T, std::string>::value)){
+      |            ^~~~~~~~~
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest8.hpp: In function ‘std::string edadb::SubObjVal(T*)’:
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest8.hpp:791:12: warning: ‘if constexpr’ only available with ‘-std=c++17’ or ‘-std=gnu++17’
+  791 |         if constexpr (std::is_class<T>::value && (!std::is_same<T, std::string>::value)){
+      |            ^~~~~~~~~
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest8.hpp: In member function ‘void edadb::GetAllObjects<T>::operator()(O&)’:
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest8.hpp:1133:16: warning: ‘if constexpr’ only available with ‘-std=c++17’ or ‘-std=gnu++17’
+ 1133 |             if constexpr (std::is_class<ObjType>::value && (!std::is_same<ObjType, std::string>::value)){
+      |                ^~~~~~~~~
+[ 66%] Linking CXX executable edadb
+/usr/bin/cmake -E cmake_link_script CMakeFiles/edadb.dir/link.txt --verbose=1
+/usr/bin/c++  -Wall -Wno-unused-variable -Wno-pessimizing-move -Wno-reorder -g -O0 -g -std=c++20 CMakeFiles/edadb.dir/src/sqlite/sqlite3.c.o CMakeFiles/edadb.dir/src/edadbTest8.cpp.o -o edadb  -Wl,-Bstatic -lsoci_sqlite3 -lsoci_core -Wl,-Bdynamic -ldl -lpthread 
+make[2]: Leaving directory '/home/ran/Codes/edadb/build'
+[100%] Built target edadb
+make[1]: Leaving directory '/home/ran/Codes/edadb/build'
+/usr/bin/cmake -E cmake_progress_start /home/ran/Codes/edadb/build/CMakeFiles 0

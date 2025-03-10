@@ -42,7 +42,7 @@
 #define EDADB_DEBUG 1 
 
 /*
-* macro T2TALL
+* macro T2TALL 使用DbMapT2TBase来解决 目前废弃版本
 */
 
 namespace edadb{
@@ -1540,8 +1540,7 @@ template<typename T>
 
     //TABLE4CLASSWVEC( IdbSites, "", (name), (idbsite_array, array2_array) );
     template<typename T>
-    class DbMapAll{ // class DbMapAll 出现在宏定义里面 更新gitlab
-        后写readme
+    class DbMapAll{ // class DbMapAll 出现在宏定义里面 更新gitlab后写readme
         private:
         //宏 
             DbMap<T> db_map;

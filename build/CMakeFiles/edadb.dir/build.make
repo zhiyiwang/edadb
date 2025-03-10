@@ -86,30 +86,30 @@ CMakeFiles/edadb.dir/src/sqlite/sqlite3.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/edadb.dir/src/sqlite/sqlite3.c.s"
 	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/ran/Codes/edadb/src/sqlite/sqlite3.c -o CMakeFiles/edadb.dir/src/sqlite/sqlite3.c.s
 
-CMakeFiles/edadb.dir/src/edadbTest5.cpp.o: CMakeFiles/edadb.dir/flags.make
-CMakeFiles/edadb.dir/src/edadbTest5.cpp.o: ../src/edadbTest5.cpp
-CMakeFiles/edadb.dir/src/edadbTest5.cpp.o: CMakeFiles/edadb.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ran/Codes/edadb/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/edadb.dir/src/edadbTest5.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/edadb.dir/src/edadbTest5.cpp.o -MF CMakeFiles/edadb.dir/src/edadbTest5.cpp.o.d -o CMakeFiles/edadb.dir/src/edadbTest5.cpp.o -c /home/ran/Codes/edadb/src/edadbTest5.cpp
+CMakeFiles/edadb.dir/src/edadbTest8.cpp.o: CMakeFiles/edadb.dir/flags.make
+CMakeFiles/edadb.dir/src/edadbTest8.cpp.o: ../src/edadbTest8.cpp
+CMakeFiles/edadb.dir/src/edadbTest8.cpp.o: CMakeFiles/edadb.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ran/Codes/edadb/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/edadb.dir/src/edadbTest8.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/edadb.dir/src/edadbTest8.cpp.o -MF CMakeFiles/edadb.dir/src/edadbTest8.cpp.o.d -o CMakeFiles/edadb.dir/src/edadbTest8.cpp.o -c /home/ran/Codes/edadb/src/edadbTest8.cpp
 
-CMakeFiles/edadb.dir/src/edadbTest5.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/edadb.dir/src/edadbTest5.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/ran/Codes/edadb/src/edadbTest5.cpp > CMakeFiles/edadb.dir/src/edadbTest5.cpp.i
+CMakeFiles/edadb.dir/src/edadbTest8.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/edadb.dir/src/edadbTest8.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/ran/Codes/edadb/src/edadbTest8.cpp > CMakeFiles/edadb.dir/src/edadbTest8.cpp.i
 
-CMakeFiles/edadb.dir/src/edadbTest5.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/edadb.dir/src/edadbTest5.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/ran/Codes/edadb/src/edadbTest5.cpp -o CMakeFiles/edadb.dir/src/edadbTest5.cpp.s
+CMakeFiles/edadb.dir/src/edadbTest8.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/edadb.dir/src/edadbTest8.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/ran/Codes/edadb/src/edadbTest8.cpp -o CMakeFiles/edadb.dir/src/edadbTest8.cpp.s
 
 # Object files for target edadb
 edadb_OBJECTS = \
 "CMakeFiles/edadb.dir/src/sqlite/sqlite3.c.o" \
-"CMakeFiles/edadb.dir/src/edadbTest5.cpp.o"
+"CMakeFiles/edadb.dir/src/edadbTest8.cpp.o"
 
 # External object files for target edadb
 edadb_EXTERNAL_OBJECTS =
 
 edadb: CMakeFiles/edadb.dir/src/sqlite/sqlite3.c.o
-edadb: CMakeFiles/edadb.dir/src/edadbTest5.cpp.o
+edadb: CMakeFiles/edadb.dir/src/edadbTest8.cpp.o
 edadb: CMakeFiles/edadb.dir/build.make
 edadb: CMakeFiles/edadb.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/ran/Codes/edadb/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Linking CXX executable edadb"

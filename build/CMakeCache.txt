@@ -221,9 +221,6 @@ CMAKE_STRIP:FILEPATH=/usr/bin/strip
 // Studio IDE projects all commands are done without /nologo.
 CMAKE_VERBOSE_MAKEFILE:BOOL=FALSE
 
-//The directory containing a CMake configuration file for Soci.
-Soci_DIR:PATH=Soci_DIR-NOTFOUND
-
 //The directory containing a CMake configuration file for boost_filesystem.
 boost_filesystem_DIR:PATH=/usr/lib/x86_64-linux-gnu/cmake/boost_filesystem-1.74.0
 

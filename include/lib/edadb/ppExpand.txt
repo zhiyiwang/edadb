@@ -1,0 +1,14 @@
+g++ -E \
+    -I/home/ran/Codes/edadb/include \
+    -I/home/ran/Codes/edadb/include/third_party \
+    -I/home/ran/Codes/edadb/include/third_party/hdr \
+    -I/home/ran/Codes/edadb/include/third_party/json \
+    -I/home/ran/Codes/edadb/include/third_party/msgpack \
+    -I/home/ran/Codes/edadb/include/third_party/rapidjson \
+    -I/home/ran/Codes/edadb/include/third_party/spdlog \
+    -I/home/ran/Codes/edadb/include/third_party/sqlite \
+    -I/home/ran/Codes/edadb/include/third_party/unqlite \
+    -DBUN_SQLITE -DFMT_HEADER_ONLY \
+    -Wall -Wno-unused-variable -Wno-pessimizing-move -Wno-reorder -g -O0 -std=c++20 \
+    /home/ran/Codes/edadb/src/edadbTest7.cpp \
+    -o expanded.cpp
