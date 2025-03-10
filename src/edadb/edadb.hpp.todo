@@ -1,0 +1,683 @@
+
+#define EDADB_DEBUG 1 
+
+namespace edadb{
+
+//// utility functions
+
+
+
+
+template<class T>
+struct SqlString {
+private:
+
+//    struct CTSOForeachHelper { // create table sub obj
+//    private:
+//        std::string& sql;
+//        const std::string& prefix;
+//        int cnt;
+//    public:
+//        CTSOForeachHelper(std::string& sql,const std::string& prefix) : sql(sql), prefix(prefix), cnt(0) {}
+//
+//        template <typename O>
+//        void operator()(O const& x) 
+//        {
+//            cnt++;
+//            using ObjType = typename std::remove_const<typename std::remove_pointer<typename O::first_type>::type>::type;
+//            std::string type = edadb::cppTypeToDbTypeString<typename edadb::ConvertCPPTypeToSupportType<ObjType>::type>();
+//            if(cnt == 1) 
+//                sql += prefix + x.second + " " + type;  // DbMap<subclass>
+//            else {
+//                if (CppTypeToDbType<O>::ret == DbTypes::kComposite)
+//                    sql += ", " + /*sqlstring<O>::*/createTableStrSubObj(x.second + "_");
+//                else 
+//                    sql += ", " + x.second + " " + type;
+//            }
+//            
+//        }
+//    };
+//
+//
+//    struct InsertRowVal { // 没用到？
+//    private:
+//        std::string& sql;
+//        int cnt;
+//
+//    public:
+//        InsertRowVal(std::string& sql) : sql(sql),cnt(0) {}
+//
+//        template <typename O>
+//        void operator()(O const& x) 
+//        {
+//             cnt++;
+//            if(cnt == 1) 
+//                sql += ":" + x.second;
+//            else
+//                sql += " , :" + x.second;
+//        }
+//    };
+//
+//    struct UpdateRow {
+//    private:
+//        std::vector<std::string>& vec;
+//        std::string part;
+//
+//    public:
+//        UpdateRow(std::vector<std::string>& vec) : vec(vec) {}
+//
+//        template <typename O>
+//        void operator()(O const& x)
+//        {
+//            part = "";
+//            if (!vec.empty()) {
+//                part = ",";
+//            }
+//            part += x.second + " = ";
+//            vec.push_back(part);
+//        }
+//    };
+//
+//
+//    struct UpdateRowVal {
+//    private:
+//        std::vector<std::string>& vec;
+//        std::string part;
+//    public:
+//        UpdateRowVal(std::vector<std::string>& vec) : vec(vec) {}
+//    
+//        template <typename S>
+//        std::string add_quotaion(S const& x)
+//        {
+//            return std::to_string(x);
+//        }
+//
+//        std::string add_quotaion(std::string const& x)
+//        {
+//            return "\'" + x + "\'";
+//        }
+//
+//        template <typename O>
+//        void operator()(O* x)
+//        {
+//            part = "";
+//            part += std::to_string(*x);
+//            vec.push_back(part);
+//        }
+//
+//        // template<typename std::string>
+//        void operator()(std::string * x)
+//        {
+//            part = "";
+//            part += add_quotaion(*x);
+//            vec.push_back(part);
+//        }
+//    };
+//
+public:
+//    static std::string const& createTableStrSubObj(const std::string prefix) { // create_table_str
+//        static const auto vecs = TypeMetaData<T>::tuple_type_pair();
+//        static std::string sql;
+//        if (sql.empty()) {
+//            auto p = new SqlString<T>::CTSOForeachHelper(sql,prefix); //CTSOForeachHelper
+//            boost::fusion::for_each(vecs, *p);
+//        }
+//        return sql;
+//    }
+
+//    static std::string const& dropTableStr() {
+//        static const std::string sql = "DROP TABLE IF EXISTS \"{}\"";
+//        return sql;
+//    }
+
+    template<typename O>
+    std::string firstColumnVal(O val){
+        return std::to_string(val);
+    }
+    
+    std::string firstColumnVal(std::string val){
+        std::string str = "\'" + val + "\'";
+        return str;
+    }
+    
+//    std::string deleteRowStr(T *obj){
+//        const auto vecs = TypeMetaData<T>::tuple_type_pair();
+//        const auto vals = TypeMetaData<T>::getVal(obj);
+//        auto &first_pair = boost::fusion::at_c<0>(vecs);
+//        std::stringstream ss;
+//        ss << "DELETE FROM \"{}\" WHERE " +first_pair.second + 
+//        " = " + firstColumnVal(*(boost::fusion::at_c<0>(vals))) + ";";
+//        return ss.str();
+//    }
+//
+//
+//    std::string updateRowStr(T *obj) {
+//        const auto vecs = TypeMetaData<T>::tuple_type_pair();
+//        const auto vals = TypeMetaData<T>::getVal(obj);
+//        std::stringstream ss;
+//        ss << "UPDATE \"{}\" SET ";
+//        std::vector<std::string>v1,v2;
+//        boost::fusion::for_each(vecs, SqlString<T>::UpdateRow(v1));
+//        boost::fusion::for_each(vals, SqlString<T>::UpdateRowVal(v2));
+//        for(unsigned long i = 0;i<v1.size();i++){
+//            ss << v1[i] + v2[i];
+//        }
+//        auto &first_pair = boost::fusion::at_c<0>(vecs);
+//        ss <<  " WHERE "+ first_pair.second + " = " + firstColumnVal(*(boost::fusion::at_c<0>(vals))) + ";"; //如果不是std::string则隐式转换
+//        return ss.str();
+//    }
+
+    static std::string const& selectRowStr() {
+        static const std::string sql = "SELECT * FROM \"{}\" ";
+        return sql;
+    }
+
+    static std::string const& selectRowStrPK(std::string pkVal) {
+        static const auto vecs = TypeMetaData<T>::tuple_type_pair();
+        auto &first_pair = boost::fusion::at_c<0>(vecs);
+        static const std::string sql = "SELECT * FROM \"{}\" where "
+        + first_pair.second + " = " + pkVal;
+        return sql;
+    }
+
+};
+
+// soci get each member of the object
+template<typename TA, bool IsComposite>
+struct GetAllObjectsImpl {
+    inline static void impl(TA& x, const soci::row& row, const std::string& member_name/*, const std::string& oid_ref*/) {
+        x = row.get<typename ConvertCPPTypeToSupportType<TA>::type>(member_name);
+    }
+};
+
+template<typename T>
+struct GetAllObjects {
+    private:
+        const soci::row& _row;
+        const std::vector<std::string>& _member_names;
+        int _count;
+
+    public:
+        GetAllObjects(const soci::row& row) :_row(row),
+            _member_names(TypeMetaData<T>::member_names()), _count(0) {
+        }
+
+        template <typename O> 
+        void operator()(O& x){
+
+            const std::string& member_name = _member_names.at(_count);
+            // std::cout<<member_name<<"\n";
+            
+            using SupportType = typename ConvertCPPTypeToSupportType<typename std::remove_pointer<O>::type>::type;
+            // std::cout<<"name = "<<typeid(x).name()<<"\n";
+            *x = _row.get<SupportType>(member_name);
+            _count++;
+        }
+    };
+
+
+
+
+class DbBackend : public Singleton<DbBackend> {
+    private:
+        soci::session _sql_session;
+    public:
+        bool connect(std::string const &connect_str){
+            const auto backend_factory = soci::sqlite3;
+            _sql_session.open(backend_factory, connect_str);
+            return true;
+        }
+
+        soci::session &session(){ // & return the original object
+            return _sql_session;
+        }
+};
+
+
+
+
+
+
+
+template<typename T>
+    class DbMap {
+      public:
+        //Members
+        std::string table_name;
+        std::string select_header;
+        
+      public:
+        static bool connectToDb(const std::string& db_connect_str); 
+        void setTableName(std::string tab_name){table_name = tab_name;}
+        bool createTable(std::string tab_name);
+        bool insertToDb(T *obj);
+        bool deleteFromDb(T *obj);
+        bool updateDb(T *obj);
+        bool selectFromDb(std::vector<T> *vec, std::string where_str = "");
+        template<typename Q>
+        bool selectWithPK(Q PK_val, T *obj);
+    };
+
+    template<typename T>
+    bool DbMap<T>::connectToDb(const std::string& db_connect_str){
+        auto ret = DbBackend::i().connect(db_connect_str);
+        return ret;
+    }
+
+    template<typename T> 
+    bool DbMap<T>::createTable(std::string tab_name){
+        table_name = tab_name;
+        const static std::string sql = fmt::format(SqlString<T>::createTableStr(), table_name);
+        #ifdef EDADB_DEBUG
+            std::cout<<sql<<"\n";
+        #endif
+        try {
+            DbBackend::i().session() << sql;
+            select_header = fmt::format(SqlString<T>::selectRowStr(),table_name);
+            return true;
+        }
+        catch (std::exception const & e) {
+            std::cerr << "createTable: " << e.what() << std::endl;
+            return false;
+        }
+    }
+
+    template<typename T>
+    bool DbMap<T>::insertToDb(T *obj){
+        SqlString<T> sql_string;
+        const std::string sql = fmt::format(sql_string.insertRowStr(obj), table_name);
+        #ifdef EDADB_DEBUG
+            std::cout<<"insertToDb sql: "<<sql<<"\n";
+        #endif
+        try{
+            DbBackend::i().session()<<sql; //boost 
+            return true;
+        }
+        catch (std::exception const& e) {
+            std::cerr << "insertToDb: " << e.what() << "\n";
+            return false;
+        }
+    }
+
+    template<typename T>
+    bool DbMap<T>::deleteFromDb(T *obj){
+        SqlString<T> sql_string;
+        const std::string sql = fmt::format(sql_string.deleteRowStr(obj), table_name);
+        #ifdef EDADB_DEBUG
+            std::cout<<sql<<"\n";
+        #endif
+        try {
+            DbBackend::i().session() << sql;
+            std::cout<<"Delete it!\n";
+            return true;
+        }
+        catch (std::exception const & e) {
+            std::cerr << "deleteObj: " << e.what() << "\n";
+            return false;
+        }
+    }
+
+    template<typename T>
+    bool DbMap<T>::updateDb(T *obj){
+        SqlString<T> sql_string;
+        const std::string sql = fmt::format(sql_string.updateRowStr(obj),table_name);
+        #ifdef EDADB_DEBUG
+            std::cout<<sql<<"\n";
+        #endif
+        try {
+            DbBackend::i().session() << sql;
+            return true;
+        }
+        catch (std::exception const& e) {
+            std::cerr << "updateToDb: "<< e.what() << "\n";
+            return false;
+        }
+    }
+
+    template<typename T>
+    bool DbMap<T>::selectFromDb(std::vector<T> *vec, std::string where_str){
+        std::string sql;
+        if(where_str.size() > 0) 
+            sql = select_header + "where "+ where_str; 
+        else 
+            sql = select_header;
+
+        try {
+            std::cout<<sql<<std::endl;
+            soci::rowset<soci::row>rows = (DbBackend::i().session().prepare << sql);
+            vec->clear();
+            for(soci::rowset<soci::row>::const_iterator row_itr = rows.begin();row_itr != rows.end();++row_itr){
+                auto const& row = *row_itr;
+                T *a = new T;
+                auto vals = TypeMetaData<T>::getVal(a);
+                boost::fusion::for_each(vals,GetAllObjects<T>(row));
+                vec->emplace_back(std::move(*a));
+            }
+            return true;
+        }
+        catch (std::exception const& e) {
+            std::cerr << "selectFromDb: "<< e.what() << "\n";
+            return false;
+        }
+    }
+
+    template<typename T>
+    template<typename Q>
+    bool DbMap<T>::selectWithPK(Q PK_val, T *obj){
+        static const std::string sql = fmt::format(SqlString<T>::selectRowStrPK(std::to_string(PK_val)),table_name);
+        try {
+            std::cout<<sql<<std::endl;
+            soci::rowset<soci::row>rows = (DbBackend::i().session().prepare << sql);
+            auto const& row = *rows.begin();
+            auto vals = TypeMetaData<T>::getVal(obj);
+            boost::fusion::for_each(vals,GetAllObjects<T>(row));
+            return true;
+        }
+        catch (std::exception const& e) {
+            std::cerr << "selectFromDbPK: "<< e.what() << "\n";
+            return false;
+        }
+    }
+} // end of edadb namespace
+
+
+
+
+
+
+
+
+#if 0
+struct SimpleOID {
+    /// @typedef SelfType=SimpleOID
+    using SelfType = SimpleOID;
+    /// @typedef OidByteArrayType=std::array<std::uint8_t, 16>
+    /// @brief To hold the 16 byte array representation of the OID.
+    using OidByteArrayType = std::array<std::uint8_t, 16>;
+    /// @typedef TagType = boost::uuids::uuid
+    /// @brief Type to hold oid value
+    using TagType = boost::uuids::uuid;
+    /// @var TagType tag
+    /// @brief Holds the UUID generated.
+    TagType tag;
+
+     SimpleOID() noexcept : tag() {}
+
+    ~SimpleOID() = default;
+
+    /// @fn SimpleOID
+    /// @brief Pass other oid to populate this.
+    /// @param other Passed in oid
+    SimpleOID(const SimpleOID& other) :
+            tag(other.tag) {
+    }
+
+    SimpleOID(const std::string& other) {
+        boost::uuids::string_generator gen;
+        tag = gen(other);
+    }
+
+    /// @fn populateAll
+    /// @brief Gets a new UUID and populates that.
+    ///        Uses boost::uuid library for the task
+    void populate() {
+        tag = boost::uuids::random_generator()();
+    }
+
+    /// @fn clear
+    /// @brief clears the high and low values.
+    void clear() {
+        for (boost::uuids::uuid::iterator it = tag.begin(); it != tag.end(); ++it) {
+            *it = 0;
+        }
+    }
+
+    /// @fn operator=
+    /// @brief Copies the value of high and low from the RHS. Deep copy
+    SelfType& operator=(SelfType const &in_other) {
+        tag = in_other.tag;
+        return *this;
+    }
+
+    /// @fn operator=
+    /// @brief Copies the value of high and low from the RHS. Deep copy
+    SelfType& operator=(std::string const &in_other) {
+        boost::uuids::string_generator gen;
+        tag = gen(in_other);
+        return *this;
+    }
+
+    /// @fn operator==
+    /// @brief Compares high and low of the LHS and RHS.
+    ///        Returns true when both low and high are same.
+    /// @return true when both low and high are same else false
+    bool operator==(SelfType const &in_other) const {
+        return tag == in_other.tag;
+    }
+
+    /// @fn operator!=
+    /// @brief Returns true if either or both of low and high
+    ///        does not match. Internally calls operator==
+    /// @return false only when both high and low matches else true
+    bool operator!=(SelfType const &in_other) const {
+        return !operator==(in_other);
+    }
+
+    /// @fn toByteArray
+    /// @brief Convert the OID to byte array and then return.
+    ///        The byte representation is not stored, so every time
+    ///        this function is called this will generate again.
+    /// @return OidByteArrayType 16 Byte representation of the OID
+    OidByteArrayType toByteArray() const {
+        OidByteArrayType ret{0};
+        std::copy(tag.begin(), tag.end(), ret.begin());
+        return ret;
+    }
+    
+    /// @fn to_json
+    /// @brief Returns the json representation of the UUID
+    std::string to_json() const {
+        const std::string json = "{" + fmt::format("'oid': '{}'", to_string()) + "}";
+        return json;
+    }
+
+    /// @fn to_string
+    /// @brief Returns the string representation of the UUID
+    std::string to_string() const {
+        const std::string ret = boost::uuids::to_string(tag);
+        return ret;
+    }
+    
+    /// @fn empty
+    /// @brief Returns true if the oid is nil else returns false
+    bool empty() const {
+        return tag.is_nil();
+    }
+};
+
+template<typename T>
+struct SimpleObjHolder {
+    T* obj_ptr;
+    // SimpleOID const& oid;
+    // SimpleObjHolder(T* obj_ptr_in, SimpleOID const& oid_in) :obj_ptr(obj_ptr_in), oid(oid_in) {}
+    SimpleObjHolder(T* obj_ptr_in) :obj_ptr(obj_ptr_in) {}
+    ~SimpleObjHolder() {
+        obj_ptr = nullptr;
+    }
+};
+
+
+/// @brief SOCI conversion helpers
+/// @class type_conversion
+/// @brief partial specialization to support regular objects T
+/// @details
+template<typename T>
+struct type_conversion {
+public:
+    using ObjType = T;
+private:
+    struct FromBase {
+    private:
+        soci::values const& _val;
+        std::uint_fast32_t _count;
+
+    public:
+        FromBase(soci::values const& val) :_val(val), _count(0) {} //_count is the num of obj to skip
+
+        template<typename O>
+        void operator()(O& x) const {
+            const std::string obj_name = TypeMetaData<ObjType>::member_names().at(const_cast<FromBase*>(this)->_count++);
+            x = _val.get<typename ConvertCPPTypeToSOCISupportType<typename std::remove_reference<O>::type>::type>(obj_name);
+        }
+    };
+
+public:
+    inline static void from_base(soci::values const& v, soci::indicator, ObjType& obj) {
+        //boost::fusion::for_each(obj, FromBase(v));
+    }
+
+private:
+    struct ToBase {
+    private:
+        soci::values& _val;
+        std::uint_fast32_t _count;
+
+    public:
+        ToBase(soci::values& val) :_val(val), _count(0) {}
+
+        template<typename O>
+        void operator()(O const& x) const {
+            const std::string obj_name = TypeMetaData<ObjType>::member_names().at(const_cast<ToBase*>(this)->_count++);
+            const_cast<ToBase*>(this)->_val.set(obj_name, x);
+        }
+    };
+
+public:
+    inline static void to_base(ObjType const& obj, soci::values& v, soci::indicator& ind) {
+        //boost::fusion::for_each(obj, ToBase(v)); // only init the obj v ind
+    }
+};
+
+
+/// @class type_conversion
+/// @brief partial specialization to support SimpleObjHolder<T>
+/// @details
+template<typename T>
+struct type_conversion<SimpleObjHolder<T>> {
+    using ObjectHolderType = SimpleObjHolder<T>;
+    using ObjType = T;
+
+private:
+    template<typename O, bool IsComposite = false>
+    struct FromBaseOperation {
+        inline static void execute(O& x, const std::string& obj_name, soci::values const& val, const edadb::SimpleOID& /*parent_oid*/) {
+            x = val.get<typename ConvertCPPTypeToSOCISupportType<typename std::remove_reference<O>::type>::type>(obj_name);
+        }
+    };
+
+    template<typename O>
+    struct FromBaseOperation<O, true> {
+        inline static void execute(O& x, const std::string& obj_name, soci::values const& val, const edadb::SimpleOID& parent_oid) {
+            // const edadb::SimpleOID& oid_ref = parent_oid;
+            // const std::string& parent_table_reference = TypeMetaData<ObjType>::class_name();
+            // TODO
+            // using RetType = std::vector<std::pair<std::unique_ptr <O>, SimpleOID>>;
+            // const RetType values = edadb::QueryHelper<O>::getAllNestedObjectssWithQuery("", oid_ref, parent_table_reference, obj_name);
+            // if (!values.empty()) {
+            //     x = *values.at(0).first;
+            // }
+            // else {
+            //     l().error("FromBaseOperation::execute: Could not fetch object values");
+            // }
+        }
+    };
+
+    struct FromBase {
+    private:
+        soci::values const& _val;
+        const edadb::SimpleOID& _oid;
+        std::uint16_t _count;
+        soci::indicator& _ind;
+
+    public:
+        FromBase(soci::values const& val, edadb::SimpleOID const& oid, soci::indicator& ind) :_val(val), _oid(oid), _count(0), _ind(ind) {}
+
+        template<typename O>
+        void operator()(O& x) const {
+            // std::cout<<"What happened in FromBase\n";
+            const std::string obj_name = TypeMetaData<ObjType>::member_names().at(const_cast<FromBase*>(this)->_count++);
+            FromBaseOperation<O, IsComposite<O>::value>::execute(x, obj_name, _val, _oid);
+        }
+    };
+
+public:
+    /// @fn from_base Setting the values in the object
+    /// @brief This will take the database value and put it in the object. Database -> Object
+    inline static void from_base(soci::values const& v, soci::indicator ind, ObjectHolderType& obj_holder) {
+        ObjType& obj = *(obj_holder.obj_ptr);
+        // const edadb::SimpleOID& oid = obj_holder.oid;
+        boost::fusion::for_each(obj, FromBase(v,edadb::SimpleOID(), ind));
+    }
+
+private:
+    template<typename O, bool IsComposite = false>
+    struct ToBaseOperation {
+        inline static void execute(O& x, const std::string& obj_name, soci::values& val, /*const edadb::SimpleOID& parent_oid,*/ soci::indicator& ind) {
+            val.set<typename ConvertCPPTypeToSOCISupportType<typename std::remove_reference<O>::type>::type>(obj_name, x, ind);
+        }
+    };
+
+    template<typename O>
+    struct ToBaseOperation<O, true> {
+        inline static void execute(O& x, const std::string& obj_name, soci::values& val, const edadb::SimpleOID& parent_oid, soci::indicator& ind) {
+            std::cout<<"What happened in execute ToBaseOperation\n";
+            // const edadb::SimpleOID& oid_ref = parent_oid;
+            // const std::string& parent_table_reference = TypeMetaData<ObjType>::class_name();
+            // const std::string& parent_column_name = obj_name;
+            // Do not delete if parent oid is nill. If parent
+            // oid is nill then this object is not yet persisted.
+            // if (oid_ref.empty() != 0) { 
+                // Delete everything before inserting. There is no
+                // update essentially. Just delete and insert of any nested objects.
+                    // QueryHelper<O>::deleteObj(oid_ref, &x);
+            // }
+            // Get the oid of the nested object after persisting it
+            // const edadb::SimpleOID oid = QueryHelper<O>::persistObj(&x, oid_ref, parent_table_reference, parent_column_name);
+            // Get the json representation of the nested object and store it in the parent object
+            // const std::string oids = oid.to_json();
+            // TODO : Fix this. This has the context of current query execution. Needs to set the value in parent.
+            // val.set<typename ConvertCPPTypeToSOCISupportType<std::string>::type>(obj_name, oids, ind);
+        }
+    };
+
+    struct ToBase {
+    private:
+        soci::values& _val;
+        // const edadb::SimpleOID& _oid;
+        std::uint_fast32_t _count;
+        soci::indicator& _ind;
+
+    public:
+        ToBase(soci::values& val, /*edadb::SimpleOID const& oid,*/ soci::indicator& ind) :_val(val), /*_oid(oid),*/ _count(0), _ind(ind) {}
+
+        template<typename O>
+        void operator()(O& x) const {
+                        // std::cout<<"What happened in ToBase\n";
+            const std::string obj_name = TypeMetaData<ObjType>::member_names().at(const_cast<ToBase*>(this)->_count++);
+                // std::cout<< " obj_name = " << obj_name << "\n"; 
+            ToBaseOperation<O, IsComposite<O>::value>::execute(x, obj_name, _val, /*_oid,*/ _ind);
+        }
+    };
+
+public:
+    /// @fn to_base Setting the values in the database
+    /// @brief This will take the object value and persist it in the database. Object -> Database
+    inline static void to_base(ObjectHolderType& obj_holder, soci::values& v, soci::indicator& ind) {
+        ObjType& obj = *(obj_holder.obj_ptr);
+        // const edadb::SimpleOID& oid = obj_holder.oid;
+        // std::cout<<"Before for_each ToBase\n";
+        boost::fusion::for_each(obj, ToBase(v, /*edadb::SimpleOID(),*/ ind));
+    }
+};
+#endif
+
