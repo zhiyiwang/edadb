@@ -31,7 +31,8 @@ private:
                 edadb::cppTypeToDbTypeString<typename edadb::ConvertCPPTypeToSupportType<ObjType>::type>();
 
             if(cnt++ == 0) {
-                sql += x.second + " " + type + " PRIMARY KEY";  
+//                sql += x.second + " " + type + " PRIMARY KEY";  
+                sql += x.second + " " + type;  
             } else {
                 sql += ", " + x.second + " " + type;
             }
@@ -94,7 +95,36 @@ private:
         }
     };
 
+    struct InsertPlaceHolder {
+        std::stringstream& ss;  
+        int cnt;
+        InsertPlaceHolder(std::stringstream& s) : ss(s), cnt(0) {}  
+
+        template<typename O>
+        void operator()(O val) {
+            if (cnt++ > 0) {
+                ss << ", ";
+            }
+            ss << "?";
+        }
+    };
+
 public:
+    /**
+     * @brief Generate the insert statement with place holders.
+     * @return The insert statement.
+     */
+    static std::string insertPlaceHolderStatement() {
+        const auto vecs = TypeMetaData<T>::tuple_type_pair();
+        std::stringstream ss;
+        ss << "INSERT INTO \"{}\" (";
+        boost::fusion::for_each(vecs, SqlStatement<T>::InsertName(&ss));
+        ss << ") VALUES (";
+        boost::fusion::for_each(vecs, InsertPlaceHolder(ss));
+        ss << ");";
+        return ss.str();
+    }
+
     std::string insertStatement(T* obj) {
         const auto vecs = TypeMetaData<T>::tuple_type_pair();
         const auto vals = TypeMetaData<T>::getVal(obj);

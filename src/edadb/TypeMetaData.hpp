@@ -70,15 +70,6 @@ public:
         auto indexed_values = boost::fusion::zip(indices, values);
         boost::fusion::for_each(indexed_values, *this);
     }
-
-private:
-    // bind index + values
-    static auto bindIndices(const TupType& values) {
-        constexpr std::size_t N = boost::fusion::result_of::size<TupType>::type::value;
-        using Indices = boost::mpl::range_c<int, 0, N>;
-        auto indices = boost::fusion::as_vector(Indices{});
-        return boost::fusion::zip(indices, values);
-    }
 }; // TypeMetaDataValuePrinter
 
 }  // namespace edadb
