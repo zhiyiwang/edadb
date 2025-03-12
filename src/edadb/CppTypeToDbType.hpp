@@ -1,11 +1,11 @@
-#pragma once
-
 ///////////////////////////////////////////////////////////////////////////////
 /// @file CppTypeToSQLString.hpp    
 /// @author BrainlessLabs
 /// @version 0.3
 /// @brief Meta function to Map C++ types to SQL types
 ///////////////////////////////////////////////////////////////////////////////
+
+#pragma once
 
 #include <cstdint>
 #include <cstdlib>
@@ -28,6 +28,7 @@ enum class DbTypes : std::uint32_t {
     kComposite
 };
 
+
 /// @class CppTypeToDbType
 /// @brief This class needs to be specialized for each of the C++ type
 ///         that needs to be supported.
@@ -36,55 +37,76 @@ enum class DbTypes : std::uint32_t {
 ///          The default specialization is unknown.
 template<typename T>
 struct CppTypeToDbType {
+    // @brief The C++ type that is being converted.
+    using cppType = T;
+
     /// @var static const DbTypes
     /// @brief Holds one of the values of the enum DbTypes
-    static const DbTypes ret = DbTypes::kUnknown;
+    static const DbTypes dbType = DbTypes::kUnknown; // rename from ret
+};
+
+template<typename T>
+struct CppTypeToDbType<T*> {
+    using cppType = T;
+    static const DbTypes dbType = CppTypeToDbType<T>::dbType;
 };
 
 template<typename T>
 struct CppTypeToDbType<std::vector<T>>{
+    // @brief The C++ type that is being converted.
+    using cppType = std::vector<T>;
+
     /// @brief All the vectors are converted to strings
-    static const DbTypes ret = DbTypes::kInteger;
+    static const DbTypes dbType = DbTypes::kInteger;
 };
+
 
 template<>
 struct CppTypeToDbType<int> {
-    static const DbTypes ret = DbTypes::kInteger;
+    using cppType = int;
+    static const DbTypes dbType = DbTypes::kInteger;
 };
 
 template<>
 struct CppTypeToDbType<unsigned int> {
-    static const DbTypes ret = DbTypes::kInteger;
+    using cppType = unsigned int;
+    static const DbTypes dbType = DbTypes::kInteger;
 };
 
 template<>
 struct CppTypeToDbType<char> {
-    static const DbTypes ret = DbTypes::kInteger;
+    using cppType = char;
+    static const DbTypes dbType = DbTypes::kInteger;
 };
 
 template<>
 struct CppTypeToDbType<unsigned char> {
-    static const DbTypes ret = DbTypes::kInteger;
+    using cppType = unsigned char;
+    static const DbTypes dbType = DbTypes::kInteger;
 };
 
 template<>
 struct CppTypeToDbType<float> {
-    static const DbTypes ret = DbTypes::kReal;
+    using cppType = float;
+    static const DbTypes dbType = DbTypes::kReal;
 };
 
 template<>
 struct CppTypeToDbType<double> {
-    static const DbTypes ret = DbTypes::kReal;
+    using cppType = double;
+    static const DbTypes dbType = DbTypes::kReal;
 };
 
 template<>
 struct CppTypeToDbType<std::string> {
-    static const DbTypes ret = DbTypes::kText;
+    using cppType = std::string;
+    static const DbTypes dbType = DbTypes::kText;
 };
 
 template<>
 struct CppTypeToDbType<std::wstring> {
-    static const DbTypes ret = DbTypes::kText;
+    using cppType = std::wstring;
+    static const DbTypes dbType = DbTypes::kText;
 };
 
 
@@ -135,7 +157,7 @@ inline std::string const &cppTypeEnumToDbTypeString<DbTypes::kComposite>() {
 ///          which in turn calls the meta function to get the enum.
 template<typename T>
 inline std::string const &cppTypeToDbTypeString() {
-    return cppTypeEnumToDbTypeString<CppTypeToDbType<T>::ret>();
+    return cppTypeEnumToDbTypeString<CppTypeToDbType<T>::dbType>();
 }
 
 } // edadb

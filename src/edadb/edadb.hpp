@@ -49,5 +49,5 @@
 #include "TypeMetaData.hpp"
 #include "SqlStatement.hpp"
 #include "Sqlite3Manager.hpp"
-#include "ObjectRelationMapper.hpp"
+#include "DbMap.hpp"
 

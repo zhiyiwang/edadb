@@ -8,6 +8,7 @@
 
 #include <iostream>
 #include <string>
+#include <stdint.h>
 #include <sqlite3.h>
 
 #include "CppTypeToDbType.hpp"
@@ -27,12 +28,16 @@ public:
 
 class Sqlite3Manager : public Singleton<Sqlite3Manager> {
 protected:
-    // connect to sqlite3 Sqlite3
+    // connect to sqlite3 
     std::string connect_param;
 
-    char *zErrMsg = nullptr;
     sqlite3 *db = nullptr;
     sqlite3_stmt *stmt = nullptr;
+    char *zErrMsg = nullptr;
+
+public:
+    static const uint32_t s_bind_column_begin_index = 1;
+    static const uint32_t s_fetch_column_begin_index = 0;
 
 
 public:
@@ -46,29 +51,28 @@ public:
         connect_param = c;
         bool connected = (sqlite3_open(connect_param.c_str(), &db) == SQLITE_OK);
         if (!connected) {
-            std::cerr << "Can't open database: " << sqlite3_errmsg(db) << std::endl;
+            std::cerr << "Sqlite3 Error: can't open database: " << connect_param << std::endl;
+            std::cerr << "Sqlite3 Error: " << sqlite3_errmsg(db) << std::endl;
         }
-        assert(connected);
         return connected;
     }
 
     bool exec(const std::string &sql) {
         bool executed = (sqlite3_exec(db, sql.c_str(), 0, 0, &zErrMsg) == SQLITE_OK);
         if (!executed) {
-            std::cerr << "SQL error: " << zErrMsg << std::endl;
-            std::cerr << sql << std::endl;
+            std::cerr << "Sqlite3 Error: can't execute SQL: " << sql << std::endl;
+            std::cerr << "Sqlite3 Error: " << zErrMsg << std::endl;
             sqlite3_free(zErrMsg);
         }
-        assert(executed);
         return executed;
     }
 
     bool close() {
         bool closed = (sqlite3_close(db) == SQLITE_OK);
         if (!closed) {
-            std::cerr << "Can't close database: " << sqlite3_errmsg(db) << std::endl;
+            std::cerr << "Sqlite3 Error: can't close database: " << connect_param << std::endl;
+            std::cerr << "Sqlite3 Error: " << sqlite3_errmsg(db) << std::endl;
         }
-        assert(closed);
         return closed;
     }
 
@@ -80,11 +84,10 @@ public:
 
         bool prepared = (sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, 0) == SQLITE_OK);
         if (!prepared) {
-            std::cerr << sql << std::endl;
-            std::cerr << "SQL error: " << zErrMsg << std::endl;
+            std::cerr << "Sqlite3 Error: can't prepare SQL: " << sql << std::endl;
+            std::cerr << "Sqlite3 Error: " << zErrMsg << std::endl;
             sqlite3_free(zErrMsg);
         }   
-        assert(prepared);
         return prepared;
     }
 
@@ -96,8 +99,8 @@ public:
     bool resetSQL() {
         bool reseted = (sqlite3_reset(stmt) == SQLITE_OK);
         if (!reseted) {
-            std::cerr << "SQL error: " << zErrMsg << std::endl;
-            std::cerr << "sqlite3_reset failed" << std::endl;
+            std::cerr << "Sqlite3 Error: can't reset SQL" << std::endl;
+            std::cerr << "Sqlite3 Error: " << zErrMsg << std::endl;
             sqlite3_free(zErrMsg);
         }
         return reseted;
@@ -106,8 +109,8 @@ public:
     bool finalizeSQL() {
         bool finalized = (sqlite3_finalize(stmt) == SQLITE_OK);
         if (!finalized) {
-            std::cerr << "SQL error: " << zErrMsg << std::endl;
-            std::cerr << "sqlite3_finalize failed" << std::endl;
+            std::cerr << "Sqlite3 Error: can't finalize SQL" << std::endl;
+            std::cerr << "Sqlite3 Error: " << zErrMsg << std::endl;
             sqlite3_free(zErrMsg);
         }
         return finalized;
@@ -140,36 +143,21 @@ public: // insert
             default:
                 break;
         }
-        assert(binded);
         return binded;
     }
 
-    bool stepInsertSQL() {
+    bool bindStep() {
         bool stepped = (sqlite3_step(stmt) == SQLITE_DONE);
         if (!stepped) {
             std::cerr << "SQL error: " << zErrMsg << std::endl;
             std::cerr << "sqlite3_step failed" << std::endl;
             sqlite3_free(zErrMsg);
         }
-        assert(stepped);
         return stepped;
     }
 
 
-public: // scan
-    /**
-     * call sqlite3_step to get the next row.
-     * Since return may not be SQLITE_ROW, we need to check the return value.
-     * @return true if the next row exists; otherwise, false.
-     */
-    bool stepColumnSQL() {
-        #if DEBUG_SQLITE3_SCAN
-            std::cout << "stepColumnSQL" << std::endl;
-        #endif
-
-        return (sqlite3_step(stmt) == SQLITE_ROW);
-    }
-
+public: // schema info 
     int getColumnCount() {
         return sqlite3_column_count(stmt);
     }
@@ -182,7 +170,21 @@ public: // scan
         return sqlite3_column_name(stmt, index);
     }
 
-    bool columnValueInSQL(int index, DbTypes type, void* value) {
+public: // scan
+    /**
+     * call sqlite3_step to get the next row.
+     * Since return may not be SQLITE_ROW, we need to check the return value.
+     * @return true if the next row exists; otherwise, false.
+     */
+    bool fetchStep() {
+        #if DEBUG_SQLITE3_SCAN
+            std::cout << "Sqlite3Manager::fetchStep" << std::endl;
+        #endif
+
+        return (sqlite3_step(stmt) == SQLITE_ROW);
+    }
+
+    bool fetchValueInSQL(int index, DbTypes type, void* value) {
         bool columned = false;
         switch (type) {
             case DbTypes::kInteger:
@@ -199,7 +201,7 @@ public: // scan
         return columned;
     }
 
-    bool columnPointerInSQL(int index, DbTypes type, void* &value, int &size) {
+    bool fetchPointerInSQL(int index, DbTypes type, void* &value, int &size) {
         bool columned = false;
         switch (type) {
             case DbTypes::kText:

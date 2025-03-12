@@ -76,13 +76,18 @@ int main() {
 
 
     // ObjectRelationMapper
-    edadb::ObjectRelationMapper<IdbSite> orm("sqlite.db", "IdbSite");
-    std::cout << "[ObjectRelationMapper CreateTable]" << std::endl;
+    edadb::DbMap<IdbSite> orm("sqlite.db", "IdbSite");
+    if (!orm.init("sqlite.db", "IdbSite")) {
+        std::cerr << "DbMap::init failed" << std::endl;
+        return 1;
+    }
+
+    std::cout << "[DbMap CreateTable]" << std::endl;
     orm.createTable();
     std::cout << std::endl << std::endl;
 
     // insert
-    std::cout << "[ObjectRelationMapper Insert]" << std::endl;
+    std::cout << "[DbMap Insert]" << std::endl;
     IdbSite p1("Site1",100,110), p2("Site2",200,210), p3("Site3",300,310), p4("Site4",400,410), p5("Site5",500,510);
     orm.prepare2Insert();
     orm.insert(&p1);
@@ -94,7 +99,7 @@ int main() {
     std::cout << std::endl << std::endl;
 
     // scan
-    std::cout << "[ObjectRelationMapper Scan]" << std::endl;
+    std::cout << "[DbMap Scan]" << std::endl;
     orm.prepare2Scan(); 
     bool got_flag = false;
     IdbSite got; 
