@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 
+
 namespace edadb { 
 
 /// @class DbTypes
@@ -27,6 +28,9 @@ enum class DbTypes : std::uint32_t {
     kText,
     kComposite
 };
+
+
+////////////////////////////////////////////////////////////////////////////////
 
 
 /// @class CppTypeToDbType
@@ -61,6 +65,19 @@ struct CppTypeToDbType<std::vector<T>>{
 };
 
 
+
+template<>
+struct CppTypeToDbType<char> {
+    using cppType = char;
+    static const DbTypes dbType = DbTypes::kInteger;
+};
+
+template<>
+struct CppTypeToDbType<unsigned char> {
+    using cppType = unsigned char;
+    static const DbTypes dbType = DbTypes::kInteger;
+};
+
 template<>
 struct CppTypeToDbType<int> {
     using cppType = int;
@@ -74,14 +91,8 @@ struct CppTypeToDbType<unsigned int> {
 };
 
 template<>
-struct CppTypeToDbType<char> {
-    using cppType = char;
-    static const DbTypes dbType = DbTypes::kInteger;
-};
-
-template<>
-struct CppTypeToDbType<unsigned char> {
-    using cppType = unsigned char;
+struct CppTypeToDbType<uint64_t> {
+    using cppType = uint64_t;
     static const DbTypes dbType = DbTypes::kInteger;
 };
 
@@ -109,6 +120,8 @@ struct CppTypeToDbType<std::wstring> {
     static const DbTypes dbType = DbTypes::kText;
 };
 
+
+////////////////////////////////////////////////////////////////////////////////
 
 
 /// @fn cppTypeEnumToDbTypeString
@@ -159,5 +172,10 @@ template<typename T>
 inline std::string const &cppTypeToDbTypeString() {
     return cppTypeEnumToDbTypeString<CppTypeToDbType<T>::dbType>();
 }
+
+
+////////////////////////////////////////////////////////////////////////////////
+
+
 
 } // edadb

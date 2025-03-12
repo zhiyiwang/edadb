@@ -25,16 +25,20 @@ private:
         template <typename O>
         void operator()(O const& x) 
         {
-            using ObjType = typename std::remove_const<
-                typename std::remove_pointer<typename O::first_type>::type>::type;
-            std::string type =
-                edadb::cppTypeToDbTypeString<typename edadb::ConvertCPPTypeToSupportType<ObjType>::type>();
+            // get O object type
+            using ObjType = typename std::remove_const<typename std::remove_pointer
+                    <typename O::first_type>::type >::type;
+            
+            // use ObjType to get cpptype using CppTypeToDbType
+            // then use the cppType as template parameter to get the dbType
+            std::string dbType = edadb::cppTypeToDbTypeString<
+                    typename edadb::CppTypeToDbType<ObjType>::cppType >();
 
             if(cnt++ == 0) {
-//                sql += x.second + " " + type + " PRIMARY KEY";  
-                sql += x.second + " " + type;  
+//                sql += x.second + " " + dbType + " PRIMARY KEY";  
+                sql += x.second + " " + dbType;  
             } else {
-                sql += ", " + x.second + " " + type;
+                sql += ", " + x.second + " " + dbType;
             }
         }
     };
