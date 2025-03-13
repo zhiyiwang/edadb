@@ -203,7 +203,7 @@ public: // scan
             }
             case DbTypes::kText: {
                 uint32_t size = sqlite3_column_bytes(stmt, index);
-                const char *bin = (const char*)sqlite3_column_text(stmt, index);
+                const char  *bin = (const char*)sqlite3_column_text(stmt, index);
                 std::string *str = (std::string*)value;
                 str->assign(bin, size);
                 columned = true;

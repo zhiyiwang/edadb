@@ -21,84 +21,10 @@ namespace edadb {
  */
 template<typename T>
 class DbMap {
-
-
-// bind values for insert statement
-struct Binder {
-private:
-    Sqlite3Manager &manager;
-    uint32_t index{0}; 
-
 public:
-    Binder(Sqlite3Manager &m) : manager(m), index(manager.s_bind_column_begin_index) {} 
-
-    void resetIndex() {
-        index = manager.s_bind_column_begin_index;
-    }
-
-public:
-    /**
-     * @brief Operator to bind each element in obj 
-     * @param elem The element to bind.
-     */
-    template <typename ElemType>
-    void operator()(const ElemType &elem) {
-        manager.bindValue(index++, elem);
-    }
-
-    /**
-     * @brief Bind the object to the database.
-     * @param obj The object to bind.
-     */
-    void bind(T* obj) {
-        // reset index to begin to bind 
-        resetIndex();
-
-        // iterate through the values and bind them
-        auto values = TypeMetaData<T>::getVal(obj);
-        boost::fusion::for_each(values, *this);
-    }
-};
-
-
-// fetch values for scan statement
-struct Fetcher {
-public:
-    Sqlite3Manager &manager;
-    uint32_t index{0};
-
-public:
-    Fetcher(Sqlite3Manager &m) : manager(m), index(manager.s_fetch_column_begin_index) {}
-
-    void resetIndex() {
-        index = manager.s_fetch_column_begin_index;
-    }
-
-
-public:
-    /**
-     * @brief Operator to fetch each element in obj
-     * @param elem The element to fetch.
-     */
-    template <typename ElemType>
-    void operator()(ElemType &elem) {
-        manager.fetchValue(index++, elem);
-    }
-
-    /**
-     * @brief Fetch the object from the database.
-     * @param obj The object to fetch.
-     */
-    void fetch(T* obj) {
-        // reset index to begin to fetch
-        resetIndex();
-
-        // iterate through the values and fetch them
-        auto values = TypeMetaData<T>::getVal(obj);
-        boost::fusion::for_each(values, *this);
-    }
-};
-
+    class Operator;
+    class Inserter;
+    class Fetcher;
 
 public:
     std::string table_name;
@@ -143,30 +69,72 @@ public:
         #endif
         return manager.exec(sql);
     }
+}; // class DbMap
 
+
+
+template<typename T>
+class DbMap<T>::Operator {
+protected:
+    DbMap          &dbmap;
+    Sqlite3Manager &manager;
+    uint32_t index{0};
 
 public:
-    bool insertPrepare() {
-        if (!inited()) {
-            std::cerr << "DbMap::insertPrepare: not inited" << std::endl;
+    Operator(DbMap &m) : dbmap(m), manager(m.manager) {}
+    virtual ~Operator() = default;
+}; 
+
+
+// insert object to database
+template<typename T>
+class DbMap<T>::Inserter : public DbMap<T>::Operator {
+protected:
+    using DbMap<T>::Operator::dbmap;
+    using DbMap<T>::Operator::manager;
+    using DbMap<T>::Operator::index;
+
+public:
+    Inserter(DbMap &m) : Operator(m) { resetIndex(); }
+
+public:
+    bool insertOne(T* obj) {
+        if (!prepare()) {
             return false;
         }
 
-        const std::string sql = fmt::format(SqlStatement<T>::insertPlaceHolderStatement(), table_name);
+        if (!insert(obj)) {
+            return false;
+        }
+
+        if (!reset()) {
+            return false;
+        }
+
+        return true;
+    }
+
+public:
+    bool prepare() {
+        if (!dbmap.inited()) {
+            std::cerr << "DbMap::Inserter::prepare: not inited" << std::endl;
+            return false;
+        }
+
+        const std::string sql = fmt::format(SqlStatement<T>::insertPlaceHolderStatement(), dbmap.table_name);
         #if DEBUG_SQLITE3_API
-            std::cout << "Insert Place Holder SQL: " << sql << std::endl;
+            std::cout << "DbMap::Inserter::prepare: " << sql << std::endl;
         #endif
         return manager.prepare(sql);
     }
 
     bool insert(T* obj) {
-        if (!inited()) {
-            std::cerr << "DbMap::insert: not inited" << std::endl;
+        if (!dbmap.inited()) {
+            std::cerr << "DbMap::Inserter::insert: not inited" << std::endl;
             return false;
         }
 
-        Binder b(manager);
-        b.bind(obj);
+        bindValues(obj);
 
         if (!manager.bindStep()) {
             return false;
@@ -179,8 +147,8 @@ public:
         return true;
     }
 
-    bool insertFinalize() {
-        if (!inited()) {
+    bool reset() {
+        if (!dbmap.inited()) {
             std::cerr << "DbMap::insertFinalize: not inited" << std::endl;
             return false;
         }
@@ -188,21 +156,63 @@ public:
         return manager.finalize();
     }
 
+private:
+    /** reset index to begin to bind */      
+    void resetIndex() {
+        index = manager.s_bind_column_begin_index;
+    }
+
+    /**
+     * @brief insert the object to the database.
+     * @param obj The object to bind.
+     */
+    void bindValues(T* obj) {
+        // reset index to begin to bind 
+        resetIndex();
+
+        // iterate through the values and bind them
+        auto values = TypeMetaData<T>::getVal(obj);
+        boost::fusion::for_each(values, *this);
+    }
 
 public:
-    bool scanPrepare() {
-        if (!inited()) {
-            std::cerr << "DbMap::scanPrepare: not inited" << std::endl;
+    /**
+     * @brief Operator to bind each element in obj 
+     * @param elem The element to bind.
+     */
+    template <typename ElemType>
+    void operator()(const ElemType &elem) {
+        manager.bindValue(index++, elem);
+    }
+};
+
+
+
+// fetch values for scan statement
+template<typename T>
+class DbMap<T>::Fetcher : public DbMap<T>::Operator {
+protected:
+    using DbMap<T>::Operator::dbmap;
+    using DbMap<T>::Operator::manager;
+    using DbMap<T>::Operator::index;
+
+public:
+    Fetcher(DbMap &m) : Operator(m) { resetIndex(); }
+
+public:
+    bool prepare() {
+        if (!dbmap.inited()) {
+            std::cerr << "DbMap::Fetcher::prepare: not inited" << std::endl;
             return false;
         }
 
-        const std::string sql = fmt::format(SqlStatement<T>::scanStatement(), table_name);
+        const std::string sql = fmt::format(SqlStatement<T>::scanStatement(), dbmap.table_name);
         return manager.prepare(sql);
     }
 
-    bool scan(T* obj) {
-        if (!inited()) {
-            std::cerr << "DbMap::scan: not inited" << std::endl;
+    bool fetch(T* obj) {
+        if (!dbmap.inited()) {
+            std::cerr << "DbMap::Inserter::insert: not inited" << std::endl;
             return false;
         }
 
@@ -210,21 +220,50 @@ public:
             return false; // no more row
         }
 
-        Fetcher f(manager);
-        f.fetch(obj);
-
+        fetchValues(obj);
         return true;
     }
 
-    bool scanFinalize() {
-        if (!inited()) {
+    bool reset() {
+        if (!dbmap.inited()) {
             std::cerr << "DbMap::scanFinalize: not inited" << std::endl;
             return false;
         }
 
         return manager.finalize();
     }
-}; // class DbMap
+
+
+private:
+    /** reset index to begin to fetch */
+    void resetIndex() {
+        index = manager.s_fetch_column_begin_index;
+    }
+
+    /**
+     * @brief fetch the object from the database.
+     * @param obj The object to fetch.
+     */
+    void fetchValues(T* obj) {
+        // reset index to begin to fetch
+        resetIndex();
+
+        // iterate through the values and fetch them
+        auto values = TypeMetaData<T>::getVal(obj);
+        boost::fusion::for_each(values, *this);
+    }
+
+public:
+    /**
+     * @brief Operator to fetch each element in obj
+     * @param elem The element to fetch.
+     */
+    template <typename ElemType>
+    void operator()(ElemType &elem) {
+        manager.fetchValue(index++, elem);
+    }
+};
+
 
 
 } // namespace edadb

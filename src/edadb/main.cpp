@@ -89,35 +89,31 @@ int main() {
     // insert
     std::cout << "[DbMap Insert]" << std::endl;
     IdbSite p1("Site1",100,110), p2("Site2",200,210), p3("Site3",300,310), p4("Site4",400,410), p5("Site5",500,510);
-    dbm.insertPrepare();
-    dbm.insert(&p1);
-    dbm.insert(&p2);
-    dbm.insert(&p3);
-    dbm.insert(&p4);
-    dbm.insert(&p5);
-    dbm.insertFinalize();
+    
+    edadb::DbMap<IdbSite>::Inserter inserter(dbm);
+    inserter.prepare();
+    inserter.insert(&p1);
+    inserter.insert(&p2);
+    inserter.insert(&p3);
+    inserter.insert(&p4);
+    inserter.insert(&p5);
+    inserter.reset();
     std::cout << std::endl << std::endl;
 
     // scan
     std::cout << "[DbMap Scan]" << std::endl;
-    dbm.scanPrepare();
-    bool got_flag = false;
-    IdbSite got; 
-    #if DEBUG_SQLITE3_INSERT
-        std::cout << "Insert obj address: " << &got << std::endl;
-        std::cout << "obj->name: " << got.name << " address: " << &got.name << std::endl;
-        std::cout << "obj->width: " << got.width << " address: " << &got.width << std::endl;
-        std::cout << "obj->height: " << got.height << " address: " << &got.height << std::endl;
-        std::cout << std::endl;
-    #endif
+    edadb::DbMap<IdbSite>::Fetcher fetcher(dbm);
+    fetcher.prepare();
 
+    IdbSite got; 
+    bool got_flag = false;
     uint32_t cnt = 0;
-    while (got_flag = dbm.scan(&got)) {
+    while (got_flag = fetcher.fetch(&got)) {
         std::cout<<"IdbSite ["<<cnt++<<"] :" << std::endl;
         got.print();
     }
 
-    dbm.scanFinalize();
+    fetcher.reset();
     std::cout << std::endl << std::endl;
 
     // scan sqlite3 directly
