@@ -120,25 +120,24 @@ public:
 public: // insert
     bool bind2SQL(int index, DbTypes type, void *value) {
         bool binded = false;
-        int bind_index = index + 1; // sqlite3 bind index starts from 1
         switch (type) {
             case DbTypes::kInteger:
                 #if DEBUG_SQLITE3_INSERT
-                    std::cout << "bind2SQL: " << bind_index << " type " << cppTypeEnumToDbTypeString<DbTypes::kInteger>() << " value: " << *(int*)value << std::endl;
+                    std::cout << "bind2SQL: " << index << " type " << cppTypeEnumToDbTypeString<DbTypes::kInteger>() << " value: " << *(int*)value << std::endl;
                 #endif
-                binded = (sqlite3_bind_int(stmt, bind_index, *(int*)value) == SQLITE_OK);
+                binded = (sqlite3_bind_int(stmt, index, *(int*)value) == SQLITE_OK);
                 break;
             case DbTypes::kReal:
                 #if DEBUG_SQLITE3_INSERT
-                    std::cout << "bind2SQL: " << bind_index << " type " << cppTypeEnumToDbTypeString<DbTypes::kReal>() << " value: " << *(double*)value << std::endl;
+                    std::cout << "bind2SQL: " << index << " type " << cppTypeEnumToDbTypeString<DbTypes::kReal>() << " value: " << *(double*)value << std::endl;
                 #endif
-                binded = (sqlite3_bind_double(stmt, bind_index, *(double*)value) == SQLITE_OK);
+                binded = (sqlite3_bind_double(stmt, index, *(double*)value) == SQLITE_OK);
                 break;
             case DbTypes::kText:
                 #if DEBUG_SQLITE3_INSERT
-                    std::cout << "bind2SQL: " << bind_index << " type " << cppTypeEnumToDbTypeString<DbTypes::kText>() << " value: " << (char*)value << std::endl;
+                    std::cout << "bind2SQL: " << index << " type " << cppTypeEnumToDbTypeString<DbTypes::kText>() << " value: " << (char*)value << std::endl;
                 #endif
-                binded = (sqlite3_bind_text(stmt, bind_index, (char*)value, -1, SQLITE_STATIC) == SQLITE_OK);
+                binded = (sqlite3_bind_text(stmt, index, (char*)value, -1, SQLITE_STATIC) == SQLITE_OK);
                 break;
             default:
                 break;

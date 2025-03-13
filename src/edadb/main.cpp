@@ -76,31 +76,31 @@ int main() {
 
 
     // ObjectRelationMapper
-    edadb::DbMap<IdbSite> orm("sqlite.db", "IdbSite");
-    if (!orm.init("sqlite.db", "IdbSite")) {
+    edadb::DbMap<IdbSite> dbm;
+    if (!dbm.init("sqlite.db", "IdbSite")) {
         std::cerr << "DbMap::init failed" << std::endl;
         return 1;
     }
 
     std::cout << "[DbMap CreateTable]" << std::endl;
-    orm.createTable();
+    dbm.createTable();
     std::cout << std::endl << std::endl;
 
     // insert
     std::cout << "[DbMap Insert]" << std::endl;
     IdbSite p1("Site1",100,110), p2("Site2",200,210), p3("Site3",300,310), p4("Site4",400,410), p5("Site5",500,510);
-    orm.prepare2Insert();
-    orm.insert(&p1);
-    orm.insert(&p2);
-    orm.insert(&p3);
-    orm.insert(&p4);
-    orm.insert(&p5);
-    orm.finalizeSQL();
+    dbm.insertPrepare();
+    dbm.insert(&p1);
+    dbm.insert(&p2);
+    dbm.insert(&p3);
+    dbm.insert(&p4);
+    dbm.insert(&p5);
+    dbm.insertFinalize();
     std::cout << std::endl << std::endl;
 
     // scan
     std::cout << "[DbMap Scan]" << std::endl;
-    orm.prepare2Scan(); 
+    dbm.scanPrepare();
     bool got_flag = false;
     IdbSite got; 
     #if DEBUG_SQLITE3_INSERT
@@ -112,12 +112,12 @@ int main() {
     #endif
 
     uint32_t cnt = 0;
-    while (got_flag = orm.scan(&got)) {
+    while (got_flag = dbm.scan(&got)) {
         std::cout<<"IdbSite ["<<cnt++<<"] :" << std::endl;
         got.print();
     }
 
-    orm.finalizeSQL();
+    dbm.scanFinalize();
     std::cout << std::endl << std::endl;
 
     // scan sqlite3 directly
@@ -141,6 +141,7 @@ int main() {
         }
 
         // step and get column
+        uint32_t cnt = 0;
         while ((rc = sqlite3_step(stmt)) == SQLITE_ROW) {
             std::cout<<"IdbSite ["<<cnt++<<"] :  ";
             std::cout<<"name: "<<sqlite3_column_text(stmt, 0)<<std::endl;

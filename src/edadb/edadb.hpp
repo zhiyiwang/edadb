@@ -45,7 +45,6 @@
 //#include <soci/sqlite3/soci-sqlite3.h>
 
 #include "CppTypeToDbType.hpp"
-#include "ConvertType.hpp"
 #include "TypeMetaData.hpp"
 #include "SqlStatement.hpp"
 #include "Sqlite3Manager.hpp"

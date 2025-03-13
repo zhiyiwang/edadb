@@ -14,12 +14,14 @@
 
 namespace edadb {
 
+
 /**
  * @brief DbMap class maps objects to relations.
  * @tparam T The class type.
  */
 template<typename T>
 class DbMap {
+
 
 // inner class Binder to bind values to insert
 struct Binder {
@@ -34,16 +36,15 @@ public:
         index = manager.s_bind_column_begin_index;
     }
 
-
 public:
     using TupType = typename TypeMetaData<T>::TupType;
 
     template <typename Pair>
-    void operator()(const Pair& pair) const {
+    void operator()(const Pair& pair)  {
 //        manager.bind2SQL(index++, type, bind_value);
 //
         // TODO: move to sqlite3manager
-        auto index = boost::fusion::at_c<0>(pair);
+//        auto index = boost::fusion::at_c<0>(pair);
         auto value = boost::fusion::at_c<1>(pair);
         DbTypes type = DbTypes::kUnknown;
         void *bind_value = nullptr;
@@ -79,11 +80,11 @@ public:
             std::cout << " value: " << *value << " address: " << value << std::endl;
         #endif
 
-        manager.bind2SQL(index, type, bind_value);
+        manager.bind2SQL(index++, type, bind_value);
     }
 
     void bind(T* obj) {
-//        resetIndex();
+        resetIndex();
 //        boost::fusion::for_each(TypeMetaData<T>::getVal(obj), *this);
 //
         constexpr std::size_t N = boost::fusion::result_of::size<TupType>::type::value;
@@ -113,10 +114,10 @@ public:
     using TupType = typename TypeMetaData<T>::TupType;
 
     template <typename Pair>
-    void operator()(const Pair& pair) const {
+    void operator()(const Pair& pair) {
 //        manager.fetchValueInSQL(index++, type, value);
 
-        auto index = boost::fusion::at_c<0>(pair);
+//        auto index = boost::fusion::at_c<0>(pair);
         auto value = boost::fusion::at_c<1>(pair);
         DbTypes type = DbTypes::kUnknown;
         #if DEBUG_SQLITE3_SCAN
@@ -126,7 +127,7 @@ public:
             type = DbTypes::kText;
             void *got = nullptr;
             int size = 0;
-            manager.fetchPointerInSQL(index, type, got, size);
+            manager.fetchPointerInSQL(index++, type, got, size);
 
             std::string *str = (std::string*)value;
             str->assign((const char*)got, size); 
@@ -135,13 +136,13 @@ public:
             #endif
         } else if constexpr (std::is_same_v<std::decay_t<decltype(value)>, int*>) {
             type = DbTypes::kInteger;
-            manager.fetchValueInSQL(index, type, (void*)value);
+            manager.fetchValueInSQL(index++, type, (void*)value);
             #if DEBUG_SQLITE3_SCAN
                 type_str = cppTypeEnumToDbTypeString<DbTypes::kInteger>();
             #endif
         } else if constexpr (std::is_same_v<std::decay_t<decltype(value)>, double*>) {
             type = DbTypes::kReal;
-            manager.fetchValueInSQL(index, type, (void*)value);
+            manager.fetchValueInSQL(index++, type, (void*)value);
             #if DEBUG_SQLITE3_SCAN
                 type_str = cppTypeEnumToDbTypeString<DbTypes::kReal>();
             #endif
@@ -157,7 +158,7 @@ public:
     }
 
     void fetch(T* obj) {
-//        resetIndex();
+        resetIndex();
 //        boost::fusion::for_each(TypeMetaData<T>::getVal(obj), *this);
 
         constexpr std::size_t N = boost::fusion::result_of::size<TupType>::type::value;
@@ -174,13 +175,17 @@ public:
     Sqlite3Manager manager;
 
 public:
-    DbMap(const std::string& c, const std::string& t) : table_name(t) {
-    }
+    DbMap () = default;
     ~DbMap() = default;
 
 public:
     bool init(const std::string& c, const std::string& t) {
         table_name = t;
+        if (table_name.empty()) {
+            std::cerr << "DbMap::init: table name is empty" << std::endl;
+            return false;
+        }
+
         if (!manager.connect(c)) {
             std::cerr << "DbMap::init: connect failed" << std::endl;
             return false;
@@ -189,31 +194,46 @@ public:
         return true;
     }
 
+    bool inited() {
+        return !table_name.empty();
+    }
+
+
 public:
     bool createTable() {
+        if (!inited()) {
+            std::cerr << "DbMap::createTable: not inited" << std::endl;
+            return false;
+        }
+
         const std::string sql = fmt::format(SqlStatement<T>::createTableStatement(), table_name);
         #if DEBUG_SQLITE3_API
-            std::cout << "Create Table SQL: " << sql << std::endl;
+            std::cout << "Create Table SQL: " << std::endl;
+            std::cout << sql << std::endl;
         #endif
         return manager.exec(sql);
     }
 
+
 public:
-    bool prepare2Insert() {
+    bool insertPrepare() {
+        if (!inited()) {
+            std::cerr << "DbMap::insertPrepare: not inited" << std::endl;
+            return false;
+        }
+
         const std::string sql = fmt::format(SqlStatement<T>::insertPlaceHolderStatement(), table_name);
-        #if DEBUG_SQLITE3_INSERT
+        #if DEBUG_SQLITE3_API
             std::cout << "Insert Place Holder SQL: " << sql << std::endl;
         #endif
         return manager.prepareSQL(sql);
     }
 
     bool insert(T* obj) {
-        #if DEBUG_SQLITE3_INSERT
-            std::cout << "Insert obj address: " << obj << std::endl;
-            std::cout << "obj->name: " << obj->name << " address: " << &obj->name << std::endl;
-            std::cout << "obj->width: " << obj->width << " address: " << &obj->width << std::endl;
-            std::cout << "obj->height: " << obj->height << " address: " << &obj->height << std::endl;
-        #endif
+        if (!inited()) {
+            std::cerr << "DbMap::insert: not inited" << std::endl;
+            return false;
+        }
 
         Binder b(manager);
         b.bind(obj);
@@ -229,17 +249,35 @@ public:
         return true;
     }
 
+    bool insertFinalize() {
+        if (!inited()) {
+            std::cerr << "DbMap::insertFinalize: not inited" << std::endl;
+            return false;
+        }
+
+        return manager.finalizeSQL();
+    }
+
 
 public:
-    bool prepare2Scan() {
+    bool scanPrepare() {
+        if (!inited()) {
+            std::cerr << "DbMap::scanPrepare: not inited" << std::endl;
+            return false;
+        }
+
         const std::string sql = fmt::format(SqlStatement<T>::scanStatement(), table_name);
         return manager.prepareSQL(sql);
     }
 
     bool scan(T* obj) {
-        if (!manager.fetchStep()) {
-            // no more row
+        if (!inited()) {
+            std::cerr << "DbMap::scan: not inited" << std::endl;
             return false;
+        }
+
+        if (!manager.fetchStep()) {
+            return false; // no more row
         }
 
         Fetcher f(manager);
@@ -248,9 +286,12 @@ public:
         return true;
     }
 
+    bool scanFinalize() {
+        if (!inited()) {
+            std::cerr << "DbMap::scanFinalize: not inited" << std::endl;
+            return false;
+        }
 
-public:
-    bool finalizeSQL() {
         return manager.finalizeSQL();
     }
 }; // class DbMap
