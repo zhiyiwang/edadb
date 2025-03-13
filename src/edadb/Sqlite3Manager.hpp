@@ -31,12 +31,12 @@ protected:
     // connect to sqlite3 
     std::string connect_param;
 
-    sqlite3 *db = nullptr;
+    sqlite3      *db   = nullptr;
     sqlite3_stmt *stmt = nullptr;
-    char *zErrMsg = nullptr;
+    char         *zErrMsg = nullptr;
 
 public:
-    static const uint32_t s_bind_column_begin_index = 1;
+    static const uint32_t s_bind_column_begin_index  = 1;
     static const uint32_t s_fetch_column_begin_index = 0;
 
 
@@ -46,7 +46,7 @@ public:
         close();
     }
 
-public:
+public: // database 
     bool connect(const std::string &c = "edadb.sqlite3.db") {
         connect_param = c;
         bool connected = (sqlite3_open(connect_param.c_str(), &db) == SQLITE_OK);
@@ -76,8 +76,8 @@ public:
         return closed;
     }
 
-public:
-    bool prepareSQL(const std::string &sql) {
+public: // statement
+    bool prepare(const std::string &sql) {
         #if DEBUG_SQLITE3_API
             std::cout << "Sqlite3Manager::prepareSQL: " << sql << std::endl;
         #endif
@@ -91,12 +91,12 @@ public:
         return prepared;
     }
 
-    int changesSQL() {
+    int changes() {
         return sqlite3_changes(db);
     }
 
 
-    bool resetSQL() {
+    bool reset() {
         bool reseted = (sqlite3_reset(stmt) == SQLITE_OK);
         if (!reseted) {
             std::cerr << "Sqlite3 Error: can't reset SQL" << std::endl;
@@ -106,7 +106,7 @@ public:
         return reseted;
     }
 
-    bool finalizeSQL() {
+    bool finalize() {
         bool finalized = (sqlite3_finalize(stmt) == SQLITE_OK);
         if (!finalized) {
             std::cerr << "Sqlite3 Error: can't finalize SQL" << std::endl;
@@ -118,30 +118,32 @@ public:
 
 
 public: // insert
-    bool bind2SQL(int index, DbTypes type, void *value) {
+    template <typename T>
+    bool bindValue(int index, const T &value) {
         bool binded = false;
-        switch (type) {
-            case DbTypes::kInteger:
-                #if DEBUG_SQLITE3_INSERT
-                    std::cout << "bind2SQL: " << index << " type " << cppTypeEnumToDbTypeString<DbTypes::kInteger>() << " value: " << *(int*)value << std::endl;
-                #endif
-                binded = (sqlite3_bind_int(stmt, index, *(int*)value) == SQLITE_OK);
+        auto dbtype = CppTypeToDbType<T>::dbType;
+        switch (dbtype) {
+            case DbTypes::kInteger: {
+                int *bin = (int*)value;
+                binded = (sqlite3_bind_int(stmt, index, *bin) == SQLITE_OK);
                 break;
-            case DbTypes::kReal:
-                #if DEBUG_SQLITE3_INSERT
-                    std::cout << "bind2SQL: " << index << " type " << cppTypeEnumToDbTypeString<DbTypes::kReal>() << " value: " << *(double*)value << std::endl;
-                #endif
-                binded = (sqlite3_bind_double(stmt, index, *(double*)value) == SQLITE_OK);
+            }
+            case DbTypes::kReal: {
+                double *bin = (double*)value;
+                binded = (sqlite3_bind_double(stmt, index, *bin) == SQLITE_OK);
                 break;
-            case DbTypes::kText:
-                #if DEBUG_SQLITE3_INSERT
-                    std::cout << "bind2SQL: " << index << " type " << cppTypeEnumToDbTypeString<DbTypes::kText>() << " value: " << (char*)value << std::endl;
-                #endif
-                binded = (sqlite3_bind_text(stmt, index, (char*)value, -1, SQLITE_STATIC) == SQLITE_OK);
+            }
+            case DbTypes::kText: {
+                std::string *str = (std::string*)value;
+                const char  *bin = str->c_str();
+                binded = (sqlite3_bind_text(stmt, index, bin, -1, SQLITE_STATIC) == SQLITE_OK);
                 break;
+            }
             default:
+                std::cerr << "Sqlite3 Error: unknown type " << index << std::endl;
                 break;
         }
+        
         return binded;
     }
 
@@ -183,32 +185,32 @@ public: // scan
         return (sqlite3_step(stmt) == SQLITE_ROW);
     }
 
-    bool fetchValueInSQL(int index, DbTypes type, void* value) {
+    template <typename T>
+    bool fetchValue(int index, T &value) {
         bool columned = false;
-        switch (type) {
-            case DbTypes::kInteger:
+        auto dbtype = CppTypeToDbType<T>::dbType;
+        switch (dbtype) {
+            case DbTypes::kInteger: {
                 *(int*)value = sqlite3_column_int(stmt, index);
                 columned = true;
                 break;
-            case DbTypes::kReal:
+            }
+            case DbTypes::kReal: {
                 *(double*)value = sqlite3_column_double(stmt, index);
                 columned = true;
                 break;
-            default:
-                break;
-        }
-        return columned;
-    }
 
-    bool fetchPointerInSQL(int index, DbTypes type, void* &value, int &size) {
-        bool columned = false;
-        switch (type) {
-            case DbTypes::kText:
-                value = (void*)sqlite3_column_text(stmt, index);
-                size = sqlite3_column_bytes(stmt, index);
+            }
+            case DbTypes::kText: {
+                uint32_t size = sqlite3_column_bytes(stmt, index);
+                const char *bin = (const char*)sqlite3_column_text(stmt, index);
+                std::string *str = (std::string*)value;
+                str->assign(bin, size);
                 columned = true;
                 break;
+            }
             default:
+                std::cerr << "Sqlite3 Error: unknown type " << index << std::endl;
                 break;
         }
         return columned;
@@ -216,8 +218,4 @@ public: // scan
 };
 
 
-
 } // namespace edadb
-
-
-
