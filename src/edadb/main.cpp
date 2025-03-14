@@ -19,63 +19,37 @@ public:
 };
 
 TABLE4CLASS_COLNAME( IdbSite, "table_name", (name, width, height), (":name",":width",":height") );
+
+
+
+void testTypeMetaDataPrinter() {
+    IdbSite p1("Site1",100,110);
+    IdbSite p2("Site2",200,210);
+
+    edadb::TypeMetaDataPrinter<IdbSite> printer;
+    printer.printTypeMetaDataStaticMembers();
+    printer.print(&p1);
+    printer.print(&p2);
+    std::cout << std::endl << std::endl;
+}
+
+
+void testSqlStatement() {
+    IdbSite p1("Site1",100,110);
+    IdbSite p2("Site2",200,210);
+    edadb::SqlStatement<IdbSite> sql_stmt;
+    std::cout << "[sqlstatement debug] " << std::endl;
+    std::cout << "Create Table SQL: " << sql_stmt.createTableStatement() << std::endl;
+    std::cout << "Insert Place Holder SQL: " << sql_stmt.insertPlaceHolderStatement() << std::endl;
+    std::cout << "Insert p1 SQL: " << sql_stmt.insertStatement (&p1) << std::endl;
+    std::cout << "Insert p2 SQL: " << sql_stmt.insertStatement (&p2) << std::endl;
+    std::cout << "Scan SQL: " << sql_stmt.scanStatement() << std::endl;
+    std::cout << std::endl << std::endl;
+}
     
 
-int main() {
-    if (0) {
-        std::cout<<"[TypeMetaData<IdbSite> Debug]" << std::endl;
-        std::cout<<"TypeMetaData<IdbSite>::class_name() = "<<edadb::TypeMetaData<IdbSite>::class_name()<<"\n";
-        std::cout <<"TypeMetaData<IdbSite>::table_name() = "<<edadb::TypeMetaData<IdbSite>::table_name()<<"\n";
-        std::cout<<"TypeMetaData<IdbSite>::member_names() = ";
-        auto names = edadb::TypeMetaData<IdbSite>::member_names();
-        for(auto n : names) std::cout<<n<<" ";
-        std::cout<<"\n";
-
-        std::cout<<"TypeMetaData<IdbSite>::column_names() = ";
-        auto cols = edadb::TypeMetaData<IdbSite>::column_names();
-        for(auto c : cols) std::cout<<c<<" ";
-        std::cout<<"\n";
-
-        std::cout<<"TypeMetaData<IdbSite>::tuple_type_pair() = ";
-        boost::fusion::for_each(edadb::TypeMetaData<IdbSite>::tuple_type_pair(), [](auto p){std::cout<<p.second<<" ";});
-        std::cout<<std::endl<<std::endl;
-    }
-
-    if (0) {
-        std::cout<<"[TypeMetaDataValuePrinter<IdbSite> Debug]" << std::endl;
-        edadb::TypeMetaDataValuePrinter<IdbSite> printer;
-
-        IdbSite p1("Site1",100,110);
-        // use getVal get TupType and output the values and the type of the values
-        std::cout<<"IdbSite p1 values: " << std::endl;
-
-        printer.print( edadb::TypeMetaData<IdbSite>::getVal(&p1) );
-        std::cout<<"\n";
-
-        IdbSite p2("Site2",200,210);
-        std::cout<<"IdbSite p2 values: " << std::endl;
-
-        printer.print( edadb::TypeMetaData<IdbSite>::getVal(&p2) );
-        std::cout<<std::endl<<std::endl;
-    }
-
-   
-    if (0) {
-        // sqlstatement
-        IdbSite p1("Site1",100,110);
-        IdbSite p2("Site2",200,210);
-        edadb::SqlStatement<IdbSite> sql_stmt;
-        std::cout << "[sqlstatement debug] " << std::endl;
-        std::cout << "Create Table SQL: " << sql_stmt.createTableStatement() << std::endl;
-        std::cout << "Insert Place Holder SQL: " << sql_stmt.insertPlaceHolderStatement() << std::endl;
-        std::cout << "Insert p1 SQL: " << sql_stmt.insertStatement (&p1) << std::endl;
-        std::cout << "Insert p2 SQL: " << sql_stmt.insertStatement (&p2) << std::endl;
-        std::cout << "Scan SQL: " << sql_stmt.scanStatement() << std::endl;
-        std::cout << std::endl << std::endl;
-    }
-
-
-    // ObjectRelationMapper
+int testDbMap() {
+    // DbMap
     edadb::DbMap<IdbSite> dbm;
     if (!dbm.init("sqlite.db", "IdbSite")) {
         std::cerr << "DbMap::init failed" << std::endl;
@@ -109,53 +83,65 @@ int main() {
     bool got_flag = false;
     uint32_t cnt = 0;
     while (got_flag = fetcher.fetch(&got)) {
-        std::cout<<"IdbSite ["<<cnt++<<"] :" << std::endl;
+        std::cout << "IdbSite [" << cnt++ << "] :  ";
         got.print();
     }
 
     fetcher.reset();
     std::cout << std::endl << std::endl;
 
+    return 0;
+}
+
+
+void testSqlite3() {
     // scan sqlite3 directly
-    if (0) {
-        sqlite3 *db;
-        char *zErrMsg = 0;
-        int rc;
-        rc = sqlite3_open("sqlite.db", &db);
-        if (rc) {
-            std::cerr << "Can't open database: " << sqlite3_errmsg(db) << std::endl;
-            return(0);
-        }
-        
-        // prepare sql
-        std::string sql = "SELECT * FROM IdbSite;";
-        sqlite3_stmt *stmt;
-        rc = sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, 0);
-        if (rc != SQLITE_OK) {
-            std::cerr << "SQL error: " << zErrMsg << std::endl;
-            sqlite3_free(zErrMsg);
-        }
+    sqlite3 *db;
+    char *zErrMsg = 0;
+    int rc;
+    rc = sqlite3_open("sqlite.db", &db);
+    if (rc) {
+        std::cerr << "Can't open database: " << sqlite3_errmsg(db) << std::endl;
+        return ;
+    }
 
-        // step and get column
-        uint32_t cnt = 0;
-        while ((rc = sqlite3_step(stmt)) == SQLITE_ROW) {
-            std::cout<<"IdbSite ["<<cnt++<<"] :  ";
-            std::cout<<"name: "<<sqlite3_column_text(stmt, 0)<<std::endl;
-            std::cout<<"width: "<<sqlite3_column_int(stmt, 1)<<std::endl;
-            std::cout<<"height: "<<sqlite3_column_int(stmt, 2)<<std::endl;
-            std::cout<<std::endl;
-        }
+    // prepare sql
+    std::string sql = "SELECT * FROM IdbSite;";
+    sqlite3_stmt *stmt;
+    rc = sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, 0);
+    if (rc != SQLITE_OK) {
+        std::cerr << "SQL error: " << zErrMsg << std::endl;
+        sqlite3_free(zErrMsg);
+    }
 
-        // finalize
-        rc = sqlite3_finalize(stmt);
-        if (rc != SQLITE_OK) {
-            std::cerr << "SQL error: " << zErrMsg << std::endl;
-            sqlite3_free(zErrMsg);
-        }
+    // step and get column
+    uint32_t cnt = 0;
+    while ((rc = sqlite3_step(stmt)) == SQLITE_ROW) {
+        std::cout<<"IdbSite ["<<cnt++<<"] :  ";
+        std::cout<<"name: "<<sqlite3_column_text(stmt, 0) << " ";
+        std::cout<<"width: "<<sqlite3_column_int(stmt, 1) << " ";
+        std::cout<<"height: "<<sqlite3_column_int(stmt, 2) << " ";
+        std::cout<<std::endl;
+    }
 
-        sqlite3_close(db);
-      }
+    // finalize
+    rc = sqlite3_finalize(stmt);
+    if (rc != SQLITE_OK) {
+        std::cerr << "SQL error: " << zErrMsg << std::endl;
+        sqlite3_free(zErrMsg);
+    }
 
-  return 0;
+    sqlite3_close(db);
+}
+
+
+
+int main() {
+    testTypeMetaDataPrinter();
+    testSqlStatement();
+    testDbMap();
+//    testSqlite3();
+
+    return 0;
 }
 
