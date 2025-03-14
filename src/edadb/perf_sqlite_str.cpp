@@ -243,8 +243,8 @@ int test_sqlite_performance_str(uint64_t recd_num, uint64_t query_num)
     sqlite3_close(db);  // close the database
 
     auto insert_eslapse = std::chrono::duration_cast<std::chrono::milliseconds>(start_scan - start_insert).count();
-    auto scan_eslapse = std::chrono::duration_cast<std::chrono::milliseconds>(start_lookup - start_scan).count();
-    auto lookup_eslapse = std::chrono::duration_cast<std::chrono::milliseconds>(end - start_lookup).count();
+    auto scan_eslapse = std::chrono::duration_cast<std::chrono::milliseconds>(start_lookup - start_scan).count() / query_num;
+    auto lookup_eslapse = std::chrono::duration_cast<std::chrono::milliseconds>(end - start_lookup).count() / query_num;
     if (PERF_OUTPUT_SQL_RESULT) {
         std::cout << "Insert Time: " << insert_eslapse << " ms" << std::endl;
         std::cout << "Scan Time: " << scan_eslapse << " ms" << std::endl;
