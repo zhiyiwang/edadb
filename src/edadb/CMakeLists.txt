@@ -6,7 +6,8 @@ file(GLOB TEST_FILES "*.cpp")
 add_executable(interface_test ${TEST_FILES})
 
 # Link SOCI, SQLite3, duckdb libraries to the executable
-target_link_libraries(interface_test soci_core soci_sqlite3 sqlite3 duckdb duckdb_static pthread dl)
+target_link_libraries(interface_test soci_core soci_sqlite3 sqlite3)
+# target_link_libraries(interface_test soci_core soci_sqlite3 sqlite3 duckdb duckdb_static pthread dl)
 
 # Specify the include directories for SOCI and SQLite3
 message(STATUS "SOCI_SOURCE_DIR[interface_test]@ " ${soci_SOURCE_DIR})

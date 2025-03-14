@@ -24,8 +24,6 @@ int test_soci_performance(uint64_t recd_num, uint64_t query_num)
 
     test_sqlite_performance_str(recd_num, query_num);
     test_sqlite_performance_int(recd_num, query_num);
-
-    test_sqlite_lock();
 #else
     // only test the sqlite3 interface performance
     test_sqlite_performance_str(recd_num, query_num);

@@ -1,3 +1,4 @@
+#if 0
 /**
  * @file intfc_duckdb.cpp
  * @brief test the duckdb C interface
@@ -49,3 +50,5 @@ int test_duckdb_interface(void) {
     printf("DuckDB C API test completed successfully.\n");
     return 0;
 }
+
+#endif

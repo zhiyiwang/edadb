@@ -36,11 +36,11 @@ int test_soci_orm(void);
 int test_soci_interface(void);
 
 
-//////// test duckdb interface ////////
-/**
- * @brief test the duckdb interface
- */
-int test_duckdb_interface(void);
+////////// test duckdb interface ////////
+///**
+// * @brief test the duckdb interface
+// */
+//int test_duckdb_interface(void);
 
 
 #endif // INTFC_H
