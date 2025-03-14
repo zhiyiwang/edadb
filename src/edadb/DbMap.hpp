@@ -54,7 +54,6 @@ public:
         return !table_name.empty();
     }
 
-
 public:
     bool createTable() {
         if (!inited()) {
@@ -68,6 +67,14 @@ public:
             std::cout << sql << std::endl;
         #endif
         return manager.exec(sql);
+    }
+
+    bool beginTransaction() {
+        return manager.exec("BEGIN TRANSACTION;");
+    }
+
+    bool commitTransaction() {
+        return manager.exec("COMMIT;");
     }
 }; // class DbMap
 
@@ -97,24 +104,12 @@ protected:
 public:
     Inserter(DbMap &m) : Operator(m) { resetIndex(); }
 
-public:
+public: // insert one 
     bool insertOne(T* obj) {
-        if (!prepare()) {
-            return false;
-        }
-
-        if (!insert(obj)) {
-            return false;
-        }
-
-        if (!reset()) {
-            return false;
-        }
-
-        return true;
+        return prepare() && insert(obj) && finalize();
     }
 
-public:
+public: // insert many
     bool prepare() {
         if (!dbmap.inited()) {
             std::cerr << "DbMap::Inserter::prepare: not inited" << std::endl;
@@ -147,7 +142,7 @@ public:
         return true;
     }
 
-    bool reset() {
+    bool finalize() {
         if (!dbmap.inited()) {
             std::cerr << "DbMap::insertFinalize: not inited" << std::endl;
             return false;
@@ -224,7 +219,7 @@ public:
         return true;
     }
 
-    bool reset() {
+    bool finalize() {
         if (!dbmap.inited()) {
             std::cerr << "DbMap::scanFinalize: not inited" << std::endl;
             return false;

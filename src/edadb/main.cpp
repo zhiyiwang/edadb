@@ -1,4 +1,5 @@
 #include "edadb.hpp"
+#include "Test.hpp"
 
 
 /// @class IdbSite example 
@@ -49,7 +50,6 @@ void testSqlStatement() {
     
 
 int testDbMap() {
-    // DbMap
     edadb::DbMap<IdbSite> dbm;
     if (!dbm.init("sqlite.db", "IdbSite")) {
         std::cerr << "DbMap::init failed" << std::endl;
@@ -71,7 +71,7 @@ int testDbMap() {
     inserter.insert(&p3);
     inserter.insert(&p4);
     inserter.insert(&p5);
-    inserter.reset();
+    inserter.finalize();
     std::cout << std::endl << std::endl;
 
     // scan
@@ -87,7 +87,7 @@ int testDbMap() {
         got.print();
     }
 
-    fetcher.reset();
+    fetcher.finalize();
     std::cout << std::endl << std::endl;
 
     return 0;
@@ -137,10 +137,21 @@ void testSqlite3() {
 
 
 int main() {
-    testTypeMetaDataPrinter();
-    testSqlStatement();
-    testDbMap();
+//    testTypeMetaDataPrinter();
+//    testSqlStatement();
+//    testDbMap();
 //    testSqlite3();
+
+    test_edadb_perf_int();
+    test_edadb_perf_int();
+    test_edadb_perf_int();
+    test_edadb_perf_int();
+    test_edadb_perf_int();
+    test_edadb_perf_str();
+    test_edadb_perf_str();
+    test_edadb_perf_str();
+    test_edadb_perf_str();
+    test_edadb_perf_str();
 
     return 0;
 }
