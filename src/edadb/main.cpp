@@ -142,16 +142,17 @@ int main() {
 //    testDbMap();
 //    testSqlite3();
 
-    test_edadb_perf_int();
-    test_edadb_perf_int();
-    test_edadb_perf_int();
-    test_edadb_perf_int();
-    test_edadb_perf_int();
-    test_edadb_perf_str();
-    test_edadb_perf_str();
-    test_edadb_perf_str();
-    test_edadb_perf_str();
-    test_edadb_perf_str();
+    test_edadb_perf_int(); std::remove("sqlite.db");
+    test_edadb_perf_int(); std::remove("sqlite.db");
+    test_edadb_perf_int(); std::remove("sqlite.db");
+    test_edadb_perf_int(); std::remove("sqlite.db");
+    test_edadb_perf_int(); std::remove("sqlite.db");
+
+    test_edadb_perf_str(); std::remove("sqlite.db");
+    test_edadb_perf_str(); std::remove("sqlite.db");
+    test_edadb_perf_str(); std::remove("sqlite.db");
+    test_edadb_perf_str(); std::remove("sqlite.db");
+    test_edadb_perf_str(); std::remove("sqlite.db");
 
     return 0;
 }
