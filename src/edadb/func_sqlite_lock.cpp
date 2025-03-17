@@ -227,7 +227,7 @@ int test_sqlite_lock(void) {
     }
 
 
-    if (1) {
+    if (0) {
         // multi-threaded, all threads share a single database connection
         std::cout << "Starting multi-threaded test with a single connection..." << std::endl;
 

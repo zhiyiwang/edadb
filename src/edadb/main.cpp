@@ -31,6 +31,7 @@ int main(void) {
 #endif
 
     test_sqlite_lock();
+    test_sqlite_stmt();
 
     return 0;
 }

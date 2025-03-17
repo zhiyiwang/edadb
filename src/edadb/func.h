@@ -8,6 +8,7 @@
 #define FUNC_H
 
 int test_sqlite_lock(void);
+int test_sqlite_stmt(void);
 
 
 #endif // FUNC_H
