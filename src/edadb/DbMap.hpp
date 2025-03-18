@@ -116,7 +116,8 @@ public: // insert many
             return false;
         }
 
-        const std::string sql = fmt::format(SqlStatement<T>::insertPlaceHolderStatement(), dbmap.table_name);
+        const std::string sql =
+            fmt::format(SqlStatement<T>::insertPlaceHolderStatement(), dbmap.table_name);
         #if DEBUG_SQLITE3_API
             std::cout << "DbMap::Inserter::prepare: " << sql << std::endl;
         #endif

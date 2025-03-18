@@ -34,6 +34,19 @@ void testTypeMetaDataPrinter() {
     std::cout << std::endl << std::endl;
 }
 
+void test_perf_int () {
+    test_edadb_perf_int(); std::remove("sqlite.db");
+    test_edadb_perf_int(); std::remove("sqlite.db");
+    test_edadb_perf_int(); std::remove("sqlite.db");
+    test_edadb_perf_int(); std::remove("sqlite.db");
+    test_edadb_perf_int(); std::remove("sqlite.db");
+
+    test_edadb_perf_str(); std::remove("sqlite.db");
+    test_edadb_perf_str(); std::remove("sqlite.db");
+    test_edadb_perf_str(); std::remove("sqlite.db");
+    test_edadb_perf_str(); std::remove("sqlite.db");
+    test_edadb_perf_str(); std::remove("sqlite.db");
+}
 
 void testSqlStatement() {
     IdbSite p1("Site1",100,110);
@@ -139,20 +152,8 @@ void testSqlite3() {
 int main() {
 //    testTypeMetaDataPrinter();
 //    testSqlStatement();
-//    testDbMap();
+    testDbMap();
 //    testSqlite3();
-
-    test_edadb_perf_int(); std::remove("sqlite.db");
-    test_edadb_perf_int(); std::remove("sqlite.db");
-    test_edadb_perf_int(); std::remove("sqlite.db");
-    test_edadb_perf_int(); std::remove("sqlite.db");
-    test_edadb_perf_int(); std::remove("sqlite.db");
-
-    test_edadb_perf_str(); std::remove("sqlite.db");
-    test_edadb_perf_str(); std::remove("sqlite.db");
-    test_edadb_perf_str(); std::remove("sqlite.db");
-    test_edadb_perf_str(); std::remove("sqlite.db");
-    test_edadb_perf_str(); std::remove("sqlite.db");
 
     return 0;
 }

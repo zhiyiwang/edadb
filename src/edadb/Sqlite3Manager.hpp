@@ -95,7 +95,6 @@ public: // statement
         return sqlite3_changes(db);
     }
 
-
     bool reset() {
         bool reseted = (sqlite3_reset(stmt) == SQLITE_OK);
         if (!reseted) {
