@@ -27,7 +27,7 @@ void initialize_db() {
 
 void process_database_write(int pidx) {
     sqlite3* db;
-    sqlite3_open_v2(DB_NAME, &db, SQLITE_OPEN_READWRITE, nullptr);
+    sqlite3_open_v2(DB_NAME, &db, SQLITE_OPEN_READWRITE, nullptr); // TODO: check return value? print message
 
     std::string insert_sql = "INSERT INTO test (value) VALUES ('Process_" + std::to_string(pidx) + "');";
     sqlite3_exec(db, "BEGIN IMMEDIATE;", 0, 0, 0); 
@@ -227,7 +227,7 @@ int test_sqlite_lock(void) {
     }
 
 
-    if (0) {
+    if (1) {
         // multi-threaded, all threads share a single database connection
         std::cout << "Starting multi-threaded test with a single connection..." << std::endl;
 
