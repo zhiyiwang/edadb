@@ -22,8 +22,8 @@ namespace edadb {
 template<typename T>
 class DbMap {
 public:
-    class Operator;
-    class Inserter;
+    class Operator; // db operator, base class
+    class Inserter; // insert to db 
     class Fetcher;
 
 public:
@@ -80,10 +80,12 @@ public:
 
 
 
+// TODO: real need a base class for operator? Only members 
+// TODO: delete base class
 template<typename T>
 class DbMap<T>::Operator {
 protected:
-    DbMap          &dbmap;
+    DbMap          &dbmap; // TODO: change to pointer
     Sqlite3Manager &manager;
     uint32_t index{0};
 
@@ -252,7 +254,8 @@ private:
 public:
     /**
      * @brief Operator to fetch each element in obj
-     * @param elem The element to fetch.
+     *   invoked by boost::fusion::for_each @ fetchValues
+     * @param elem The element to fetch from column in db row.
      */
     template <typename ElemType>
     void operator()(ElemType &elem) {

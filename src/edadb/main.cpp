@@ -77,6 +77,8 @@ int testDbMap() {
     std::cout << "[DbMap Insert]" << std::endl;
     IdbSite p1("Site1",100,110), p2("Site2",200,210), p3("Site3",300,310), p4("Site4",400,410), p5("Site5",500,510);
     
+    
+
     edadb::DbMap<IdbSite>::Inserter inserter(dbm);
     inserter.prepare();
     inserter.insert(&p1);
