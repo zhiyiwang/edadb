@@ -110,6 +110,8 @@ int main() {
   edadb::DbMapAll<IdbPort> db_Port;
 
   db_Port.connectToDb("sqlite.db");
+  std::cout<<"this is edadbTest8.cpp\n";
+  // db_Port.connectToDb("db=sqlite.db foreign_keys=1");
   db_LayerShape.createTable("layer_shape_table");
   db_Via.createTable("via_table");
   db_Port.createTableAll("port_table");
@@ -145,19 +147,20 @@ int main() {
   for(auto i : via_vec) i.print();
 
   std::cout<<"\n-----------delete records-------------\n";
-  db_Port.deleteFromDbAll(port1);
+  // db_Port.deleteFromDbAll(port1);
+  db_Port.deleteFromDb(port1);
 
-  via_vec.clear();
-  db_Via.selectFromDb(&via_vec);
-  for(auto i : via_vec) i.print();
+  // via_vec.clear();
+  // db_Via.selectFromDb(&via_vec);
+  // for(auto i : via_vec) i.print();
 
-  std::cout<<"\n-----------select test-------------\n";
-  port_results.clear();
-  db_Port.selectFromDbAll(&port_results);
+  // std::cout<<"\n-----------select test-------------\n";
+  // port_results.clear();
+  // db_Port.selectFromDbAll(&port_results);
 
-  for (auto& port : port_results) {
-    port.print();
-  }
+  // for (auto& port : port_results) {
+  //   port.print();
+  // }
 
   return 0;
 }

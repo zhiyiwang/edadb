@@ -676,7 +676,7 @@ template<typename T, typename Q>
             // 获取 obj2 的列和值
             const auto vecs_Q = TypeMetaData<Q>::tuple_type_pair();
             const auto vals_Q = TypeMetaData<Q>::getVal(obj2);
-            std::string str = "INSERT OR IGNORE INTO \"{}\" ("; // INSERT INTO
+            std::string str = "INSERT INTO \"{}\" ("; // 改回来 INSERT INTO
             /*std::stringstream ss;
             ss << "INSERT INTO \"{}\" (";*/
             str += TypeMetaData<T>::class_name() + "_" + first_pair_T.second + ", ";

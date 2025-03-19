@@ -1,0 +1,12 @@
+[
+{
+  "directory": "/home/ran/Codes/edadb/build",
+  "command": "/usr/bin/gcc -DBUN_SQLITE -DFMT_HEADER_ONLY -I/home/ran/Codes/edadb/include -I/home/ran/Codes/edadb/include/third_party -I/home/ran/Codes/edadb/include/third_party/hdr -I/home/ran/Codes/edadb/include/third_party/json -I/home/ran/Codes/edadb/include/third_party/msgpack -I/home/ran/Codes/edadb/include/third_party/rapidjson -I/home/ran/Codes/edadb/include/third_party/spdlog -I/home/ran/Codes/edadb/include/third_party/sqlite -I/home/ran/Codes/edadb/include/third_party/unqlite -g -o CMakeFiles/edadb.dir/src/sqlite/sqlite3.c.o -c /home/ran/Codes/edadb/src/sqlite/sqlite3.c",
+  "file": "/home/ran/Codes/edadb/src/sqlite/sqlite3.c"
+},
+{
+  "directory": "/home/ran/Codes/edadb/build",
+  "command": "/usr/bin/g++ -DBUN_SQLITE -DFMT_HEADER_ONLY -I/home/ran/Codes/edadb/include -I/home/ran/Codes/edadb/include/third_party -I/home/ran/Codes/edadb/include/third_party/hdr -I/home/ran/Codes/edadb/include/third_party/json -I/home/ran/Codes/edadb/include/third_party/msgpack -I/home/ran/Codes/edadb/include/third_party/rapidjson -I/home/ran/Codes/edadb/include/third_party/spdlog -I/home/ran/Codes/edadb/include/third_party/sqlite -I/home/ran/Codes/edadb/include/third_party/unqlite  -Wall -Wno-unused-variable -Wno-pessimizing-move -Wno-reorder -g -O0 -g -std=c++20 -std=gnu++14 -o CMakeFiles/edadb.dir/src/edadbTest8.cpp.o -c /home/ran/Codes/edadb/src/edadbTest8.cpp",
+  "file": "/home/ran/Codes/edadb/src/edadbTest8.cpp"
+}
+]
