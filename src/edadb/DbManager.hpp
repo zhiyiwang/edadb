@@ -165,19 +165,64 @@ public: // sqlite3 statement operation
     }
 
 
-public: // insert
-    bool bindColumn(DbStatement &dbstmt, int index, int *value) {
+public: // insert column 
+    /**
+     * @brief bind to 32B integer type, default value is 0
+     *   the size of T should be less than or equal to int: enable_if 
+     *   bool, (unsigned) char, (unsigned) short, (unsigned) int
+     * @return true if binded; otherwise, false.
+     */
+    template <typename T, typename std::enable_if<
+        std::is_integral<T>::value && (sizeof(T) <= sizeof(int)), int>::type = 0>
+    bool bindColumn(DbStatement &dbstmt, int index, T *value) {
         return (sqlite3_bind_int(dbstmt.stmt, index, *value) == SQLITE_OK);
     }
 
-    bool bindColumn(DbStatement &dbstmt, int index, double *value) {
+    /**
+     * @brief bind to 32B integer type, default value is 0
+     *   the size of T should be greater than int: enable_if
+     *   (unsigned) long, (unsigned) long long
+     * @return true if binded; otherwise, false.
+     */
+    template <typename T, typename std::enable_if<
+        std::is_integral<T>::value && (sizeof(T) > sizeof(int)), long long>::type = 0>
+    bool bindColumn(DbStatement &dbstmt, int index, T *value) {
+        return (sqlite3_bind_int64(dbstmt.stmt, index, *value) == SQLITE_OK);
+    }
+
+    /**
+     * @brief bind double type
+     * @return true if binded; otherwise, false.
+     */
+    template <typename T, typename std::enable_if<
+        std::is_floating_point<T>::value, double>::type = 0>
+    bool bindColumn(DbStatement &dbstmt, int index, T *value) {
         return (sqlite3_bind_double(dbstmt.stmt, index, *value) == SQLITE_OK);
     }
 
+    /**
+     * @brief bind string type
+     * @return true if binded; otherwise, false.
+     */
     bool bindColumn(DbStatement &dbstmt, int index, std::string *value) {
         return (sqlite3_bind_text(dbstmt.stmt, index, value->c_str(), -1, SQLITE_STATIC) == SQLITE_OK);
     }
+    bool bindColumn(DbStatement &dbstmt, int index, const char *value) {
+        return (sqlite3_bind_text(dbstmt.stmt, index, value, -1, SQLITE_STATIC) == SQLITE_OK);
+    }
 
+    /**
+     * @brief bind wstring type
+     * @return true if binded; otherwise, false.
+     */
+    bool bindColumn(DbStatement &dbstmt, int index, std::wstring *value) {
+        return (sqlite3_bind_text16(dbstmt.stmt, index, value->c_str(), -1, SQLITE_STATIC) == SQLITE_OK);
+    }
+    bool bindColumn(DbStatement &dbstmt, int index, const wchar_t *value) {
+        return (sqlite3_bind_text16(dbstmt.stmt, index, value, -1, SQLITE_STATIC) == SQLITE_OK);
+    }
+
+public: // insert 
     bool bindStep(DbStatement &dbstmt) {
         bool stepped = (sqlite3_step(dbstmt.stmt) == SQLITE_DONE);
         if (!stepped) {
@@ -203,7 +248,7 @@ public: // schema info
         return sqlite3_column_name(dbstmt.stmt, index);
     }
 
-public: // scan
+public: // fetch 
     /**
      * call sqlite3_step to get the next row.
      * Since return may not be SQLITE_ROW, we need to check the return value.
@@ -217,23 +262,73 @@ public: // scan
         return (sqlite3_step(dbstmt.stmt) == SQLITE_ROW);
     }
 
-    bool fetchColumn(DbStatement &dbstmt, int index, int *value) {
+public: // fetch column
+    /**
+     * @brief fetch from 32B integer type, default value is 0
+     *   the size of T should be less than or equal to int: enable_if
+     *   bool, (unsigned) char, (unsigned) short, (unsigned) int
+     * @return true if fetched; otherwise, false.
+     */
+    template <typename T, typename std::enable_if<
+        std::is_integral<T>::value && (sizeof(T) <= sizeof(int)), int>::type = 0>
+    bool fetchColumn(DbStatement &dbstmt, int index, T *value) {
         *value = sqlite3_column_int(dbstmt.stmt, index);
         return true;
     }
 
-    bool fetchColumn(DbStatement &dbstmt, int index, double *value) {
+    /**
+     * @brief fetch from 32B integer type, default value is 0
+     *   the size of T should be greater than int: enable_if
+     *   (unsigned) long, (unsigned) long long
+     * @return true if fetched; otherwise, false.
+     */
+    template <typename T, typename std::enable_if<
+        std::is_integral<T>::value && (sizeof(T) > sizeof(int)), long long>::type = 0>
+    bool fetchColumn(DbStatement &dbstmt, int index, T *value) {
+        *value = sqlite3_column_int64(dbstmt.stmt, index);
+        return true;
+    }
+
+    /**
+     * @brief fetch double type
+     * @return true if fetched; otherwise, false.
+     */
+    template <typename T, typename std::enable_if<
+        std::is_floating_point<T>::value, double>::type = 0>
+    bool fetchColumn(DbStatement &dbstmt, int index, T *value) {    
         *value = sqlite3_column_double(dbstmt.stmt, index);
         return true;
     }
 
+    /**
+     * @brief fetch string type
+     * @return true if fetched; otherwise, false.
+     */
     bool fetchColumn(DbStatement &dbstmt, int index, std::string *value) {
         uint32_t size = sqlite3_column_bytes(dbstmt.stmt, index);
         const char  *bin = (const char*)sqlite3_column_text(dbstmt.stmt, index);
         value->assign(bin, size);
         return true;
     }
-};
+    bool fetchColumn(DbStatement &dbstmt, int index, const char **value) {
+        *value = (const char*)sqlite3_column_text(dbstmt.stmt, index);
+        return true;
+    }
 
+    /**
+     * @brief fetch wstring type
+     * @return true if fetched; otherwise, false.
+     */
+    bool fetchColumn(DbStatement &dbstmt, int index, std::wstring *value) {
+        uint32_t size = sqlite3_column_bytes16(dbstmt.stmt, index);
+        const wchar_t  *bin = (const wchar_t*)sqlite3_column_text16(dbstmt.stmt, index);
+        value->assign(bin, size);
+        return true;
+    }
+    bool fetchColumn(DbStatement &dbstmt, int index, const wchar_t **value) {
+        *value = (const wchar_t*)sqlite3_column_text16(dbstmt.stmt, index);
+        return true;
+    }
+};
 
 } // namespace edadb
