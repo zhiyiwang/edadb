@@ -34,7 +34,7 @@ int test_edadb_perf_int(uint64_t recd_num = RECD_NUM, uint64_t query_num = QUERY
     dbm.createTable();
 
     auto start_insert = std::chrono::high_resolution_clock::now();
-    edadb::DbMap<PerfInt>::Inserter inserter(dbm);
+    edadb::DbMap<PerfInt>::Inserter inserter(&dbm);
     dbm.beginTransaction();
     inserter.prepare();
     for (uint64_t i = 0; i < recd_num; i++) {
@@ -53,7 +53,7 @@ int test_edadb_perf_int(uint64_t recd_num = RECD_NUM, uint64_t query_num = QUERY
     auto start_scan = std::chrono::high_resolution_clock::now();
     uint64_t cnt = 0, sum_id = 0, sum_int1 = 0, sum_int2 = 0, sum_int3 = 0;
     for (int i = 0; i < query_num; i++) {
-        edadb::DbMap<PerfInt>::Fetcher fetcher(dbm);
+        edadb::DbMap<PerfInt>::Fetcher fetcher(&dbm);
         fetcher.prepare();
     
         PerfInt got;

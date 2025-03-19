@@ -1,6 +1,6 @@
 /**
- * @file Sqlite3Manager.hpp
- * @brief Sqlite3Manager.hpp provides a way to manage the Sqlite3.
+ * @file DbManager.hpp
+ * @brief DbManager.hpp provides a way to manage the Sqlite3.
  *      This class is a child class of DatabaseManager.
  */
 
@@ -15,6 +15,12 @@
 
 namespace edadb {
 
+struct DbStatement {
+    sqlite3_stmt *stmt = nullptr;
+    char      *zErrMsg = nullptr;
+};
+
+
 template<class T>
 class Singleton : public boost::noncopyable {
 public:
@@ -25,15 +31,13 @@ public:
 }; 
 
 
-
-class Sqlite3Manager : public Singleton<Sqlite3Manager> {
+class DbManager : public Singleton<DbManager> {
 protected:
-    // connect to sqlite3 
-    std::string connect_param;
+    std::string connect_param; // database connection parameter
+    sqlite3     *db = nullptr; // database handler
 
-    sqlite3      *db   = nullptr;
     sqlite3_stmt *stmt = nullptr;
-    char         *zErrMsg = nullptr;
+    char      *zErrMsg = nullptr;
 
 public:
     static const uint32_t s_bind_column_begin_index  = 1;
@@ -41,8 +45,8 @@ public:
 
 
 public:
-    Sqlite3Manager(void) = default;
-    ~Sqlite3Manager() {
+    DbManager(void) = default;
+    ~DbManager() {
         close();
     }
 
@@ -79,7 +83,7 @@ public: // database
 public: // statement
     bool prepare(const std::string &sql) {
         #if DEBUG_SQLITE3_API
-            std::cout << "Sqlite3Manager::prepareSQL: " << sql << std::endl;
+            std::cout << "DbManager::prepareSQL: " << sql << std::endl;
         #endif
 
         bool prepared = (sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, 0) == SQLITE_OK);
@@ -117,10 +121,22 @@ public: // statement
 
 
 public: // insert
-    template <typename T>
-    bool bindValue(int index, const T &value) {
+#if 0
+    bool bindValue(int index, int *value) {
+        return (sqlite3_bind_int(stmt, index, *value) == SQLITE_OK);
+    }
+
+    bool bindValue(int index, double *value) {
+        return (sqlite3_bind_double(stmt, index, *value) == SQLITE_OK);
+    }
+
+    bool bindValue(int index, std::string *value) {
+        return (sqlite3_bind_text(stmt, index, value->c_str(), -1, SQLITE_STATIC) == SQLITE_OK);
+    }
+#endif 
+
+    bool bindValue(int index, DbTypes dbtype, void *value) {
         bool binded = false;
-        auto dbtype = CppTypeToDbType<T>::dbType;
         switch (dbtype) {
             case DbTypes::kInteger: {
                 int *bin = (int*)value;
@@ -178,16 +194,14 @@ public: // scan
      */
     bool fetchStep() {
         #if DEBUG_SQLITE3_SCAN
-            std::cout << "Sqlite3Manager::fetchStep" << std::endl;
+            std::cout << "DbManager::fetchStep" << std::endl;
         #endif
 
         return (sqlite3_step(stmt) == SQLITE_ROW);
     }
 
-    template <typename T>
-    bool fetchValue(int index, T &value) {
+    bool fetchValue(int index, DbTypes dbtype, void *value) {
         bool columned = false;
-        auto dbtype = CppTypeToDbType<T>::dbType;
         switch (dbtype) {
             case DbTypes::kInteger: {
                 *(int*)value = sqlite3_column_int(stmt, index);

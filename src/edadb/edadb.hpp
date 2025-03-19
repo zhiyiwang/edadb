@@ -47,6 +47,6 @@
 #include "CppTypeToDbType.hpp"
 #include "TypeMetaData.hpp"
 #include "SqlStatement.hpp"
-#include "Sqlite3Manager.hpp"
+#include "DbManager.hpp"
 #include "DbMap.hpp"
 

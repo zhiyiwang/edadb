@@ -79,7 +79,7 @@ int testDbMap() {
     
     
 
-    edadb::DbMap<IdbSite>::Inserter inserter(dbm);
+    edadb::DbMap<IdbSite>::Inserter inserter(&dbm);
     inserter.prepare();
     inserter.insert(&p1);
     inserter.insert(&p2);
@@ -91,7 +91,7 @@ int testDbMap() {
 
     // scan
     std::cout << "[DbMap Scan]" << std::endl;
-    edadb::DbMap<IdbSite>::Fetcher fetcher(dbm);
+    edadb::DbMap<IdbSite>::Fetcher fetcher(&dbm);
     fetcher.prepare();
 
     IdbSite got; 
