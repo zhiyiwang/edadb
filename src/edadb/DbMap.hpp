@@ -10,6 +10,7 @@
 #include <stdint.h>
 
 #include "SqlStatement.hpp"
+#include "DbStatement.h"
 #include "DbManager.hpp"
 
 namespace edadb {
@@ -24,6 +25,7 @@ class DbMap {
 public:
     class Inserter; // insert object to database
     class Fetcher;  // fetch object from database
+    // TODO: more operation: update, delete, etc.
 
 protected:
     std::string table_name;
@@ -38,8 +40,8 @@ public:
         return table_name;
     }
 
-    DbManager* getManager() {
-        return &manager;
+    DbManager& getManager() {
+        return manager;
     }
 
 public:
@@ -69,7 +71,8 @@ public:
             return false;
         }
 
-        const std::string sql = fmt::format(SqlStatement<T>::createTableStatement(), table_name);
+        const std::string sql =
+            fmt::format(SqlStatement<T>::createTableStatement(), table_name);
         #if DEBUG_SQLITE3_API
             std::cout << "Create Table SQL: " << std::endl;
             std::cout << sql << std::endl;
@@ -92,13 +95,14 @@ public:
 template<typename T>
 class DbMap<T>::Inserter {
 protected:
-    DbMap     *dbmap = nullptr;
-    DbManager *manager = nullptr;
-    uint32_t   index = 0;
+    DbMap     &dbmap;
+    DbManager &manager;
 
+    DbStatement dbstmt;
+    uint32_t index = 0;
 
 public:
-    Inserter(DbMap *m) : dbmap(m), manager(m->getManager()) { resetIndex(); }
+    Inserter(DbMap &m) : dbmap(m), manager(m.getManager()) { resetIndex(); }
 
 public: // insert one 
     bool insertOne(T* obj) {
@@ -107,33 +111,33 @@ public: // insert one
 
 public: // insert many
     bool prepare() {
-        if (!dbmap->inited()) {
+        if (!dbmap.inited()) {
             std::cerr << "DbMap::Inserter::prepare: not inited" << std::endl;
             return false;
         }
 
         const std::string sql =
-            fmt::format(SqlStatement<T>::insertPlaceHolderStatement(), dbmap->getTableName());
+            fmt::format(SqlStatement<T>::insertPlaceHolderStatement(), dbmap.getTableName());
         #if DEBUG_SQLITE3_API
             std::cout << "DbMap::Inserter::prepare: " << sql << std::endl;
         #endif
 
-        return manager->prepare(sql);
+        return manager.prepare(dbstmt, sql);
     }
 
     bool insert(T* obj) {
-        if (!dbmap->inited()) {
+        if (!dbmap.inited()) {
             std::cerr << "DbMap::Inserter::insert: not inited" << std::endl;
             return false;
         }
 
-        bindValues(obj);
+        bindObject(obj);
 
-        if (!manager->bindStep()) {
+        if (!manager.bindStep(dbstmt)) {
             return false;
         }
 
-        if (!manager->reset()) {
+        if (!manager.reset(dbstmt)) {
             return false;
         }
 
@@ -141,25 +145,25 @@ public: // insert many
     }
 
     bool finalize() {
-        if (!dbmap->inited()) {
+        if (!dbmap.inited()) {
             std::cerr << "DbMap::insertFinalize: not inited" << std::endl;
             return false;
         }
 
-        return manager->finalize();
+        return manager.finalize(dbstmt);
     }
 
 private:
     /** reset index to begin to bind */      
     void resetIndex() {
-        index = manager->s_bind_column_begin_index;
+        index = manager.s_bind_column_begin_index;
     }
 
     /**
-     * @brief insert the object to the database.
+     * @brief bind the object to the database.
      * @param obj The object to bind.
      */
-    void bindValues(T* obj) {
+    void bindObject(T* obj) {
         // reset index to begin to bind 
         resetIndex();
 
@@ -171,15 +175,11 @@ private:
 public:
     /**
      * @brief Operator to bind each element in obj 
-     * @param elem The element to bind.
+     * @param elem The element pointer to bind, which is defined as a cpp type pointer.
      */
     template <typename ElemType>
     void operator()(const ElemType &elem) {
-#if 0
-        manager->bindValue(index++, elem);
-#endif 
-        auto dbtype = CppTypeToDbType<ElemType>::dbType;
-        manager->bindValue(index++, dbtype, elem);
+        manager.bindColumn(dbstmt, index++, elem);
     }
 };
 
@@ -189,59 +189,62 @@ public:
 template<typename T>
 class DbMap<T>::Fetcher {
 protected:
-    DbMap     *dbmap = nullptr;
-    DbManager *manager = nullptr;
-    uint32_t   index = 0;
+    DbMap     &dbmap;
+    DbManager &manager;
+
+    DbStatement dbstmt;
+    uint32_t index = 0;
 
 public:
-    Fetcher(DbMap *m) : dbmap(m), manager(m->getManager()) { resetIndex(); }
+    Fetcher(DbMap &m) : dbmap(m), manager(m.getManager()) { resetIndex(); }
 
 public:
     bool prepare() {
-        if (!dbmap->inited()) {
+        if (!dbmap.inited()) {
             std::cerr << "DbMap::Fetcher::prepare: not inited" << std::endl;
             return false;
         }
 
-        const std::string sql = fmt::format(SqlStatement<T>::scanStatement(), dbmap->table_name);
-        return manager->prepare(sql);
+        const std::string sql =
+            fmt::format(SqlStatement<T>::scanStatement(), dbmap.getTableName());
+        return manager.prepare(dbstmt, sql);
     }
 
     bool fetch(T* obj) {
-        if (!dbmap->inited()) {
+        if (!dbmap.inited()) {
             std::cerr << "DbMap::Inserter::insert: not inited" << std::endl;
             return false;
         }
 
-        if (!manager->fetchStep()) {
+        if (!manager.fetchStep(dbstmt)) {
             return false; // no more row
         }
 
-        fetchValues(obj);
+        fetchObject(obj);
         return true;
     }
 
     bool finalize() {
-        if (!dbmap->inited()) {
+        if (!dbmap.inited()) {
             std::cerr << "DbMap::scanFinalize: not inited" << std::endl;
             return false;
         }
 
-        return manager->finalize();
+        return manager.finalize(dbstmt);
     }
 
 
 private:
     /** reset index to begin to fetch */
     void resetIndex() {
-        index = manager->s_fetch_column_begin_index;
+        index = manager.s_fetch_column_begin_index;
     }
 
     /**
      * @brief fetch the object from the database.
      * @param obj The object to fetch.
      */
-    void fetchValues(T* obj) {
+    void fetchObject(T* obj) {
         // reset index to begin to fetch
         resetIndex();
 
@@ -259,7 +262,7 @@ public:
     template <typename ElemType>
     void operator()(ElemType &elem) {
         auto dbtype = CppTypeToDbType<ElemType>::dbType;
-        manager->fetchValue(index++, dbtype, elem);
+        manager.fetchColumn(dbstmt, index++, elem);
     }
 };
 

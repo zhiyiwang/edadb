@@ -160,7 +160,7 @@ BOOST_FUSION_ADAPT_STRUCT( myclass, BOOST_PP_TUPLE_REM_CTOR(CLASS_ELEMS_TUP) ) \
 namespace edadb{\
 template<>\
 struct CppTypeToDbType<myclass>{\
-    static const DbTypes ret = DbTypes::kComposite;\
+    static const DbTypes ret = DbTypes::Composite;\
 };\
 template<> struct IsComposite<myclass> : boost::mpl::bool_<true> {};\
 template<> struct TypeMetaData<myclass>{\

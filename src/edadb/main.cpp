@@ -1,5 +1,5 @@
 #include "edadb.hpp"
-#include "Test.hpp"
+//#include "Test.hpp"
 
 
 /// @class IdbSite example 
@@ -34,19 +34,19 @@ void testTypeMetaDataPrinter() {
     std::cout << std::endl << std::endl;
 }
 
-void test_perf_int () {
-    test_edadb_perf_int(); std::remove("sqlite.db");
-    test_edadb_perf_int(); std::remove("sqlite.db");
-    test_edadb_perf_int(); std::remove("sqlite.db");
-    test_edadb_perf_int(); std::remove("sqlite.db");
-    test_edadb_perf_int(); std::remove("sqlite.db");
-
-    test_edadb_perf_str(); std::remove("sqlite.db");
-    test_edadb_perf_str(); std::remove("sqlite.db");
-    test_edadb_perf_str(); std::remove("sqlite.db");
-    test_edadb_perf_str(); std::remove("sqlite.db");
-    test_edadb_perf_str(); std::remove("sqlite.db");
-}
+//void test_perf_int () {
+//    test_edadb_perf_int(); std::remove("sqlite.db");
+//    test_edadb_perf_int(); std::remove("sqlite.db");
+//    test_edadb_perf_int(); std::remove("sqlite.db");
+//    test_edadb_perf_int(); std::remove("sqlite.db");
+//    test_edadb_perf_int(); std::remove("sqlite.db");
+//
+//    test_edadb_perf_str(); std::remove("sqlite.db");
+//    test_edadb_perf_str(); std::remove("sqlite.db");
+//    test_edadb_perf_str(); std::remove("sqlite.db");
+//    test_edadb_perf_str(); std::remove("sqlite.db");
+//    test_edadb_perf_str(); std::remove("sqlite.db");
+//}
 
 void testSqlStatement() {
     IdbSite p1("Site1",100,110);
@@ -79,7 +79,7 @@ int testDbMap() {
     
     
 
-    edadb::DbMap<IdbSite>::Inserter inserter(&dbm);
+    edadb::DbMap<IdbSite>::Inserter inserter(dbm);
     inserter.prepare();
     inserter.insert(&p1);
     inserter.insert(&p2);
@@ -91,7 +91,7 @@ int testDbMap() {
 
     // scan
     std::cout << "[DbMap Scan]" << std::endl;
-    edadb::DbMap<IdbSite>::Fetcher fetcher(&dbm);
+    edadb::DbMap<IdbSite>::Fetcher fetcher(dbm);
     fetcher.prepare();
 
     IdbSite got; 
