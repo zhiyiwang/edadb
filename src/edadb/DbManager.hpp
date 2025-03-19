@@ -172,9 +172,9 @@ public: // insert column
      *   bool, (unsigned) char, (unsigned) short, (unsigned) int
      * @return true if binded; otherwise, false.
      */
-    template <typename T, typename std::enable_if<
-        std::is_integral<T>::value && (sizeof(T) <= sizeof(int)), int>::type = 0>
-    bool bindColumn(DbStatement &dbstmt, int index, T *value) {
+    template <typename T>
+    std::enable_if_t<std::is_integral_v<T> && (sizeof(T) <= sizeof(int)), bool>
+        bindColumn(DbStatement &dbstmt, int index, T *value) {
         return (sqlite3_bind_int(dbstmt.stmt, index, *value) == SQLITE_OK);
     }
 
@@ -184,9 +184,9 @@ public: // insert column
      *   (unsigned) long, (unsigned) long long
      * @return true if binded; otherwise, false.
      */
-    template <typename T, typename std::enable_if<
-        std::is_integral<T>::value && (sizeof(T) > sizeof(int)), long long>::type = 0>
-    bool bindColumn(DbStatement &dbstmt, int index, T *value) {
+    template <typename T>
+    std::enable_if_t<std::is_integral_v<T> && (sizeof(T) > sizeof(int)), bool>
+        bindColumn(DbStatement &dbstmt, int index, T *value) {
         return (sqlite3_bind_int64(dbstmt.stmt, index, *value) == SQLITE_OK);
     }
 
@@ -194,9 +194,9 @@ public: // insert column
      * @brief bind double type
      * @return true if binded; otherwise, false.
      */
-    template <typename T, typename std::enable_if<
-        std::is_floating_point<T>::value, double>::type = 0>
-    bool bindColumn(DbStatement &dbstmt, int index, T *value) {
+    template <typename T>
+    std::enable_if_t<std::is_floating_point_v<T>, bool>
+        bindColumn(DbStatement &dbstmt, int index, T *value) {
         return (sqlite3_bind_double(dbstmt.stmt, index, *value) == SQLITE_OK);
     }
 
@@ -269,9 +269,9 @@ public: // fetch column
      *   bool, (unsigned) char, (unsigned) short, (unsigned) int
      * @return true if fetched; otherwise, false.
      */
-    template <typename T, typename std::enable_if<
-        std::is_integral<T>::value && (sizeof(T) <= sizeof(int)), int>::type = 0>
-    bool fetchColumn(DbStatement &dbstmt, int index, T *value) {
+    template <typename T>
+    std::enable_if_t<std::is_integral_v<T> && (sizeof(T) <= sizeof(int)), bool>
+        fetchColumn(DbStatement &dbstmt, int index, T *value) {
         *value = sqlite3_column_int(dbstmt.stmt, index);
         return true;
     }
@@ -282,9 +282,9 @@ public: // fetch column
      *   (unsigned) long, (unsigned) long long
      * @return true if fetched; otherwise, false.
      */
-    template <typename T, typename std::enable_if<
-        std::is_integral<T>::value && (sizeof(T) > sizeof(int)), long long>::type = 0>
-    bool fetchColumn(DbStatement &dbstmt, int index, T *value) {
+    template <typename T>
+    std::enable_if_t<std::is_integral_v<T> && (sizeof(T) > sizeof(int)), bool>
+        fetchColumn(DbStatement &dbstmt, int index, T *value) {
         *value = sqlite3_column_int64(dbstmt.stmt, index);
         return true;
     }
@@ -293,9 +293,9 @@ public: // fetch column
      * @brief fetch double type
      * @return true if fetched; otherwise, false.
      */
-    template <typename T, typename std::enable_if<
-        std::is_floating_point<T>::value, double>::type = 0>
-    bool fetchColumn(DbStatement &dbstmt, int index, T *value) {    
+    template <typename T>
+    std::enable_if_t<std::is_floating_point<T>::value, bool>
+        fetchColumn(DbStatement &dbstmt, int index, T *value) {
         *value = sqlite3_column_double(dbstmt.stmt, index);
         return true;
     }

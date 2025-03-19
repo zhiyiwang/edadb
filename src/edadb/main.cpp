@@ -7,7 +7,7 @@ class IdbSite {
 public:
     std::string name;
     int width;
-    int height;
+    double height;
     int not_saved;
     
     IdbSite() : name("Default"), width(123), height(456), not_saved(789) {}
