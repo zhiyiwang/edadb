@@ -22,5 +22,14 @@ struct DbStatement {
 public:
     DbStatement () = default;
     ~DbStatement() = default;
+
+public:
+    bool stmtIsPrepared() {
+        return (stmt != nullptr);
+    }
+
+    bool stmtIsNull() {
+        return (stmt == nullptr);
+    }
 };
 

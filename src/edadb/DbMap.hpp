@@ -25,7 +25,10 @@ class DbMap {
 public:
     class Inserter; // insert object to database
     class Fetcher;  // fetch object from database
-    // TODO: more operation: update, delete, etc.
+    class Lookuper; // lookup object from database
+    class Updater;  // update object to database
+    class Deleter;  // delete object from database
+    
 
 protected:
     std::string table_name;
@@ -103,6 +106,10 @@ protected:
 
 public:
     Inserter(DbMap &m) : dbmap(m), manager(m.getManager()) { resetIndex(); }
+
+    DbManager& getManager() {
+        return manager;
+    }
 
 public: // insert one 
     bool insertOne(T* obj) {
@@ -198,6 +205,10 @@ protected:
 public:
     Fetcher(DbMap &m) : dbmap(m), manager(m.getManager()) { resetIndex(); }
 
+    DbManager& getManager() {
+        return manager;
+    }
+
 public:
     bool prepare() {
         if (!dbmap.inited()) {
@@ -265,6 +276,64 @@ public:
         manager.fetchColumn(dbstmt, index++, elem);
     }
 };
+
+
+
+// delete object from database
+template<typename T>
+class DbMap<T>::Deleter {
+protected:
+    DbMap     &dbmap;
+    DbManager &manager;
+
+public:
+    Deleter(DbMap &m) : dbmap(m), manager(m.getManager()) {}
+
+    DbManager& getManager() {
+        return manager;
+    }
+
+public:
+    bool deleteByPrimaryKeys(T* obj) {
+        if (!dbmap.inited()) {
+            std::cerr << "DbMap::Deleter::deleteOne: not inited" << std::endl;
+            return false;
+        }
+
+        const std::string sql =
+            fmt::format(SqlStatement<T>::deleteStatement(obj), dbmap.getTableName());
+        return manager.exec(sql);
+    }
+}; // class Deleter
+
+
+
+// update object to database
+template<typename T>
+class DbMap<T>::Updater {
+protected:
+    DbMap     &dbmap;
+    DbManager &manager;
+
+public:
+    Updater(DbMap &m) : dbmap(m), manager(m.getManager()) {}
+
+    DbManager& getManager() {
+        return manager;
+    }
+
+public:
+    bool update(T* org_obj, T* new_obj) {
+        if (!dbmap.inited()) {
+            std::cerr << "DbMap::Updater::update: not inited" << std::endl;
+            return false;
+        }
+
+        const std::string sql =
+            fmt::format(SqlStatement<T>::updateStatement(org_obj, new_obj), dbmap.getTableName());
+        return manager.exec(sql);
+    }
+}; // class Updater
 
 
 

@@ -49,16 +49,9 @@ void testTypeMetaDataPrinter() {
 //}
 
 void testSqlStatement() {
-    IdbSite p1("Site1",100,110);
-    IdbSite p2("Site2",200,210);
+    IdbSite p1("Site1",100,110), p2("Site2",200,210);
     edadb::SqlStatement<IdbSite> sql_stmt;
-    std::cout << "[sqlstatement debug] " << std::endl;
-    std::cout << "Create Table SQL: " << sql_stmt.createTableStatement() << std::endl;
-    std::cout << "Insert Place Holder SQL: " << sql_stmt.insertPlaceHolderStatement() << std::endl;
-    std::cout << "Insert p1 SQL: " << sql_stmt.insertStatement (&p1) << std::endl;
-    std::cout << "Insert p2 SQL: " << sql_stmt.insertStatement (&p2) << std::endl;
-    std::cout << "Scan SQL: " << sql_stmt.scanStatement() << std::endl;
-    std::cout << std::endl << std::endl;
+    sql_stmt.print(&p1, &p2);
 }
     
 
@@ -104,6 +97,40 @@ int testDbMap() {
 
     fetcher.finalize();
     std::cout << std::endl << std::endl;
+
+    // update 
+    std::cout << "[DbMap Update]" << std::endl;
+    IdbSite p1_new("Site1_new",1000,1100), p2_new("Site2_new",2000,2100);
+    edadb::DbMap<IdbSite>::Updater updater(dbm);
+    updater.update(&p1, &p1_new);
+    updater.update(&p2, &p2_new);
+
+    // scan
+    fetcher.prepare();
+    cnt = 0;
+    while (got_flag = fetcher.fetch(&got)) {
+        std::cout << "IdbSite [" << cnt++ << "] :  ";
+        got.print();
+    }
+    fetcher.finalize();
+    std::cout << std::endl << std::endl;
+
+    // delete
+    std::cout << "[DbMap Delete]" << std::endl;
+    edadb::DbMap<IdbSite>::Deleter deleter(dbm);
+    deleter.deleteByPrimaryKeys(&p1_new);
+    deleter.deleteByPrimaryKeys(&p2_new);
+
+    // scan
+    fetcher.prepare();
+    cnt = 0;
+    while (got_flag = fetcher.fetch(&got)) {
+        std::cout << "IdbSite [" << cnt++ << "] :  ";
+        got.print();
+    }
+    fetcher.finalize();
+    std::cout << std::endl << std::endl;
+
 
     return 0;
 }
@@ -153,7 +180,7 @@ void testSqlite3() {
 
 int main() {
 //    testTypeMetaDataPrinter();
-//    testSqlStatement();
+    testSqlStatement();
     testDbMap();
 //    testSqlite3();
 

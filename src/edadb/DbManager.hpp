@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <type_traits>
 #include <iostream>
 #include <string>
 #include <stdint.h>
@@ -40,10 +41,6 @@ class DbManager : public Singleton<DbManager> {
 protected:
     std::string connect_param; // database connection parameter
     sqlite3     *db = nullptr; // database handler
-
-//    // TODO: move to DB operation class 
-//    sqlite3_stmt *stmt = nullptr;
-//    char      *zErrMsg = nullptr;
 
 public:
     static const uint32_t s_bind_column_begin_index  = 1; // sqlite3 bind column index starts from 1
@@ -167,9 +164,10 @@ public: // sqlite3 statement operation
 
 public: // insert column 
     /**
-     * @brief bind to 32B integer type, default value is 0
-     *   the size of T should be less than or equal to int: enable_if 
-     *   bool, (unsigned) char, (unsigned) short, (unsigned) int
+     * @brief bind to 32B integer type
+     *   the size of T should be less than or equal to int
+     *      bool, (unsigned) char, (unsigned) short, (unsigned) int
+     *   use enable_if_t for SFINAE（Substitution Failure Is Not An Error)
      * @return true if binded; otherwise, false.
      */
     template <typename T>
@@ -179,9 +177,9 @@ public: // insert column
     }
 
     /**
-     * @brief bind to 32B integer type, default value is 0
+     * @brief bind to 64B integer type
      *   the size of T should be greater than int: enable_if
-     *   (unsigned) long, (unsigned) long long
+     *      (unsigned) long, (unsigned) long long
      * @return true if binded; otherwise, false.
      */
     template <typename T>
@@ -192,6 +190,7 @@ public: // insert column
 
     /**
      * @brief bind double type
+     *     float, double, long double
      * @return true if binded; otherwise, false.
      */
     template <typename T>
@@ -264,9 +263,9 @@ public: // fetch
 
 public: // fetch column
     /**
-     * @brief fetch from 32B integer type, default value is 0
+     * @brief fetch from 32B integer type
      *   the size of T should be less than or equal to int: enable_if
-     *   bool, (unsigned) char, (unsigned) short, (unsigned) int
+     *      bool, (unsigned) char, (unsigned) short, (unsigned) int
      * @return true if fetched; otherwise, false.
      */
     template <typename T>
@@ -277,7 +276,7 @@ public: // fetch column
     }
 
     /**
-     * @brief fetch from 32B integer type, default value is 0
+     * @brief fetch from 64B integer type
      *   the size of T should be greater than int: enable_if
      *   (unsigned) long, (unsigned) long long
      * @return true if fetched; otherwise, false.
@@ -291,6 +290,7 @@ public: // fetch column
 
     /**
      * @brief fetch double type
+     *  float, double, long double
      * @return true if fetched; otherwise, false.
      */
     template <typename T>
