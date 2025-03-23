@@ -77,6 +77,17 @@ public:
         return manager.exec(sql);
     }
 
+    bool dropTable() {
+        if (!inited()) {
+            std::cerr << "DbMap::dropTable: not inited" << std::endl;
+            return false;
+        }
+
+        const std::string sql = fmt::format("DROP TABLE IF EXISTS \"{}\";", table_name);
+        return manager.exec(sql);
+    }
+
+public:
     bool beginTransaction() {
         return manager.exec("BEGIN TRANSACTION;");
     }
