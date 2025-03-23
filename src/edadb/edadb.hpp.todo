@@ -85,38 +85,6 @@ public:
 //    }
 
    
-//    std::string deleteRowStr(T *obj){
-//        const auto vecs = TypeMetaData<T>::tuple_type_pair();
-//        const auto vals = TypeMetaData<T>::getVal(obj);
-//        auto &first_pair = boost::fusion::at_c<0>(vecs);
-//        std::stringstream ss;
-//        ss << "DELETE FROM \"{}\" WHERE " +first_pair.second + 
-//        " = " + firstColumnVal(*(boost::fusion::at_c<0>(vals))) + ";";
-//        return ss.str();
-//    }
-//
-//
-//    std::string updateRowStr(T *obj) {
-//        const auto vecs = TypeMetaData<T>::tuple_type_pair();
-//        const auto vals = TypeMetaData<T>::getVal(obj);
-//        std::stringstream ss;
-//        ss << "UPDATE \"{}\" SET ";
-//        std::vector<std::string>v1,v2;
-//        boost::fusion::for_each(vecs, SqlString<T>::UpdateRow(v1));
-//        boost::fusion::for_each(vals, SqlString<T>::UpdateRowVal(v2));
-//        for(unsigned long i = 0;i<v1.size();i++){
-//            ss << v1[i] + v2[i];
-//        }
-//        auto &first_pair = boost::fusion::at_c<0>(vecs);
-//        ss <<  " WHERE "+ first_pair.second + " = " + firstColumnVal(*(boost::fusion::at_c<0>(vals))) + ";"; //如果不是std::string则隐式转换
-//        return ss.str();
-//    }
-
-    static std::string const& selectRowStr() {
-        static const std::string sql = "SELECT * FROM \"{}\" ";
-        return sql;
-    }
-
     static std::string const& selectRowStrPK(std::string pkVal) {
         static const auto vecs = TypeMetaData<T>::tuple_type_pair();
         auto &first_pair = boost::fusion::at_c<0>(vecs);

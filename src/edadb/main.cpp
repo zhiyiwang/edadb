@@ -85,7 +85,7 @@ int testDbMap() {
     // scan
     std::cout << "[DbMap Scan]" << std::endl;
     edadb::DbMap<IdbSite>::Fetcher fetcher(dbm);
-    fetcher.prepare();
+    fetcher.prepare2Scan();
 
     IdbSite got; 
     bool got_flag = false;
@@ -106,7 +106,7 @@ int testDbMap() {
     updater.update(&p2, &p2_new);
 
     // scan
-    fetcher.prepare();
+    fetcher.prepare2Scan();
     cnt = 0;
     while (got_flag = fetcher.fetch(&got)) {
         std::cout << "IdbSite [" << cnt++ << "] :  ";
@@ -122,7 +122,7 @@ int testDbMap() {
     deleter.deleteByPrimaryKeys(&p2_new);
 
     // scan
-    fetcher.prepare();
+    fetcher.prepare2Scan();
     cnt = 0;
     while (got_flag = fetcher.fetch(&got)) {
         std::cout << "IdbSite [" << cnt++ << "] :  ";
@@ -130,6 +130,19 @@ int testDbMap() {
     }
     fetcher.finalize();
     std::cout << std::endl << std::endl;
+
+    // lookup
+    std::cout << "[DbMap Lookup]" << std::endl;
+    IdbSite lookup_idsite("Site3",0,0);
+    fetcher.prepare2Lookup(&lookup_idsite);
+    got_flag = fetcher.fetch(&got);
+    if (got_flag) {
+        std::cout << "IdbSite :  ";
+        got.print();
+    } else {
+        std::cout << "IdbSite not found" << std::endl;
+    }
+    fetcher.finalize();
 
 
     return 0;

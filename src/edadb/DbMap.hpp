@@ -24,8 +24,7 @@ template<typename T>
 class DbMap {
 public:
     class Inserter; // insert object to database
-    class Fetcher;  // fetch object from database
-    class Lookuper; // lookup object from database
+    class Fetcher;  // fetch  object from database
     class Updater;  // update object to database
     class Deleter;  // delete object from database
     
@@ -39,13 +38,8 @@ public:
     ~DbMap() = default;
 
 public:
-    const std::string& getTableName() {
-        return table_name;
-    }
-
-    DbManager& getManager() {
-        return manager;
-    }
+    const std::string& getTableName() { return table_name; }
+    DbManager&         getManager  () { return manager   ; }
 
 public:
     bool init(const std::string& c, const std::string& t) {
@@ -210,7 +204,7 @@ public:
     }
 
 public:
-    bool prepare() {
+    bool prepare2Scan() {
         if (!dbmap.inited()) {
             std::cerr << "DbMap::Fetcher::prepare: not inited" << std::endl;
             return false;
@@ -220,6 +214,19 @@ public:
             fmt::format(SqlStatement<T>::scanStatement(), dbmap.getTableName());
         return manager.prepare(dbstmt, sql);
     }
+
+
+    bool prepare2Lookup(T* obj) {
+        if (!dbmap.inited()) {
+            std::cerr << "DbMap::Fetcher::prepare: not inited" << std::endl;
+            return false;
+        }
+
+        const std::string sql =
+            fmt::format(SqlStatement<T>::lookupStatement(obj), dbmap.getTableName());
+        return manager.prepare(dbstmt, sql);
+    }
+
 
     bool fetch(T* obj) {
         if (!dbmap.inited()) {

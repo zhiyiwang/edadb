@@ -32,6 +32,7 @@ public:
     }
 }; 
 
+
 /**
  * @class DbManager
  * @brief This class manages the Sqlite3 database.
@@ -108,6 +109,7 @@ public: // database operation
         return closed;
     }
 
+
 public: // sqlite3 statement operation 
     /**
      * @brief Prepare the SQL statement
@@ -131,6 +133,7 @@ public: // sqlite3 statement operation
         return prepared;
     }
 
+
     /**
      * @brief check the number of rows changed by the last statement.
      * @return The number of rows changed.
@@ -139,6 +142,10 @@ public: // sqlite3 statement operation
         return sqlite3_changes(db);
     }
 
+    /**
+     * @brief reset the SQL statement
+     * @return true if reseted; otherwise, false.
+     */
     bool reset(DbStatement &dbstmt) {
         bool reseted = (sqlite3_reset(dbstmt.stmt) == SQLITE_OK);
         if (!reseted) {
@@ -150,6 +157,10 @@ public: // sqlite3 statement operation
         return reseted;
     }
 
+    /**
+     * @brief finalize the SQL statement
+     * @return true if finalized; otherwise, false.
+     */
     bool finalize(DbStatement &dbstmt) {
         bool finalized = (sqlite3_finalize(dbstmt.stmt) == SQLITE_OK);
         if (!finalized) {
@@ -158,6 +169,8 @@ public: // sqlite3 statement operation
             dbstmt.zErrMsg = sqlite3_errmsg(db);
             std::cerr << "Sqlite3 Error: " << dbstmt.zErrMsg << std::endl;
         }
+
+        dbstmt.stmt = nullptr;
         return finalized;
     }
 
@@ -221,7 +234,12 @@ public: // insert column
         return (sqlite3_bind_text16(dbstmt.stmt, index, value, -1, SQLITE_STATIC) == SQLITE_OK);
     }
 
-public: // insert 
+
+    /**
+     * @brief bind the column and execute the SQL statement.
+     * @param dbstmt The sqlite3 statement
+     * @return true if inserted; otherwise, false.
+     */
     bool bindStep(DbStatement &dbstmt) {
         bool stepped = (sqlite3_step(dbstmt.stmt) == SQLITE_DONE);
         if (!stepped) {
@@ -235,14 +253,31 @@ public: // insert
 
 
 public: // schema info 
+    /**
+     * @brief Get the column count of the statement.
+     * @param dbstmt The sqlite3 statement
+     * @return The column count.
+     */
     int getColumnCount(DbStatement &dbstmt) {
         return sqlite3_column_count(dbstmt.stmt);
     }
     
+    /**
+     * @brief Get the column type of the statement.
+     * @param dbstmt The sqlite3 statement
+     * @param index The column index
+     * @return The column type.
+     */
     int getColumnType(DbStatement &dbstmt, int index) {
         return sqlite3_column_type(dbstmt.stmt, index);
     }
 
+    /**
+     * @brief Get the column name of the statement.
+     * @param dbstmt The sqlite3 statement
+     * @param index The column index
+     * @return The column name.
+     */
     const char *getColumnName(DbStatement &dbstmt, int index) {
         return sqlite3_column_name(dbstmt.stmt, index);
     }

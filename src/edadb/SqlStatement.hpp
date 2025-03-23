@@ -158,7 +158,7 @@ public: // insert
         const auto vals = TypeMetaData<T>::getVal(obj);
         std::stringstream ss;
         ss << "INSERT INTO \"{}\" (";
-        boost::fusion::for_each(vecs, SqlStatement<T>::Appender4Name(ss));
+        boost::fusion::for_each(vecs, Appender4Name(ss));
         ss << ") VALUES (";
         boost::fusion::for_each(vals, Appender4Value(ss));
         ss << ");";
@@ -173,10 +173,30 @@ public: // scan
         if (sql.empty()) {
             std::stringstream ss;
             const auto vecs = TypeMetaData<T>::tuple_type_pair();
-            boost::fusion::for_each(vecs, SqlStatement<T>::Appender4Name(ss));
+            boost::fusion::for_each(vecs, Appender4Name(ss));
             sql = "SELECT " + ss.str() + " FROM \"{}\";";
         }
         return sql;
+    }
+
+
+public: // lookup by primary key
+    static std::string const lookupStatement(T* obj) {
+        static std::string sql;
+        if (sql.empty()) {
+            std::stringstream ss;
+            const auto vecs = TypeMetaData<T>::tuple_type_pair();
+            boost::fusion::for_each(vecs, Appender4Name(ss));
+            sql = "SELECT " + ss.str() + " FROM \"{}\" WHERE ";
+
+            auto pk_name_pair = boost::fusion::at_c<0>(vecs);
+            sql += pk_name_pair.second + " = ";
+        }
+
+        const auto vals = TypeMetaData<T>::getVal(obj);
+        auto pk_val_ptr = boost::fusion::at_c<0>(vals);
+        auto pk_val_str = binary2String(*pk_val_ptr);
+        return sql + pk_val_str + ";";
     }
 
 
@@ -196,6 +216,7 @@ public: // delete by primary key
         auto pk_val_str = binary2String(*pk_val_ptr);
         return sql_prefix + pk_val_str + ";";
     }
+
 
 private: // update by primary key
     struct UpdateNames {
@@ -262,6 +283,8 @@ public: // debug
             << insertStatement(obj2) << std::endl;
         std::cout << "Scan SQL: " << std::endl << "\t" 
             << scanStatement() << std::endl;
+        std::cout << "Lookup SQL: " << std::endl << "\t"
+            << lookupStatement(obj1) << std::endl;
         std::cout << "Delete SQL: " << std::endl << "\t"
             << deleteStatement(obj1) << std::endl;
         std::cout << "Delete SQL: " << std::endl << "\t"
