@@ -19,6 +19,7 @@ public:
     }
 };
 
+//TABLE4CLASS( IdbSite, "table_name", (name, width, height) );
 TABLE4CLASS_COLNAME( IdbSite, "table_name", (name, width, height), ("name_col","width_col","height_col") );
 
 
@@ -194,7 +195,7 @@ void testSqlite3() {
 int main() {
 //    testTypeMetaDataPrinter();
     testSqlStatement();
-//    testDbMap();
+    testDbMap();
 //    testSqlite3();
 
     return 0;

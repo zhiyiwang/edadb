@@ -53,20 +53,20 @@ private:
         {
             // ValueType:
             //   defined using boost::fusion::make_pair<int*>(std::string("name"))
-            //   the type is boost::fusion::pair<int*, std::string>
+            //   the type is boost::fusion::pair<int*, std::string> 
+            //  the first_type is int*; the second_type is std::string, which is the member name
             using ElemType = typename ValueType::first_type;
             using CppType = typename std::remove_const<typename std::remove_pointer<ElemType>::type>::type;
             std::string dbType = edadb::cppTypeToDbTypeString<CppType> ();
 
-            std::string name = x.second;
+            // use defined column name
+            std::string name = TypeMetaData<T>::column_names()[idx];
+
             if(idx++ == 0) {
                 sql += name + " " + dbType; // + " PRIMARY KEY";  
             } else {
                 sql += ", " + name + " " + dbType;
             }
-
-
-
         }
     };
 
@@ -144,12 +144,16 @@ public: // insert
     static std::string insertPlaceHolderStatement() {
         static std::string sql;
         if (sql.empty()) {
-            const auto vecs = TypeMetaData<T>::tuple_type_pair();
             std::stringstream ss;
             ss << "INSERT INTO \"{}\" (";
-            boost::fusion::for_each(vecs, Appender4Name(ss));
+            auto names = TypeMetaData<T>::column_names();
+            for (int i = 0; i < names.size(); ++i) {
+                ss << (i > 0 ? ", " : "") << names[i];
+            }
             ss << ") VALUES (";
-            boost::fusion::for_each(vecs, Appender4PlaceHolder(ss));
+            for (int i = 0; i < names.size(); ++i) {
+                ss << (i > 0 ? ", " : "") << "?";
+            }
             ss << ");";
             sql.assign(ss.str());
         }
@@ -157,12 +161,14 @@ public: // insert
     }
 
     std::string insertStatement(T* obj) {
-        const auto vecs = TypeMetaData<T>::tuple_type_pair();
-        const auto vals = TypeMetaData<T>::getVal(obj);
         std::stringstream ss;
         ss << "INSERT INTO \"{}\" (";
-        boost::fusion::for_each(vecs, Appender4Name(ss));
+        auto names = TypeMetaData<T>::column_names();
+        for (int i = 0; i < names.size(); ++i) {
+            ss << (i > 0 ? ", " : "") << names[i];
+        }
         ss << ") VALUES (";
+        const auto vals = TypeMetaData<T>::getVal(obj);
         boost::fusion::for_each(vals, Appender4Value(ss));
         ss << ");";
         return ss.str();
@@ -175,8 +181,10 @@ public: // scan
         static std::string sql;
         if (sql.empty()) {
             std::stringstream ss;
-            const auto vecs = TypeMetaData<T>::tuple_type_pair();
-            boost::fusion::for_each(vecs, Appender4Name(ss));
+            auto names = TypeMetaData<T>::column_names();
+            for (int i = 0; i < names.size(); ++i) {
+                ss << (i > 0 ? ", " : "") << names[i];
+            }
             sql = "SELECT " + ss.str() + " FROM \"{}\";";
         }
         return sql;
@@ -188,12 +196,14 @@ public: // lookup by primary key
         static std::string sql;
         if (sql.empty()) {
             std::stringstream ss;
-            const auto vecs = TypeMetaData<T>::tuple_type_pair();
-            boost::fusion::for_each(vecs, Appender4Name(ss));
+            auto names = TypeMetaData<T>::column_names();
+            for (int i = 0; i < names.size(); ++i) {
+                ss << (i > 0 ? ", " : "") << names[i];
+            }
             sql = "SELECT " + ss.str() + " FROM \"{}\" WHERE ";
 
-            auto pk_name_pair = boost::fusion::at_c<0>(vecs);
-            sql += pk_name_pair.second + " = ";
+            auto pk_name = names[0]; // primary key is the first element
+            sql += pk_name + " = ";
         }
 
         const auto vals = TypeMetaData<T>::getVal(obj);
@@ -207,11 +217,10 @@ public: // delete by primary key
     static std::string const deleteStatement(T* obj) {
         static std::string sql_prefix;
         if (sql_prefix.empty()) {
-            // primary key is the first element in the tuple
-            static auto vecs = TypeMetaData<T>::tuple_type_pair();
-            auto pk_name_pair = boost::fusion::at_c<0>(vecs);
             sql_prefix = "DELETE FROM \"{}\" WHERE ";
-            sql_prefix += pk_name_pair.second + " = ";
+
+            // primary key is the first element in the tuple
+            sql_prefix += TypeMetaData<T>::column_names()[0] + " = ";
         }
 
         const auto vals = TypeMetaData<T>::getVal(obj);
@@ -254,9 +263,11 @@ public:
         std::string sql = "UPDATE \"{}\" SET ";
 
         // get names and values
-        std::vector<std::string> names, values;
+        std::vector<std::string> names;
+        names = TypeMetaData<T>::column_names();
+
+        std::vector<std::string> values;
         const auto vecs = TypeMetaData<T>::tuple_type_pair();
-        boost::fusion::for_each(vecs, UpdateNames(names));
         boost::fusion::for_each(TypeMetaData<T>::getVal(new_obj), UpdateValues(values));
 
         // generate sql
