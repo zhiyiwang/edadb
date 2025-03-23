@@ -57,12 +57,16 @@ private:
             using ElemType = typename ValueType::first_type;
             using CppType = typename std::remove_const<typename std::remove_pointer<ElemType>::type>::type;
             std::string dbType = edadb::cppTypeToDbTypeString<CppType> ();
+
+            std::string name = x.second;
             if(idx++ == 0) {
-//                sql += x.second + " " + dbType + " PRIMARY KEY";  
-                sql += x.second + " " + dbType;  
+                sql += name + " " + dbType; // + " PRIMARY KEY";  
             } else {
-                sql += ", " + x.second + " " + dbType;
+                sql += ", " + name + " " + dbType;
             }
+
+
+
         }
     };
 
@@ -125,8 +129,7 @@ public: // create table
         if (sql.empty()) {
             sql = "CREATE TABLE IF NOT EXISTS \"{}\" (";
             const auto vecs = TypeMetaData<T>::tuple_type_pair();
-            boost::fusion::for_each(vecs,
-                    SqlStatement<T>::Appender4NameType(sql));
+            boost::fusion::for_each(vecs, Appender4NameType(sql));
             sql += ")";
         }
         return sql;
