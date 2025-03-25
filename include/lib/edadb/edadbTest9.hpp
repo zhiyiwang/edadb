@@ -1144,7 +1144,7 @@ struct GetAllObjects {
     };
 
 
-void dbgPrint(){std::cout<<"Edadb starting \n";}
+void dbgPrint(){std::cout<<"Edadb starting edadbTest 9\n";}
 
 template<typename T>
     class DbMap {

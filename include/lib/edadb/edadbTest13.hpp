@@ -42,7 +42,7 @@
 #define EDADB_DEBUG 1 
 
 /*
-* 影子类 未完成 尝试在Test11中使用 序列化函数
+* 整理代码
 */
 
 namespace edadb{
@@ -57,23 +57,28 @@ template<class T>
         }
     };
 
-    template<typename T>
+    template<typename T, typename = void>
         struct ConvertCPPTypeToSOCISupportType {
             using type = T;
         };
 
     template<typename T>
-        struct ConvertCPPTypeToSOCISupportType<T*> {
+        struct ConvertCPPTypeToSOCISupportType<T*, void> {
             using type = T;
         };
 
+    template<typename T>
+        struct ConvertCPPTypeToSOCISupportType<T, std::enable_if_t<std::is_enum<T>::value>> {
+            using type = int;
+        };
+
     template<>
-        struct ConvertCPPTypeToSOCISupportType<float> {
+        struct ConvertCPPTypeToSOCISupportType<float, void> {
             using type = double;
         };
 
     template<>
-        struct ConvertCPPTypeToSOCISupportType<std::uint64_t> {
+        struct ConvertCPPTypeToSOCISupportType<std::uint64_t, void> {
             using type = unsigned long long;
         };
 
@@ -121,11 +126,43 @@ struct TypeMetaData {
     static boost::fusion::vector<boost::fusion::pair<void, std::string>> const& tuple_type_pair();
 };
 
+template<typename T> 
+struct ExternalReadWrite {
+};
+
 template<typename T> // for TABLE2TABLE_1_N_VEC
 struct RelationMap{
 
 };
 
+// 输出流（内存缓冲区版）
+class DbOstream : public std::ostream {
+  public:
+    DbOstream() : std::ostream(&buffer_) {}
+
+    std::string str() const {
+        return buffer_.str();
+    }
+    
+    // 获取二进制数据指针
+    const char* data() const { return buffer_.str().data(); }
+    
+    // 获取数据长度
+    size_t size() const { return buffer_.str().size(); }
+
+  private:
+    std::stringbuf buffer_;
+};
+
+// 输入流（内存缓冲区版）
+class DbIstream : public std::istream {
+  public:
+    DbIstream(const char* data, size_t len)
+        : std::istream(&buffer_), buffer_(std::string(data, len), std::ios_base::in) {}
+    
+  private:
+    std::stringbuf buffer_;
+};
 
 template <typename T>
     std::string createTableStrSubObj(const std::string& prefix, std::vector<std::string>& temp_member_names);
@@ -159,17 +196,44 @@ template<class T>
                     if constexpr (std::is_class<ObjType>::value && (!std::is_same<ObjType, std::string>::value)){
                         std::cout<<"illegal\n";
                     }
-                    else
-                        str += ", \'" + /* *val */std::to_string(*val) + "\'"; 
-                }
-                else{
-                    // if(type == "__COMPOSITE__"){
-                    if constexpr (std::is_class<ObjType>::value && (!std::is_same<ObjType, std::string>::value)){
-                        // ss << ", \'" << *val << "\'";
-                        str += edadb::SubObjVal<ObjType>(val);
+                    else if constexpr(std::is_enum<ObjType>::value){
+                        //枚举类型不能作为主键，不过也不会执行到这里来
+                        // str += "\'" + std::to_string(static_cast<std::underlying_type_t<ObjType>>(*val)) + "\'";
                     }
                     else
-                        str += ", \'" + /* *val */std::to_string(*val) + "\'"; 
+                        str += "\'" + /* *val */std::to_string(*val) + "\'"; 
+                }
+                else{
+                    if constexpr (std::is_class<ObjType>::value && (!std::is_same<ObjType, std::string>::value)){
+                        const edadb::DbTypes db_type = CppTypeToDbType<ObjType>::ret;
+                        if constexpr (db_type == DbTypes::kComposite)
+                            str += edadb::SubObjVal<ObjType>(val);
+                        else if constexpr (db_type == DbTypes::kExternalB){
+                            edadb::DbOstream dos;
+                            if(edadb::ExternalReadWrite<ObjType>::write(val, &dos)){
+                                const std::string& bin_data = dos.str();
+                                std::string hex;
+                                hex.reserve(bin_data.size() * 2 + 3); // x'...'
+                            
+                                hex += "x'";
+                                for (uint8_t c : bin_data) {
+                                    hex += "0123456789ABCDEF"[c >> 4];
+                                    hex += "0123456789ABCDEF"[c & 0x0F];
+                                }
+                                hex += "'";
+                            
+                                str += ", " + hex;
+                            }
+                            else{
+                                std::cout<<"ExternalReadWrite write failed\n";
+                            }
+                        }
+                    }
+                    else if constexpr(std::is_enum<ObjType>::value){
+                        str += ", " + std::to_string(static_cast<std::underlying_type_t<ObjType>>(*val)) ;
+                    }
+                    else
+                        str += ", " + std::to_string(*val) ;
                 }
             }
 
@@ -184,20 +248,17 @@ template<class T>
         
         struct fillSO{
             std::string& str;  
-            // int cnt;
             fillSO(std::string& str_i) : str(str_i)/*, cnt(0)*/ {}  
 
             template<typename O>
             void operator()(O val) {
-                // cnt++;
                 using ObjType = std::decay_t<decltype(*val)>; 
                 
                     if constexpr (std::is_class<ObjType>::value && (!std::is_same<ObjType, std::string>::value)){
-                        // ss << ", \'" << *val << "\'";
                         str += edadb::SubObjVal<ObjType>(val);
                     }
                     else
-                        str += ", \'" + /* *val */std::to_string(*val) + "\'"; 
+                        str += ", " + std::to_string(*val) ; 
             }
 
             void operator()(std::string* val) {
@@ -209,11 +270,10 @@ template<class T>
         struct CTForeachHelper { //create table
         private:
             std::string& sql;
-            // std::vector<std::string>& temp_member_names;
             int cnt;
         public:
         CTForeachHelper(std::string& sql)
-        : sql(sql)/*, temp_member_names(member_names)*/, cnt(0) {}
+        : sql(sql), cnt(0) {}
 
             template <typename O>
             void operator()(O const& x) 
@@ -229,23 +289,20 @@ template<class T>
                     
                 else {
                     edadb::DbTypes ret = CppTypeToDbType<ObjType>::ret;
-                    #if 0 // EDADB_DEBUG
-                    std::cout << "ret ?= kUnknown " << (ret == DbTypes::kUnknown) << "\n";
-                    std::cout << "ret ?= kInteger " << (ret == DbTypes::kInteger) << "\n";
-                    std::cout << "ret ?= kReal " << (ret == DbTypes::kReal) << "\n";
-                    std::cout << "ret ?= kNumeric " << (ret == DbTypes::kNumeric) << "\n";
-                    std::cout << "ret ?= kText " << (ret == DbTypes::kText) << "\n";
-                    std::cout << "ret ?= kComposite " << (ret == DbTypes::kComposite) << "\n";
-                    std::cout<<"DbTypes::kComposite = "<<typeid(DbTypes::kComposite).name()<<"\n";
-                    #endif
                     if (ret == DbTypes::kComposite) // 尽量减少字符串比较
-                    // if (type == "__COMPOSITE__") // CppTypeToDbType<O>::ret 不能直接判等
+                    // CppTypeToDbType<O>::ret 不能直接判等
                     {
-                        // sql += ", " + edadb::createTableStrSubObj<ObjType>(x.second + "_");
+
                         std::vector<std::string> sub_member_names;
                         sql += ", " + edadb::createTableStrSubObj<ObjType>(x.second + "_", sub_member_names);
                         member_names.insert(member_names.end(), sub_member_names.begin(), sub_member_names.end());
                     }
+                    /*---- for External Class Start---- */
+                    else if(ret == DbTypes::kExternalB){
+                        SqlString<T>::member_names.push_back(x.second);
+                        sql += ", " + x.second + " BLOB";
+                    }
+                    /*---- for External Class End---- */
                     else {
                         SqlString<T>::member_names.push_back(x.second);
                         sql += ", " + x.second + " " + type;
@@ -279,13 +336,14 @@ template<class T>
                     edadb::DbTypes ret = CppTypeToDbType<ObjType>::ret;
                     if (ret == DbTypes::kComposite)
                         sql += ", " + edadb::createTableStrSubObj<ObjType>(prefix + x.second + "_",temp_member_names);
-                    else{
-                        // std::cout<<"member_names sub now = "<<prefix + x.second<<"\n";
-                        // std::cout << "Before CTSO push_back: member_names size = " << 
-                        // "typeid(T).name() = " << typeid(T).name()<<temp_member_names.size() << std::endl;
+                    /*---- for External Class Start---- */
+                    else if(ret == DbTypes::kExternalB){
                         temp_member_names.push_back(prefix + x.second);
-                        // std::cout << "After push_back: _member_names size = " << SqlString<T>::member_names.size() << std::endl;
-                        // SqlString<T>::member_names.push_back(prefix + x.second);
+                        sql += ", " + prefix + x.second + " BLOB";
+                    }
+                    /*---- for External Class End---- */
+                    else{
+                        temp_member_names.push_back(prefix + x.second);
                         sql += ", " + prefix + x.second + " " + type;
                     } 
                 }
@@ -295,7 +353,6 @@ template<class T>
 
         struct InsertRowNames {
         private:
-            // std::stringstream* ss;  
             std::string* str;
             int cnt;
 
@@ -313,7 +370,6 @@ template<class T>
                 else{
                     edadb::DbTypes tmp = CppTypeToDbType<ObjType>::ret;
                     if(tmp == DbTypes::kComposite){
-                    // if(type == "__COMPOSITE__"){
                         *str += " , " + edadb::InsertStrSubObj<ObjType>(x.second + "_");
                     }
                     else{
@@ -343,7 +399,6 @@ template<class T>
                 else{
                     edadb::DbTypes tmp = CppTypeToDbType<ObjType>::ret;
                     if(tmp == DbTypes::kComposite){
-                    // if(type == "__COMPOSITE__"){
                         *str += " , " + edadb::InsertStrSubObj<ObjType>(prefix + x.second + "_");
                     }
                     else{
@@ -366,20 +421,17 @@ template<class T>
             {
                 using ObjType = typename std::remove_const<typename std::remove_pointer<typename O::first_type>::type>::type;
                     
-                edadb::DbTypes ret = CppTypeToDbType<ObjType>::ret;
-                if(ret == DbTypes::kComposite){
-                    // /*part += */edadb::UpdateValStrSubObj<ObjType>(x,vec,x.second + "_")/*x.second + "_")*//* + " = "*/;
-                    if constexpr (std::is_class<ObjType>::value && (!std::is_same<ObjType, std::string>::value)){
+                const edadb::DbTypes ret = CppTypeToDbType<ObjType>::ret;
+                    if constexpr (ret == DbTypes::kComposite){
                         auto vecs = TypeMetaData<ObjType>::tuple_type_pair();
                         std::string prefix = x.second + "_";
                         auto p = new typename SqlString<T>::UpdateRowSO(vec,prefix);
                         boost::fusion::for_each(vecs, *p);
                     }
-                }
                 else{
                     part = "";
                     if (!vec.empty()) {
-                        part = ",";
+                        part = " ,";
                     }
                     part += x.second + " = ";
                     vec.push_back(part);
@@ -404,18 +456,19 @@ template<class T>
 
                 part = "";
                 if (!vec.empty()) {
-                    part = ",";
+                    part = " ,";
                 }
-                edadb::DbTypes ret = CppTypeToDbType<ObjType>::ret;
-                if(ret == DbTypes::kComposite){
-                    // /*part += */edadb::UpdateValStrSubObj<ObjType>(x,vec,x.second + "_")/*x.second + "_")*//* + " = "*/;
-                    if constexpr (std::is_class<ObjType>::value && (!std::is_same<ObjType, std::string>::value)){
+                    const edadb::DbTypes dbType = CppTypeToDbType<O>::ret;
+                    if constexpr (dbType == DbTypes::kComposite){
                         auto vecs = TypeMetaData<ObjType>::tuple_type_pair();
                         prefix += x.second + "_";
                         auto p = new typename SqlString<T>::UpdateRowSO(vec,prefix);
                         boost::fusion::for_each(vecs, *p);
                         delete p;
                     }
+                else if constexpr (dbType == DbTypes::kExternalB){
+                    part += prefix + x.second + " = ";
+                    vec.push_back(part);
                 }
                 else{
                     part += prefix + x.second + " = ";
@@ -437,10 +490,6 @@ template<class T>
             std::string add_quotation(S const& x)
             {
                 return std::to_string(x);
-                // else{
-                //     part += std::to_string(*x);
-                //     vec.push_back(part);
-                // }
             }
 
             std::string add_quotation(std::string const& x)
@@ -453,7 +502,32 @@ template<class T>
             {
                 using ObjType = std::decay_t<decltype(*x)>;
                 if constexpr (std::is_class<ObjType>::value && (!std::is_same<ObjType, std::string>::value)){
-                    edadb::updateSubObjVal<ObjType>(x,vec);
+                    const edadb::DbTypes db_type = CppTypeToDbType<ObjType>::ret;
+                    if constexpr (db_type == DbTypes::kComposite)
+                        edadb::updateSubObjVal<ObjType>(x,vec);
+                    else if constexpr (db_type == DbTypes::kExternalB){
+                        edadb::DbOstream dos;
+                        if(edadb::ExternalReadWrite<ObjType>::write(x, &dos)){
+                            const std::string& bin_data = dos.str();
+                            std::string hex;
+                            hex.reserve(bin_data.size() * 2 + 3); // x'...'
+                        
+                            hex += "x'";
+                            for (uint8_t c : bin_data) {
+                                hex += "0123456789ABCDEF"[c >> 4];
+                                hex += "0123456789ABCDEF"[c & 0x0F];
+                            }
+                            hex += "'";
+                        
+                            vec.push_back(hex);
+                        }
+                        else{
+                            std::cout<<"ExternalReadWrite write failed when updating\n";
+                        }
+                    }
+                }
+                else if constexpr(std::is_enum<ObjType>::value){
+                    vec.push_back(std::to_string(static_cast<std::underlying_type_t<ObjType>>(*x)));
                 }
                 else{
                     part = "";
@@ -516,7 +590,6 @@ template<class T>
             static const auto vecs = TypeMetaData<T>::tuple_type_pair();
             static std::string sql;
             if (sql.empty()) {
-                // sql = "CREATE TABLE IF NOT EXISTS \"{}\" (oid VARCHAR PRIMARY KEY, oid_ref VARCHAR, parent_table_reference VARCHAR, parent_column_name VARCHAR";
                 sql = "CREATE TABLE IF NOT EXISTS \"{}\" (";
                 auto p = new SqlString<T>::CTForeachHelper(sql); //CTForeachHelper
                 boost::fusion::for_each(vecs, *p);
@@ -528,9 +601,7 @@ template<class T>
         std::string insertRowStr(T *obj) {
             const auto vecs = TypeMetaData<T>::tuple_type_pair();
             const auto vals = TypeMetaData<T>::getVal(obj);
-            std::string str = "INSERT OR IGNORE INTO \"{}\" ("; // INSERT INTO
-            /*std::stringstream ss;
-            ss << "INSERT INTO \"{}\" (";*/
+            std::string str = "INSERT INTO \"{}\" ("; // INSERT INTO
             boost::fusion::for_each(vecs, SqlString<T>::InsertRowNames(&str));
             str += ") VALUES (";
             boost::fusion::for_each(vals, fill(str));
@@ -557,7 +628,6 @@ template<class T>
             const auto vecs = TypeMetaData<T>::tuple_type_pair();
             const auto vals = TypeMetaData<T>::getVal(obj);
             auto &first_pair = boost::fusion::at_c<0>(vecs);
-            // std::stringstream ss;
             std::string str;
             str += "DELETE FROM \"{}\" WHERE " +first_pair.second + 
             " = " + firstColumnVal(*(boost::fusion::at_c<0>(vals))) + ";";
@@ -568,7 +638,6 @@ template<class T>
         std::string updateRowStr(T *obj) {
             const auto vecs = TypeMetaData<T>::tuple_type_pair();
             const auto vals = TypeMetaData<T>::getVal(obj);
-            // std::stringstream ss;
             std::string str = "UPDATE \"{}\" SET ";
             std::vector<std::string>v1 = {},v2 = {};
             boost::fusion::for_each(vecs, SqlString<T>::UpdateRow(v1));
@@ -620,9 +689,6 @@ template<typename T, typename Q>
                     using ObjType = typename std::remove_const<typename std::remove_pointer<typename O::first_type>::type>::type;
                     std::string type = edadb::cppTypeToDbTypeString<typename edadb::ConvertCPPTypeToSOCISupportType<ObjType>::type>();
 
-                    // if(cnt == 1) 
-                        // sql += x.second + " " + type + " PRIMARY KEY";  // DbMap<subclass>
-                    // else {
                         edadb::DbTypes ret = CppTypeToDbType<ObjType>::ret;
                         if (ret == DbTypes::kComposite) // 尽量减少字符串比较
                         {
@@ -634,7 +700,6 @@ template<typename T, typename Q>
                             SqlStringT2T<T,Q>::member_names.push_back(x.second);
                             sql += ", " + x.second + " " + type;
                         }
-                    // }
                 }
             };
       public:
@@ -649,7 +714,6 @@ template<typename T, typename Q>
             using FirstType_Q = std::decay_t<decltype(boost::fusion::at_c<0>(typename TypeMetaData<Q>::TupType()))>;
 
             std::string type_T = edadb::cppTypeToDbTypeString<typename edadb::ConvertCPPTypeToSOCISupportType<FirstType_T>::type>();
-            // std::string type_Q = edadb::cppTypeToDbTypeString<typename edadb::ConvertCPPTypeToSOCISupportType<FirstType_Q>::type>();
             static std::string sql;
             if (sql.empty()) {
 
@@ -675,9 +739,7 @@ template<typename T, typename Q>
             // 获取 obj2 的列和值
             const auto vecs_Q = TypeMetaData<Q>::tuple_type_pair();
             const auto vals_Q = TypeMetaData<Q>::getVal(obj2);
-            std::string str = "INSERT OR IGNORE INTO \"{}\" ("; // INSERT INTO
-            /*std::stringstream ss;
-            ss << "INSERT INTO \"{}\" (";*/
+            std::string str = "INSERT INTO \"{}\" ("; // INSERT INTO
             str += TypeMetaData<T>::class_name() + "_" + first_pair_T.second + ", ";
             boost::fusion::for_each(vecs_Q, typename SqlString<Q>::InsertRowNames(&str));
             str += ") VALUES (";
@@ -758,12 +820,15 @@ template <typename T>
         
         std::string sql;
         if constexpr (std::is_class<T>::value && (!std::is_same<T, std::string>::value)){
-
-            /*const */auto vecs = TypeMetaData<T>::tuple_type_pair();
-
+            const edadb::DbTypes dbType = CppTypeToDbType<T>::ret;
+            if constexpr (dbType == DbTypes::kComposite){
+                /*const */auto vecs = TypeMetaData<T>::tuple_type_pair();
                 auto p = new typename SqlString<T>::CTSOForeachHelper(sql, prefix,temp_member_names);// CTSOForeachHelper
                 boost::fusion::for_each(vecs, *p);
-
+            }
+            else if constexpr (dbType == DbTypes::kExternalB){
+                // 不存在，会在上一层处理 但是需要条件编译，否则没有对应的TypeMetaData<T>::tuple_type_pair()
+            }
         }
         
         return sql;
@@ -772,12 +837,14 @@ template <typename T>
 template <typename T>
     std::string InsertStrSubObj(const std::string& prefix) {
 
-        // std::stringstream ss;
         std::string str;
         if constexpr (std::is_class<T>::value && (!std::is_same<T, std::string>::value)){
+            const edadb::DbTypes dbType = CppTypeToDbType<T>::ret;
+            if constexpr (dbType == DbTypes::kComposite){
             /*const */auto vecs = TypeMetaData<T>::tuple_type_pair();
                 auto p = new typename SqlString<T>::InsertRowNamesSO(&str, prefix);// CTSOForeachHelper
                 boost::fusion::for_each(vecs, *p);
+            }
         }
         
         return str;
@@ -785,343 +852,75 @@ template <typename T>
 
 template <typename T>
     std::string SubObjVal(T* obj){
-        // std::stringstream ss;
         std::string str;
         if constexpr (std::is_class<T>::value && (!std::is_same<T, std::string>::value)){
-
-            const auto vals = TypeMetaData<T>::getVal(obj);
-            // const auto vecs = TypeMetaData<T>::tuple_type_pair();
-            auto p = new typename SqlString<T>::fillSO(str);// CTSOForeachHelper
-            boost::fusion::for_each(vals, *p);
-            delete p;
+            const edadb::DbTypes dbType = CppTypeToDbType<T>::ret;
+            if constexpr (dbType == DbTypes::kComposite){
+                const auto vals = TypeMetaData<T>::getVal(obj);
+                // const auto vecs = TypeMetaData<T>::tuple_type_pair();
+                auto p = new typename SqlString<T>::fillSO(str);// CTSOForeachHelper
+                boost::fusion::for_each(vals, *p);
+                delete p;
+            }
+            else if constexpr (dbType == DbTypes::kExternalB){
+                edadb::DbOstream dos;
+                if(edadb::ExternalReadWrite<T>::write(obj, &dos)){
+                    const std::string& bin_data = dos.str();
+                    std::string hex;
+                    hex.reserve(bin_data.size() * 2 + 3); // x'...'
+                
+                    hex += "x'";
+                    for (uint8_t c : bin_data) {
+                        hex += "0123456789ABCDEF"[c >> 4];
+                        hex += "0123456789ABCDEF"[c & 0x0F];
+                    }
+                    hex += "'";
+                
+                    str += ", " + hex;
+                }
+            }
         }
         
         return str;
     }
 
-// template <typename T>
-//     void UpdateValStrSubObj(T* obj, std::vector<std::string>& vec, std::string prefix) {
-//         const auto vecs = TypeMetaData<T>::tuple_type_pair();
-//         auto p = new typename SqlString<T>::UpdateRowSO(vec,prefix);
-//         boost::fusion::for_each(vecs, *p);
-//         delete p;
-//     }
 
 template <typename T>
     void/*std::string*/ updateSubObjVal(T* obj, std::vector<std::string>& vec){
 
-        // if constexpr (std::is_class<T>::value && (!std::is_same<T, std::string>::value)){
-
-            const auto vals = TypeMetaData<T>::getVal(obj);
-
-            auto p = new typename SqlString<T>::UpdateRowVal(vec);
-            boost::fusion::for_each(vals, *p);
-            delete p;
-        // }
+        if constexpr (std::is_class<T>::value && (!std::is_same<T, std::string>::value)){
+            const edadb::DbTypes dbType = CppTypeToDbType<T>::ret;
+            if constexpr (dbType == DbTypes::kComposite){
+                const auto vals = TypeMetaData<T>::getVal(obj);
+                auto p = new typename SqlString<T>::UpdateRowVal(vec);
+                boost::fusion::for_each(vals, *p);
+                delete p;
+            }
+        }
         
     }
 
-struct SimpleOID {
-    /// @typedef SelfType=SimpleOID
-    using SelfType = SimpleOID;
-    /// @typedef OidByteArrayType=std::array<std::uint8_t, 16>
-    /// @brief To hold the 16 byte array representation of the OID.
-    using OidByteArrayType = std::array<std::uint8_t, 16>;
-    /// @typedef TagType = boost::uuids::uuid
-    /// @brief Type to hold oid value
-    using TagType = boost::uuids::uuid;
-    /// @var TagType tag
-    /// @brief Holds the UUID generated.
-    TagType tag;
-
-     SimpleOID() noexcept : tag() {}
-
-    ~SimpleOID() = default;
-
-    /// @fn SimpleOID
-    /// @brief Pass other oid to populate this.
-    /// @param other Passed in oid
-    SimpleOID(const SimpleOID& other) :
-            tag(other.tag) {
-    }
-
-    SimpleOID(const std::string& other) {
-        boost::uuids::string_generator gen;
-        tag = gen(other);
-    }
-
-    /// @fn populateAll
-    /// @brief Gets a new UUID and populates that.
-    ///        Uses boost::uuid library for the task
-    void populate() {
-        tag = boost::uuids::random_generator()();
-    }
-
-    /// @fn clear
-    /// @brief clears the high and low values.
-    void clear() {
-        for (boost::uuids::uuid::iterator it = tag.begin(); it != tag.end(); ++it) {
-            *it = 0;
-        }
-    }
-
-    /// @fn operator=
-    /// @brief Copies the value of high and low from the RHS. Deep copy
-    SelfType& operator=(SelfType const &in_other) {
-        tag = in_other.tag;
-        return *this;
-    }
-
-    /// @fn operator=
-    /// @brief Copies the value of high and low from the RHS. Deep copy
-    SelfType& operator=(std::string const &in_other) {
-        boost::uuids::string_generator gen;
-        tag = gen(in_other);
-        return *this;
-    }
-
-    /// @fn operator==
-    /// @brief Compares high and low of the LHS and RHS.
-    ///        Returns true when both low and high are same.
-    /// @return true when both low and high are same else false
-    bool operator==(SelfType const &in_other) const {
-        return tag == in_other.tag;
-    }
-
-    /// @fn operator!=
-    /// @brief Returns true if either or both of low and high
-    ///        does not match. Internally calls operator==
-    /// @return false only when both high and low matches else true
-    bool operator!=(SelfType const &in_other) const {
-        return !operator==(in_other);
-    }
-
-    /// @fn toByteArray
-    /// @brief Convert the OID to byte array and then return.
-    ///        The byte representation is not stored, so every time
-    ///        this function is called this will generate again.
-    /// @return OidByteArrayType 16 Byte representation of the OID
-    OidByteArrayType toByteArray() const {
-        OidByteArrayType ret{0};
-        std::copy(tag.begin(), tag.end(), ret.begin());
-        return ret;
-    }
-    
-    /// @fn to_json
-    /// @brief Returns the json representation of the UUID
-    std::string to_json() const {
-        const std::string json = "{" + fmt::format("'oid': '{}'", to_string()) + "}";
-        return json;
-    }
-
-    /// @fn to_string
-    /// @brief Returns the string representation of the UUID
-    std::string to_string() const {
-        const std::string ret = boost::uuids::to_string(tag);
-        return ret;
-    }
-    
-    /// @fn empty
-    /// @brief Returns true if the oid is nil else returns false
-    bool empty() const {
-        return tag.is_nil();
-    }
-};
-
-
-
-
-template<typename T>
-    struct SimpleObjHolder {
-        T* obj_ptr;
-        // SimpleOID const& oid;
-        // SimpleObjHolder(T* obj_ptr_in, SimpleOID const& oid_in) :obj_ptr(obj_ptr_in), oid(oid_in) {}
-        SimpleObjHolder(T* obj_ptr_in) :obj_ptr(obj_ptr_in) {}
-        ~SimpleObjHolder() {
-            obj_ptr = nullptr;
-        }
-    };
 
 template<typename T>
     struct IsComposite : boost::mpl::bool_<false> {
     };
 
-/// @brief SOCI conversion helpers
-    /// @class type_conversion
-    /// @brief partial specialization to support regular objects T
-    /// @details
-    template<typename T>
-    struct type_conversion {
-    public:
-        using ObjType = T;
-    private:
-        struct FromBase {
-        private:
-            soci::values const& _val;
-            std::uint_fast32_t _count;
 
-        public:
-            FromBase(soci::values const& val) :_val(val), _count(0) {} //_count is the num of obj to skip
-
-            template<typename O>
-            void operator()(O& x) const {
-                const std::string obj_name = TypeMetaData<ObjType>::member_names().at(const_cast<FromBase*>(this)->_count++);
-                x = _val.get<typename ConvertCPPTypeToSOCISupportType<typename std::remove_reference<O>::type>::type>(obj_name);
-            }
-        };
-
-    public:
-        inline static void from_base(soci::values const& v, soci::indicator, ObjType& obj) {
-            //boost::fusion::for_each(obj, FromBase(v));
-        }
-
-    private:
-        struct ToBase {
-        private:
-            soci::values& _val;
-            std::uint_fast32_t _count;
-
-        public:
-            ToBase(soci::values& val) :_val(val), _count(0) {}
-
-            template<typename O>
-            void operator()(O const& x) const {
-                const std::string obj_name = TypeMetaData<ObjType>::member_names().at(const_cast<ToBase*>(this)->_count++);
-                const_cast<ToBase*>(this)->_val.set(obj_name, x);
-            }
-        };
-
-    public:
-        inline static void to_base(ObjType const& obj, soci::values& v, soci::indicator& ind) {
-            //boost::fusion::for_each(obj, ToBase(v)); // only init the obj v ind
-        }
-    };
-
-
-/// @class type_conversion
-/// @brief partial specialization to support SimpleObjHolder<T>
-/// @details
-template<typename T>
-struct type_conversion<SimpleObjHolder<T>> {
-    using ObjectHolderType = SimpleObjHolder<T>;
-    using ObjType = T;
-
-private:
-    template<typename O, bool IsComposite = false>
-    struct FromBaseOperation {
-        inline static void execute(O& x, const std::string& obj_name, soci::values const& val, const edadb::SimpleOID& /*parent_oid*/) {
-            x = val.get<typename ConvertCPPTypeToSOCISupportType<typename std::remove_reference<O>::type>::type>(obj_name);
-        }
-    };
-
-    template<typename O>
-    struct FromBaseOperation<O, true> {
-        inline static void execute(O& x, const std::string& obj_name, soci::values const& val, const edadb::SimpleOID& parent_oid) {
-            //
-        }
-    };
-
-    struct FromBase {
-    private:
-        soci::values const& _val;
-        const edadb::SimpleOID& _oid;
-        std::uint16_t _count;
-        soci::indicator& _ind;
-
-    public:
-        FromBase(soci::values const& val, edadb::SimpleOID const& oid, soci::indicator& ind) :_val(val), _oid(oid), _count(0), _ind(ind) {}
-
-        template<typename O>
-        void operator()(O& x) const {
-            // std::cout<<"What happened in FromBase\n";
-            const std::string obj_name = TypeMetaData<ObjType>::member_names().at(const_cast<FromBase*>(this)->_count++);
-            FromBaseOperation<O, IsComposite<O>::value>::execute(x, obj_name, _val, _oid);
-        }
-    };
-
-public:
-    /// @fn from_base Setting the values in the object
-    /// @brief This will take the database value and put it in the object. Database -> Object
-    inline static void from_base(soci::values const& v, soci::indicator ind, ObjectHolderType& obj_holder) {
-        ObjType& obj = *(obj_holder.obj_ptr);
-        // const edadb::SimpleOID& oid = obj_holder.oid;
-        boost::fusion::for_each(obj, FromBase(v,edadb::SimpleOID(), ind));
-    }
-
-private:
-    template<typename O, bool IsComposite = false>
-    struct ToBaseOperation {
-        inline static void execute(O& x, const std::string& obj_name, soci::values& val, /*const edadb::SimpleOID& parent_oid,*/ soci::indicator& ind) {
-            val.set<typename ConvertCPPTypeToSOCISupportType<typename std::remove_reference<O>::type>::type>(obj_name, x, ind);
-        }
-    };
-
-    template<typename O>
-    struct ToBaseOperation<O, true> {
-        inline static void execute(O& x, const std::string& obj_name, soci::values& val, const edadb::SimpleOID& parent_oid, soci::indicator& ind) {
-            std::cout<<"What happened in execute ToBaseOperation\n";
-        }
-    };
-
-    struct ToBase {
-    private:
-        soci::values& _val;
-        // const edadb::SimpleOID& _oid;
-        std::uint_fast32_t _count;
-        soci::indicator& _ind;
-
-    public:
-        ToBase(soci::values& val, /*edadb::SimpleOID const& oid,*/ soci::indicator& ind) :_val(val), /*_oid(oid),*/ _count(0), _ind(ind) {}
-
-        template<typename O>
-        void operator()(O& x) const {
-                        // std::cout<<"What happened in ToBase\n";
-            const std::string obj_name = TypeMetaData<ObjType>::member_names().at(const_cast<ToBase*>(this)->_count++);
-                // std::cout<< " obj_name = " << obj_name << "\n"; 
-            ToBaseOperation<O, IsComposite<O>::value>::execute(x, obj_name, _val, /*_oid,*/ _ind);
-        }
-    };
-
-public:
-    /// @fn to_base Setting the values in the database
-    /// @brief This will take the object value and persist it in the database. Object -> Database
-    inline static void to_base(ObjectHolderType& obj_holder, soci::values& v, soci::indicator& ind) {
-        ObjType& obj = *(obj_holder.obj_ptr);
-        // const edadb::SimpleOID& oid = obj_holder.oid;
-        // std::cout<<"Before for_each ToBase\n";
-        boost::fusion::for_each(obj, ToBase(v, /*edadb::SimpleOID(),*/ ind));
-    }
-};
-
-template<typename TA, bool IsComposite>
-    struct GetAllObjectsImpl {
-        inline static void impl(TA& x, const soci::row& row, const std::string& member_name/*, const std::string& oid_ref*/) {
-            x = row.get<typename ConvertCPPTypeToSOCISupportType<TA>::type>(member_name);
-        }
-    };
 
 template<typename T>
 struct GetAllObjects {
     private:
         const soci::row& _row;
         const std::vector<std::string>& _member_names;
-        int _count;
+        int& _count;
 
     public:
-        GetAllObjects(const soci::row& row, const std::vector<std::string>& member_names, int count = 0) :_row(row),_member_names(member_names), _count(count) {
+        GetAllObjects(const soci::row& row, const std::vector<std::string>& member_names, int& count) :_row(row),_member_names(member_names), _count(count) {
             // _member_names = SqlString<T>::member_names;
             // for(auto i : _member_names){
             //     std::cout<<"member_names = "<< i<<"\n";
             // }
         }
-#if 0
-        template <typename O>
-        void operator()(O& x) const {
-            const std::string& member_name = _member_names.at(const_cast<GetAllObjects*>(this)->_count++);
-            GetAllObjectsImpl<O, IsComposite<O>::value>::impl(x, _row, member_name);
-            x = _row.get<typename ConvertCPPTypeToSOCISupportType<O>::type>(_member_names.at(const_cast<GetAllObjects*>(this)->_count++));
-        }
-#endif
         template <typename O> 
         void operator()(O& x){
             #ifdef EDADB_DEBUG
@@ -1130,20 +929,42 @@ struct GetAllObjects {
             const std::string& member_name = _member_names.at(_count);
             using ObjType = std::remove_pointer_t<std::decay_t<decltype(x)>>;
             if constexpr (std::is_class<ObjType>::value && (!std::is_same<ObjType, std::string>::value)){
-                auto vals = TypeMetaData<ObjType>::getVal(x);
-                boost::fusion::for_each(vals,GetAllObjects<ObjType>(_row, _member_names, _count));
+                const edadb::DbTypes db_type = CppTypeToDbType<ObjType>::ret;
+                if constexpr(db_type == DbTypes::kComposite){
+                    auto vals = TypeMetaData<ObjType>::getVal(x);
+                    GetAllObjects<ObjType> sub_loader(_row, _member_names, _count);
+                    boost::fusion::for_each(vals,sub_loader);
+                }
+                else if constexpr(db_type == DbTypes::kExternalB){
+                    soci::blob sql_blob = _row.move_as<soci::blob>(member_name); // get 不行 用move_as方法转移所有权 https://soci.sourceforge.net/doc/master/types/
+                    std::size_t blob_size = sql_blob.get_len();
+
+                    std::vector<char> buffer(blob_size);
+                    sql_blob.read(0, buffer.data(), blob_size); //std::size_t offset, void *buf, std::size_t toRead
+                    
+                    edadb::DbIstream dis(buffer.data(), blob_size);
+                    ExternalReadWrite<ObjType>::read(x, &dis);
+                    _count++;
+                }
             }
             else{
-                // std::cout<<"else\n";
-                using SOCISupportType = typename ConvertCPPTypeToSOCISupportType<typename std::remove_pointer<O>::type>::type;
-                *x = _row.get<SOCISupportType>(member_name);
+                if constexpr (std::is_enum<ObjType>::value) {
+                    // 显式转换 int → 枚举
+                    int raw_value = _row.get<int>(member_name);
+                    *x = static_cast<ObjType>(raw_value);
+                } 
+                else {
+                    // 基础类型直接赋值
+                    using SOCISupportType = typename ConvertCPPTypeToSOCISupportType<ObjType>::type;
+                    *x = _row.get<SOCISupportType>(member_name);
+                }
+                _count++;
             }
-            _count++;
         }
     };
 
 
-void dbgPrint(){std::cout<<"Edadb starting \n";}
+void dbgPrint(){std::cout<<"Edadb Test 11 starting \n";}
 
 template<typename T>
     class DbMap {
@@ -1267,7 +1088,8 @@ template<typename T>
                 auto const& row = *row_itr;
                 T *a = new T;
                 auto vals = TypeMetaData<T>::getVal(a);
-                boost::fusion::for_each(vals,GetAllObjects<T>(row, SqlString<T>::member_names));
+                int count = 0;
+                boost::fusion::for_each(vals,GetAllObjects<T>(row, SqlString<T>::member_names, count));
                 vec->emplace_back(std::move(*a));
             }
             return true;
@@ -1287,7 +1109,7 @@ template<typename T>
             soci::rowset<soci::row>rows = (DbBackend::i().session().prepare << sql);
             auto const& row = *rows.begin();
             auto vals = TypeMetaData<T>::getVal(obj);
-            boost::fusion::for_each(vals,GetAllObjects<T>(row));
+            boost::fusion::for_each(vals, GetAllObjects<T>(row, SqlString<T>::member_names));
             return true;
         }
         catch (std::exception const& e) {
@@ -1432,7 +1254,8 @@ template<typename T>
                 Q* b = new Q;
                 auto member_names_Q = SqlString<Q>::member_names;
                 auto vals_Q = TypeMetaData<Q>::getVal(b);
-                boost::fusion::for_each(vals_Q, GetAllObjects<Q>(row, member_names_Q));
+                int count = 0;
+                boost::fusion::for_each(vals_Q, GetAllObjects<Q>(row, member_names_Q, count));
                 vec->emplace_back(std::move(*b));
                 delete b;
             }
@@ -1443,35 +1266,10 @@ template<typename T>
         }
     }
 
+
 } // end of edadb namespace
 
-namespace soci{
-    /// @class type_conversion
-    /// @brief SOCI class specialized to use SimpleObjHolder
-    template<typename T>
-    struct type_conversion<edadb::SimpleObjHolder<T>> {
-        using ObjectHolderType = edadb::SimpleObjHolder<T>;
-        using ObjType = T;
-        typedef values base_type;
 
-        /// @fn from_base
-        /// @param soci::values const& v
-        /// @param soci::indicator ind
-        /// @param ObjectHolderType& obj_holder
-        inline static void from_base(soci::values const& v, soci::indicator ind, ObjectHolderType& obj_holder) {
-            edadb::type_conversion<ObjectHolderType>::from_base(v, ind, obj_holder);
-        }
-
-        /// @fn to_base
-        /// @param ObjectHolderType const& obj_holder
-        /// @param soci::values& v
-        /// @param soci::indicator& ind
-        inline static void to_base(ObjectHolderType& obj_holder, soci::values& v, soci::indicator& ind) {
-            // std::cout<<"What happened in soci::to_base()\n";
-            edadb::type_conversion<ObjectHolderType>::to_base(obj_holder, v, ind);
-        }
-    };
-}
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1510,7 +1308,6 @@ template<>\
 struct CppTypeToDbType<myclass>{\
     static const DbTypes ret = DbTypes::kComposite;\
 };\
-template<> struct IsComposite<myclass> : boost::mpl::bool_<true> {};\
 template<> struct TypeMetaData<myclass>{\
     using TupType = boost::fusion::vector<GENERATE_TupType(BOOST_PP_TUPLE_PUSH_FRONT(CLASS_ELEMS_TUP, myclass))>;\
     using TupTypePairType = boost::fusion::vector<GENERATE_TupTypePair(BOOST_PP_TUPLE_PUSH_FRONT(CLASS_ELEMS_TUP, myclass))>;\
@@ -1536,6 +1333,10 @@ template<> struct TypeMetaData<myclass>{\
         static const std::vector<std::string> names = {BOOST_PP_TUPLE_REM_CTOR(COLNAME_TUP)};\
         return names;\
     }\
+    inline static const std::vector<std::string>& external_member_names(){\
+        static const std::vector<std::string> names = {};\
+        return names;\
+    }\
     inline static TupType getVal(myclass * obj){\
         return TupType(GENERATE_ObjVal(BOOST_PP_TUPLE_PUSH_FRONT(CLASS_ELEMS_TUP, myclass)));\
     }\
@@ -1544,6 +1345,129 @@ template<> struct TypeMetaData<myclass>{\
 
 #define TABLE4CLASS(myclass, tablename, CLASS_ELEMS_TUP) \
 TABLE4CLASS_COLNAME(myclass, tablename, CLASS_ELEMS_TUP, (EXPAND_member_names(CLASS_ELEMS_TUP)))
+
+
+
+# define Table4ExternalClass(myclass, writeFunc, readFunc) \
+namespace edadb{\
+template<>\
+struct CppTypeToDbType<myclass>{\
+    static const DbTypes ret = DbTypes::kExternalB;\
+};\
+template<> struct ExternalReadWrite<myclass>{\
+    static bool write(myclass* obj, DbOstream* so) {\
+        return writeFunc(obj, so);\
+    }\
+    static bool read(myclass* obj, DbIstream* si) {\
+        return readFunc(obj, si);\
+    }\
+};\
+}
+
+#if 0
+
+#define TABLE4CLASSWEXTERNAL_COLNAME(myclass, tablename, CLASS_ELEMS_TUP, EXTERNAL_TUP, COLNAME_TUP) \
+BOOST_FUSION_ADAPT_STRUCT( myclass, BOOST_PP_TUPLE_REM_CTOR(CLASS_ELEMS_TUP) ) \
+namespace edadb{\
+template<>\
+struct CppTypeToDbType<myclass>{\
+    static const DbTypes ret = DbTypes::kComposite;\
+};\
+template<> struct IsComposite<myclass> : boost::mpl::bool_<true> {};\
+template<> struct TypeMetaData<myclass>{\
+    using TupType = boost::fusion::vector<GENERATE_TupType(BOOST_PP_TUPLE_PUSH_FRONT(CLASS_ELEMS_TUP, myclass))>;\
+    using TupTypePairType = boost::fusion::vector<GENERATE_TupTypePair(BOOST_PP_TUPLE_PUSH_FRONT(CLASS_ELEMS_TUP, myclass))>;\
+    using T = myclass;\
+    \
+    inline static auto tuple_type_pair()->TupTypePairType const&{\
+        static const TupTypePairType t{GENERATE_TupTypePairObj(BOOST_PP_TUPLE_PUSH_FRONT(CLASS_ELEMS_TUP, myclass))};\
+        return t;\
+    }\
+    inline static std::string const& class_name(){\
+        static std::string const class_name = BOOST_STRINGIZE(myclass);\
+        return class_name;\
+    }\
+    inline static std::string const& table_name(){\
+        static std::string const table_name = tablename;\
+        return table_name;\
+    }\
+    inline static const std::vector<std::string>& external_member_names(){\
+        static const std::vector<std::string> names = { \
+            EXPAND_member_names(EXTERNAL_TUP) \
+        };\
+        return names;\
+    }\
+    inline static const std::vector<std::string>& member_names(){\
+        static const std::vector<std::string> names = { \
+            EXPAND_member_names(CLASS_ELEMS_TUP), \
+            EXPAND_member_names(EXTERNAL_TUP) \
+        };\
+        return names;\
+    }\
+    inline static const std::vector<std::string>& column_names(){\
+        static const std::vector<std::string> names = {BOOST_PP_TUPLE_REM_CTOR(COLNAME_TUP)};\
+        return names;\
+    }\
+    inline static TupType getVal(myclass * obj){\
+        return TupType(GENERATE_ObjVal(BOOST_PP_TUPLE_PUSH_FRONT(CLASS_ELEMS_TUP, myclass)));\
+    }\
+};\
+}
+
+#endif
+
+#define TABLE4CLASSWEXTERNAL_COLNAME(myclass, tablename, CLASS_ELEMS_TUP,  EXTERNAL_TUP, COLNAME_TUP) \
+BOOST_FUSION_ADAPT_STRUCT( myclass, BOOST_PP_TUPLE_REM_CTOR(CLASS_ELEMS_TUP) ) \
+namespace edadb{\
+template<>\
+struct CppTypeToDbType<myclass>{\
+    static const DbTypes ret = DbTypes::kComposite;\
+};\
+template<> struct TypeMetaData<myclass>{\
+    using TupType = boost::fusion::vector<GENERATE_TupType(BOOST_PP_TUPLE_PUSH_FRONT(BOOST_PP_VARIADIC_TO_TUPLE( \
+        BOOST_PP_TUPLE_ENUM(CLASS_ELEMS_TUP), \
+        BOOST_PP_TUPLE_ENUM(EXTERNAL_TUP)), myclass))>;\
+    using TupTypePairType = boost::fusion::vector<GENERATE_TupTypePair(BOOST_PP_TUPLE_PUSH_FRONT(BOOST_PP_VARIADIC_TO_TUPLE( \
+        BOOST_PP_TUPLE_ENUM(CLASS_ELEMS_TUP), \
+        BOOST_PP_TUPLE_ENUM(EXTERNAL_TUP)), myclass))>;\
+    using T = myclass;\
+    \
+    inline static auto tuple_type_pair()->TupTypePairType const&{\
+        static const TupTypePairType t{GENERATE_TupTypePairObj(BOOST_PP_TUPLE_PUSH_FRONT(BOOST_PP_VARIADIC_TO_TUPLE( \
+            BOOST_PP_TUPLE_ENUM(CLASS_ELEMS_TUP), \
+            BOOST_PP_TUPLE_ENUM(EXTERNAL_TUP)), myclass))};\
+        return t;\
+    }\
+    inline static std::string const& class_name(){\
+        static std::string const class_name = BOOST_STRINGIZE(myclass);\
+        return class_name;\
+    }\
+    inline static std::string const& table_name(){\
+        static std::string const table_name = tablename;\
+        return table_name;\
+    }\
+    inline static const std::vector<std::string>& member_names(){\
+        static const std::vector<std::string> names = {EXPAND_member_names(BOOST_PP_VARIADIC_TO_TUPLE( \
+            BOOST_PP_TUPLE_ENUM(CLASS_ELEMS_TUP), \
+            BOOST_PP_TUPLE_ENUM(EXTERNAL_TUP)))};\
+        return names;\
+    }\
+    inline static const std::vector<std::string>& column_names(){\
+        static const std::vector<std::string> names = {BOOST_PP_TUPLE_REM_CTOR(COLNAME_TUP)};\
+        return names;\
+    }\
+    inline static TupType getVal(myclass * obj){\
+        return TupType(GENERATE_ObjVal(BOOST_PP_TUPLE_PUSH_FRONT(\
+            BOOST_PP_VARIADIC_TO_TUPLE( \
+            BOOST_PP_TUPLE_ENUM(CLASS_ELEMS_TUP), \
+            BOOST_PP_TUPLE_ENUM(EXTERNAL_TUP)), myclass)));\
+    }\
+};\
+}
+
+
+#define TABLE4CLASSWEXTERNAL(myclass, tablename, CLASS_ELEMS_TUP, EXTERNAL_TUP) \
+TABLE4CLASSWEXTERNAL_COLNAME(myclass, tablename, CLASS_ELEMS_TUP, EXTERNAL_TUP, (EXPAND_member_names(CLASS_ELEMS_TUP), EXPAND_member_names(EXTERNAL_TUP)))
 
 
 //先写一个完整的实际的例子程序（保留，反复使用，宏太长不好看懂），然后再试着用宏替换

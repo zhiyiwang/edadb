@@ -25,7 +25,8 @@ namespace edadb {
         kReal,
         kNumeric,
         kText,
-        kComposite
+        kComposite,
+        kExternalB
     };
 
     /// @class CppTypeToDbType
@@ -34,7 +35,7 @@ namespace edadb {
     /// @details The specialize metafunction returns a type enum that will
     ///          be used by functions overload to return the proper type
     ///          The default specialization is unknown.
-    template<typename T>
+    template<typename T, typename = void>
     struct CppTypeToDbType {
         /// @var static const DbTypes
         /// @brief Holds one of the values of the enum DbTypes
@@ -42,48 +43,48 @@ namespace edadb {
     };
     
     template<typename T>
-    struct CppTypeToDbType<std::vector<T>>{
+    struct CppTypeToDbType<std::vector<T>, void>{
         /// @brief All the vectors are converted to strings
         static const DbTypes ret = DbTypes::kInteger;
     };
 
     template<>
-    struct CppTypeToDbType<int> {
+    struct CppTypeToDbType<int, void> {
         static const DbTypes ret = DbTypes::kInteger;
     };
 
     template<>
-    struct CppTypeToDbType<unsigned int> {
+    struct CppTypeToDbType<unsigned int, void> {
         static const DbTypes ret = DbTypes::kInteger;
     };
 
     template<>
-    struct CppTypeToDbType<char> {
+    struct CppTypeToDbType<char, void> {
         static const DbTypes ret = DbTypes::kInteger;
     };
 
     template<>
-    struct CppTypeToDbType<unsigned char> {
+    struct CppTypeToDbType<unsigned char, void> {
         static const DbTypes ret = DbTypes::kInteger;
     };
 
     template<>
-    struct CppTypeToDbType<float> {
+    struct CppTypeToDbType<float, void> {
         static const DbTypes ret = DbTypes::kReal;
     };
 
     template<>
-    struct CppTypeToDbType<double> {
+    struct CppTypeToDbType<double, void> {
         static const DbTypes ret = DbTypes::kReal;
     };
 
     template<>
-    struct CppTypeToDbType<std::string> {
+    struct CppTypeToDbType<std::string, void> {
         static const DbTypes ret = DbTypes::kText;
     };
 
     template<>
-    struct CppTypeToDbType<std::wstring> {
+    struct CppTypeToDbType<std::wstring, void> {
         static const DbTypes ret = DbTypes::kText;
     };
 
@@ -124,6 +125,12 @@ namespace edadb {
     template<>
     inline std::string const &cppTypeEnumToDbTypeString<DbTypes::kComposite>() {
         const static std::string ret = "__COMPOSITE__";
+        return ret;
+    }
+
+    template<>
+    inline std::string const &cppTypeEnumToDbTypeString<DbTypes::kExternalB>() {
+        const static std::string ret = "BLOB";
         return ret;
     }
 
