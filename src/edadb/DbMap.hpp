@@ -24,7 +24,7 @@ template<typename T>
 class DbMap {
 public:
     class Inserter; // insert object to database
-    class Fetcher;  // fetch  object from database
+    class Fetcher;  // fetch  object from database, such as select statement
     class Updater;  // update object to database
     class Deleter;  // delete object from database
     
@@ -103,7 +103,7 @@ public:
 template<typename T>
 class DbMap<T>::Inserter {
 protected:
-    DbMap     &dbmap;
+    DbMap     &dbmap; // reference is const pointer to DbMap
     DbManager &manager;
 
     DbStatement dbstmt;

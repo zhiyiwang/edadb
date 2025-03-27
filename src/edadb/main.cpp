@@ -35,19 +35,6 @@ void testTypeMetaDataPrinter() {
     std::cout << std::endl << std::endl;
 }
 
-//void test_perf_int () {
-//    test_edadb_perf_int(); std::remove("sqlite.db");
-//    test_edadb_perf_int(); std::remove("sqlite.db");
-//    test_edadb_perf_int(); std::remove("sqlite.db");
-//    test_edadb_perf_int(); std::remove("sqlite.db");
-//    test_edadb_perf_int(); std::remove("sqlite.db");
-//
-//    test_edadb_perf_str(); std::remove("sqlite.db");
-//    test_edadb_perf_str(); std::remove("sqlite.db");
-//    test_edadb_perf_str(); std::remove("sqlite.db");
-//    test_edadb_perf_str(); std::remove("sqlite.db");
-//    test_edadb_perf_str(); std::remove("sqlite.db");
-//}
 
 void testSqlStatement() {
     IdbSite p1("Site1",100,110), p2("Site2",200,210);
@@ -74,13 +61,13 @@ int testDbMap() {
     
 
     edadb::DbMap<IdbSite>::Inserter inserter(dbm);
-    inserter.prepare();
-    inserter.insert(&p1);
+    inserter.prepare(); // todo: do not call prepare,move to ctor
+    inserter.insert(&p1); // todo: check prepare success, stmt is null?
     inserter.insert(&p2);
     inserter.insert(&p3);
     inserter.insert(&p4);
     inserter.insert(&p5);
-    inserter.finalize();
+    inserter.finalize(); // todo: to dtor
     std::cout << std::endl << std::endl;
 
     // scan
