@@ -46,6 +46,7 @@
 
 #include "CppTypeToDbType.hpp"
 #include "TypeMetaData.hpp"
+#include "Table4Class.hpp"
 #include "SqlStatement.hpp"
 #include "DbManager.hpp"
 #include "DbMap.hpp"

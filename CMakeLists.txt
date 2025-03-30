@@ -6,9 +6,10 @@ project(edadb LANGUAGES CXX)
 
 # make flags
 set(CMAKE_BUILD_TYPE Debug) # debug mode 
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDEBUG_SQLITE3_API")
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDEBUG_SQLITE3_INSERT")
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDEBUG_SQLITE3_SCAN")
+
+# make flags
+# compile wiht _EDADB_SQLITE3_ flag
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_EDADB_SQLITE3_")
 
 
 # output directory
