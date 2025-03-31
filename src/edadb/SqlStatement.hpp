@@ -9,8 +9,14 @@
 
 namespace edadb {
 
-template<class T>
-struct SqlStatement {
+/**
+ * @struct SqlStatementBase
+ * @brief This struct is the base class for generating SQL statements.
+ * @details This class provides the basic functionality for generating SQL statements.
+ */
+struct SqlStatementBase {
+
+protected:  // some utility functions
 
 //////// Trans Binary Value to String ////////////////////////////////////
     /**
@@ -34,42 +40,6 @@ struct SqlStatement {
 
 
 //////// Appenders //////////////////////////////////////////////////////
-private: 
-    /**
-     * @brief Appender for name and type.
-     * @param sql The SQL statement to append.
-     * @param idx The index of the element.
-     */
-    struct Appender4NameType {
-    private:
-        std::string& sql;
-        int idx;
-
-    public:
-        Appender4NameType(std::string& sql) : sql(sql), idx(0) {}
-
-        template <typename ValueType>
-        void operator()(ValueType const& x) 
-        {
-            // ValueType:
-            //   defined using boost::fusion::make_pair<int*>(std::string("name"))
-            //   the type is boost::fusion::pair<int*, std::string> 
-            //  the first_type is int*; the second_type is std::string, which is the member name
-            using ElemType = typename ValueType::first_type;
-            using CppType = typename std::remove_const<typename std::remove_pointer<ElemType>::type>::type;
-            std::string dbType = edadb::cppTypeToDbTypeString<CppType> ();
-
-            // use defined column name
-            std::string name = TypeMetaData<T>::column_names()[idx];
-
-            if(idx++ == 0) {
-                sql += name + " " + dbType; // + " PRIMARY KEY";  
-            } else {
-                sql += ", " + name + " " + dbType;
-            }
-        }
-    };
-
 
     struct Appender4Name {
     private:
@@ -118,11 +88,55 @@ private:
             ss << (idx++ > 0 ? ", " : "") << "?";
         }
     };
+};
 
+
+/**
+ * @class SqlStatement
+ * @brief This class generates the SQL statement for the given type.
+ * @tparam T The class type.
+ */
+template<class T>
+struct SqlStatement : public SqlStatementBase {
+
+//////// Appenders //////////////////////////////////////////////////////
+    /**
+     * @brief Appender for name and type.
+     * @param sql The SQL statement to append.
+     * @param idx The index of the element.
+     */
+    struct Appender4NameType {
+    private:
+        std::string& sql;
+        int idx;
+
+    public:
+        Appender4NameType(std::string& sql) : sql(sql), idx(0) {}
+
+        template <typename ValueType>
+        void operator()(ValueType const& x) 
+        {
+            // ValueType:
+            //   defined using boost::fusion::make_pair<int*>(std::string("name"))
+            //   the type is boost::fusion::pair<int*, std::string> 
+            //  the first_type is int*; the second_type is std::string, which is the member name
+            using ElemType = typename ValueType::first_type;
+            using CppType = typename std::remove_const<typename std::remove_pointer<ElemType>::type>::type;
+            std::string dbType = edadb::cppTypeToDbTypeString<CppType> ();
+
+            // use defined column name
+            std::string name = TypeMetaData<T>::column_names()[idx];
+
+            if(idx++ == 0) {
+                sql += name + " " + dbType; // + " PRIMARY KEY";  
+            } else {
+                sql += ", " + name + " " + dbType;
+            }
+        }
+    };
 
 
 //////// Sql Statement /////////////////////////////////////////////////////////
-
 public: // create table
     static std::string const& createTableStatement() {
         static std::string sql;
