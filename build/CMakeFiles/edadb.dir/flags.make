@@ -13,5 +13,5 @@ CXX_DEFINES = -DBUN_SQLITE -DFMT_HEADER_ONLY
 
 CXX_INCLUDES = -I/home/ran/Codes/edadb/include -I/home/ran/Codes/edadb/include/third_party -I/home/ran/Codes/edadb/include/third_party/hdr -I/home/ran/Codes/edadb/include/third_party/json -I/home/ran/Codes/edadb/include/third_party/msgpack -I/home/ran/Codes/edadb/include/third_party/rapidjson -I/home/ran/Codes/edadb/include/third_party/spdlog -I/home/ran/Codes/edadb/include/third_party/sqlite -I/home/ran/Codes/edadb/include/third_party/unqlite
 
-CXX_FLAGS =  -Wall -Wno-unused-variable -Wno-pessimizing-move -Wno-reorder -g -O0 -g -std=c++20 -std=gnu++14
+CXX_FLAGS =  -Wall -Wno-unused-variable -Wno-pessimizing-move -Wno-reorder -std=c++20 -g -O0 -g -std=c++20
 
