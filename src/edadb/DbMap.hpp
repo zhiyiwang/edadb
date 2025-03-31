@@ -134,8 +134,19 @@ public: // insert many
             std::cout << "DbMap::Inserter::prepare: " << sql << std::endl;
         #endif
 
-        return manager.prepare(dbstmt, sql);
+        if (!manager.initStatement(dbstmt)) {
+            std::cerr << "DbMap::Inserter::prepare: init statement failed" << std::endl;
+            return false;
+        }
+
+        if (!dbstmt.prepare(sql)) {
+            std::cerr << "DbMap::Inserter::prepare: prepare statement failed" << std::endl;
+            return false;
+        }
+
+        return true;
     }
+
 
     bool insert(T* obj) {
         if (!dbmap.inited()) {
@@ -145,11 +156,11 @@ public: // insert many
 
         bindObject(obj);
 
-        if (!manager.bindStep(dbstmt)) {
+        if (!dbstmt.bindStep()) {
             return false;
         }
 
-        if (!manager.reset(dbstmt)) {
+        if (!dbstmt.reset()) {
             return false;
         }
 
@@ -162,7 +173,7 @@ public: // insert many
             return false;
         }
 
-        return manager.finalize(dbstmt);
+        return dbstmt.finalize();
     }
 
 private:
@@ -191,7 +202,7 @@ public:
      */
     template <typename ElemType>
     void operator()(const ElemType &elem) {
-        manager.bindColumn(dbstmt, index++, elem);
+        dbstmt.bindColumn(index++, elem);
     }
 };
 
@@ -223,7 +234,18 @@ public:
 
         const std::string sql =
             fmt::format(SqlStatement<T>::scanStatement(), dbmap.getTableName());
-        return manager.prepare(dbstmt, sql);
+
+        if (!manager.initStatement(dbstmt)) {
+            std::cerr << "DbMap::Fetcher::prepare: init statement failed" << std::endl;
+            return false;
+        }
+
+        if (!dbstmt.prepare(sql)) {
+            std::cerr << "DbMap::Fetcher::prepare: prepare statement failed" << std::endl;
+            return false;
+        }
+
+        return true;
     }
 
 
@@ -235,7 +257,18 @@ public:
 
         const std::string sql =
             fmt::format(SqlStatement<T>::lookupStatement(obj), dbmap.getTableName());
-        return manager.prepare(dbstmt, sql);
+
+        if (!manager.initStatement(dbstmt)) {
+            std::cerr << "DbMap::Fetcher::prepare: init statement failed" << std::endl;
+            return false;
+        }
+
+        if (!dbstmt.prepare(sql)) {
+            std::cerr << "DbMap::Fetcher::prepare: prepare statement failed" << std::endl;
+            return false;
+        }
+
+        return true;
     }
 
 
@@ -245,7 +278,7 @@ public:
             return false;
         }
 
-        if (!manager.fetchStep(dbstmt)) {
+        if (!dbstmt.fetchStep()) {
             return false; // no more row
         }
 
@@ -259,7 +292,7 @@ public:
             return false;
         }
 
-        return manager.finalize(dbstmt);
+        return dbstmt.finalize();
     }
 
 
@@ -291,7 +324,7 @@ public:
     template <typename ElemType>
     void operator()(ElemType &elem) {
         auto dbtype = CppTypeToDbType<ElemType>::dbType;
-        manager.fetchColumn(dbstmt, index++, elem);
+        dbstmt.fetchColumn(index++, elem);
     }
 };
 
