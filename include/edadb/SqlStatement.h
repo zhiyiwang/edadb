@@ -14,7 +14,7 @@
 #include <boost/fusion/include/pair.hpp>
 #include <boost/fusion/include/vector.hpp>
 
-#include "Cpp2DbType.h"
+#include "Cpp2SqlType.h"
 #include "TypeMetaData.h"
 
 namespace edadb {
@@ -132,15 +132,15 @@ struct SqlStatement : public SqlStatementBase {
             //  the first_type is int*; the second_type is std::string, which is the member name
             using ElemType = typename ValueType::first_type;
             using CppType = typename std::remove_const<typename std::remove_pointer<ElemType>::type>::type;
-            std::string dbType = edadb::cppTypeToDbTypeString<CppType> ();
+            std::string sqlTypeString = edadb::getSqlTypeString<CppType> ();
 
             // use defined column name
             std::string name = TypeMetaData<T>::column_names()[idx];
 
             if(idx++ == 0) {
-                sql += name + " " + dbType + " PRIMARY KEY";  
+                sql += name + " " + sqlTypeString + " PRIMARY KEY";  
             } else {
-                sql += ", " + name + " " + dbType;
+                sql += ", " + name + " " + sqlTypeString;
             }
         }
     };

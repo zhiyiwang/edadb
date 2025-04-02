@@ -323,7 +323,6 @@ public:
      */
     template <typename ElemType>
     void operator()(ElemType &elem) {
-        auto dbtype = Cpp2DbType<ElemType>::dbType;
         dbstmt.fetchColumn(index++, elem);
     }
 };

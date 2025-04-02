@@ -80,8 +80,8 @@ struct IsComposite : boost::mpl::bool_<false> {
 BOOST_FUSION_ADAPT_STRUCT( myclass, BOOST_PP_TUPLE_REM_CTOR(CLASS_ELEMS_TUP) ) \
 namespace edadb{\
 template<>\
-struct Cpp2DbType<myclass>{\
-    static const DbType ret = DbType::Composite;\
+struct Cpp2SqlType<myclass>{\
+    static constexpr SqlType sqlType = SqlType::Composite; \
 };\
 template<> struct IsComposite<myclass> : boost::mpl::bool_<true> {};\
 template<> struct TypeMetaData<myclass>{\

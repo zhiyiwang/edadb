@@ -32,7 +32,7 @@
 #include <boost/uuid/uuid_io.hpp>
 
 
-#include "Cpp2DbType.h"
+#include "Cpp2SqlType.h"
 #include "TypeMetaData.h"
 #include "Table4Class.h"
 #include "SqlStatement.h"
