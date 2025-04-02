@@ -30,8 +30,8 @@ public:
     ~DbStatement() = default;
 
 public:
-    inline bool invalidDb () { return (db   == nullptr); }
-    inline bool stmtIsNull() { return (stmt == nullptr); }
+    inline bool invalidDb     () { return (db   == nullptr); }
+    inline bool stmtIsNull    () { return (stmt == nullptr); }
     inline bool stmtIsPrepared() { return (stmt != nullptr); }
 
     /**

@@ -10,7 +10,6 @@
 #include <string>
 #include <vector>
 
-
 namespace edadb { 
 
 /**
@@ -41,17 +40,15 @@ enum class DbType : std::uint32_t {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+
 /**
  * @struct Cpp2DbType dec
  * @brief This is a meta function that converts C++ types to database types.
  */
 template<typename T>
 struct Cpp2DbType {
-    // cpp type
     using cppType = T;
-
-    // db type enum: inline to avoid static initialization, default to Unknown
-    static constexpr DbType dbType = DbType::Unknown;
+    static constexpr DbType dbType = DbType::Unknown; // constexpr: no need to define
 };
 
 template<typename T>
@@ -59,7 +56,6 @@ struct Cpp2DbType<T*> {
     using cppType = T;
     static constexpr DbType dbType = Cpp2DbType<T>::dbType;
 };
-
 
 
 // template specialization mapping
@@ -70,37 +66,31 @@ struct Cpp2DbType<CPP_TYPE> { \
     static constexpr DbType dbType = DB_TYPE; \
 };
 
-// cpp types
-DEFINE_TYPE_MAPPING(bool         , DbType::Integer)
-DEFINE_TYPE_MAPPING(char         , DbType::Integer)
-DEFINE_TYPE_MAPPING(unsigned char, DbType::Integer)
-DEFINE_TYPE_MAPPING(short        , DbType::Integer)
+DEFINE_TYPE_MAPPING(bool          , DbType::Integer)
+DEFINE_TYPE_MAPPING(char          , DbType::Integer)
+DEFINE_TYPE_MAPPING(unsigned char , DbType::Integer)
+DEFINE_TYPE_MAPPING(short         , DbType::Integer)
 DEFINE_TYPE_MAPPING(unsigned short, DbType::Integer)
-DEFINE_TYPE_MAPPING(int          , DbType::Integer)
-DEFINE_TYPE_MAPPING(unsigned int , DbType::Integer)
-DEFINE_TYPE_MAPPING(long         , DbType::Integer)
-DEFINE_TYPE_MAPPING(unsigned long, DbType::Integer)
-DEFINE_TYPE_MAPPING(long long    , DbType::Integer)    
+DEFINE_TYPE_MAPPING(int           , DbType::Integer)
+DEFINE_TYPE_MAPPING(unsigned int  , DbType::Integer)
+DEFINE_TYPE_MAPPING(long          , DbType::Integer)
+DEFINE_TYPE_MAPPING(unsigned long , DbType::Integer)
+DEFINE_TYPE_MAPPING(long long     , DbType::Integer)    
 DEFINE_TYPE_MAPPING(unsigned long long, DbType::Integer)
 
-DEFINE_TYPE_MAPPING(float        , DbType::Real)
-DEFINE_TYPE_MAPPING(double       , DbType::Real)
-DEFINE_TYPE_MAPPING(long double  , DbType::Real)
+DEFINE_TYPE_MAPPING(float         , DbType::Real)
+DEFINE_TYPE_MAPPING(double        , DbType::Real)
+DEFINE_TYPE_MAPPING(long double   , DbType::Real)
 
-DEFINE_TYPE_MAPPING(std::string  , DbType::Text)
-DEFINE_TYPE_MAPPING(std::wstring , DbType::Text)
-DEFINE_TYPE_MAPPING(const char*  , DbType::Text)
+DEFINE_TYPE_MAPPING(std::string   , DbType::Text)
+DEFINE_TYPE_MAPPING(std::wstring  , DbType::Text)
+DEFINE_TYPE_MAPPING(const char*   , DbType::Text)
 DEFINE_TYPE_MAPPING(const wchar_t*, DbType::Text)
 
 
 ////////////////////////////////////////////////////////////////////////////////
 
 
-/**
- * @fn cppTypeEnumToDbTypeString
- * @brief Convert cpp type to sqlite type, and return the string.
- * @return std::string Returns the SQL Type equivalent.
- */
 template<DbType N = DbType::Unknown>
 inline std::string const& cppTypeEnumToDbTypeString() {
     const static std::string ret = "UNKNOWN";
@@ -137,10 +127,6 @@ inline std::string const &cppTypeEnumToDbTypeString<DbType::Composite>() {
     return ret;
 }
 
-/// @fn cppTypeToDbTypeString
-/// @brief This is the final piece of puzzle in the type conversion.
-/// @details This function call the previous function specialization
-///          which in turn calls the meta function to get the enum.
 /**
  * @fn cppTypeToDbTypeString
  * @brief Convert cpp type to sqlite type, and return the string.
@@ -150,6 +136,7 @@ template<typename T>
 inline std::string const &cppTypeToDbTypeString() {
     return cppTypeEnumToDbTypeString< Cpp2DbType<T>::dbType >();
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 

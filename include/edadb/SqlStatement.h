@@ -138,7 +138,7 @@ struct SqlStatement : public SqlStatementBase {
             std::string name = TypeMetaData<T>::column_names()[idx];
 
             if(idx++ == 0) {
-                sql += name + " " + dbType; // + " PRIMARY KEY";  
+                sql += name + " " + dbType + " PRIMARY KEY";  
             } else {
                 sql += ", " + name + " " + dbType;
             }
