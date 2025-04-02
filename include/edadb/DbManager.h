@@ -13,7 +13,7 @@
 #include <sqlite3.h>
 #include <boost/core/noncopyable.hpp>
 
-#include "CppTypeToDbType.hpp"
+#include "Cpp2DbType.h"
 #include "DbStatement.h"
 
 namespace edadb {
@@ -51,6 +51,14 @@ public:
     DbManager(void) = default;
     ~DbManager() {
         close();
+    }
+
+    DbManager(const DbManager &) = delete;
+    DbManager &operator=(const DbManager &) = delete;
+
+public:
+    sqlite3 *getDb() {
+        return db;
     }
 
 public: // database operation
@@ -95,9 +103,9 @@ public: // database operation
      * @return true if closed; otherwise, false.
     */
     bool close() {
+        // success close if not connected 
         if (connect_param.empty()) {
-            std::cerr << "Sqlite3 Error: not connected: " << connect_param << std::endl;
-            return false;
+            return true;
         }
 
         bool closed = (sqlite3_close(db) == SQLITE_OK);

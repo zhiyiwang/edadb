@@ -32,22 +32,10 @@
 #include <boost/uuid/uuid_io.hpp>
 
 
-
-//#include <third_party/fmt/format.hpp>
-//#include <third_party/rapidjson/rapidjson.h>
-//#include <third_party/rapidjson/document.h>
-//#include <third_party/json/json.hpp>
-//#include "lib/utils/MD5.hpp"
-//#include "lib/edadb/impl/EdadbCppTypeToSQLString.hpp"
-// #include <sqlite3.h>
-//#include <soci/error.h>
-//#include <soci/soci.h>
-//#include <soci/sqlite3/soci-sqlite3.h>
-
-#include "CppTypeToDbType.hpp"
-#include "TypeMetaData.hpp"
-#include "Table4Class.hpp"
-#include "SqlStatement.hpp"
-#include "DbManager.hpp"
-#include "DbMap.hpp"
+#include "Cpp2DbType.h"
+#include "TypeMetaData.h"
+#include "Table4Class.h"
+#include "SqlStatement.h"
+#include "DbManager.h"
+#include "DbMap.h"
 

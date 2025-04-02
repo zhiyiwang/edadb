@@ -3,11 +3,9 @@
  * @brief TypeMetaData.hpp provides a way to get the meta data of a class.
  */
 
-
 #pragma once
 
 namespace edadb {
-
 
 /**
  * @brief TypeMetaData provides a way to get the meta data of a class.
@@ -19,6 +17,7 @@ struct TypeMetaData {
     static std::string const& class_name();
     boost::fusion::vector<boost::fusion::pair<void, std::string>> const& tuple_type_pair();
 };
+
 
 
 /**
@@ -35,13 +34,15 @@ public:
     ~TypeMetaDataPrinter() = default;
 
 public:
-    void printTypeMetaDataStaticMembers(void) {
+    void printStatic() {
         std::string class_name = TypeMetaData<T>::class_name();
         std::string templ_name = "TypeMetaData<" + class_name + ">";
 
         std::cout << templ_name << " Static Members: " << std::endl;
-        std::cout << templ_name << "::class_name() = "<< edadb::TypeMetaData<T>::class_name()<< std::endl;
-        std::cout << templ_name << "::table_name() = "<< edadb::TypeMetaData<T>::table_name()<< std::endl;
+        std::cout << templ_name << "::class_name() = " 
+            << edadb::TypeMetaData<T>::class_name() << std::endl;
+        std::cout << templ_name << "::table_name() = "
+            << edadb::TypeMetaData<T>::table_name() << std::endl;
         std::cout << templ_name << "::member_names() = ";
         auto names = edadb::TypeMetaData<T>::member_names();
         for(auto n : names)
@@ -89,5 +90,6 @@ public:
         }
     }
 }; // class TypeMetaDataPrinter
+
 
 }  // namespace edadb

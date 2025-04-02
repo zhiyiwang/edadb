@@ -9,19 +9,19 @@
 #include <string>
 #include <stdint.h>
 
-#include "SqlStatement.hpp"
+#include "SqlStatement.h"
 #include "DbStatement.h"
-#include "DbManager.hpp"
+#include "DbManager.h"
 
 namespace edadb {
 
+
 /**
  * @brief DbMap class maps objects to relations.
- *  No need to create object, use static method directly.
  * @tparam T The class type.
  */
 template<typename T>
-class DbMap  {
+class DbMap {
 public:
     class Inserter; // insert object to database
     class Fetcher;  // fetch  object from database, such as select statement
@@ -30,21 +30,19 @@ public:
     
 
 protected:
-    static std::string table_name; // table name
-    static DbManager   manager;    // database manager
+    std::string table_name;
+    DbManager   manager;
 
 public:
-    DbMap () = delete;
-    ~DbMap() = delete;
+    DbMap () = default;
+    ~DbMap() = default;
 
 public:
-    static const std::string& getTableName() { return table_name; }
-    static DbManager&         getManager  () { return manager   ; }
+    const std::string& getTableName() { return table_name; }
+    DbManager&         getManager  () { return manager   ; }
 
 public:
-    static bool inited() { return !table_name.empty(); }
-
-    static bool init(const std::string &c, const std::string &t) {
+    bool init(const std::string& c, const std::string& t) {
         table_name = t;
         if (table_name.empty()) {
             std::cerr << "DbMap::init: table name is empty" << std::endl;
@@ -59,8 +57,12 @@ public:
         return true;
     }
 
+    bool inited() {
+        return !table_name.empty();
+    }
+
 public:
-    static bool createTable() {
+    bool createTable() {
         if (!inited()) {
             std::cerr << "DbMap::createTable: not inited" << std::endl;
             return false;
@@ -75,7 +77,7 @@ public:
         return manager.exec(sql);
     }
 
-    static bool dropTable() {
+    bool dropTable() {
         if (!inited()) {
             std::cerr << "DbMap::dropTable: not inited" << std::endl;
             return false;
@@ -86,17 +88,14 @@ public:
     }
 
 public:
-    static bool beginTransaction () { return manager.exec("BEGIN TRANSACTION;"); }
-    static bool commitTransaction() { return manager.exec("COMMIT;"); }
+    bool beginTransaction() {
+        return manager.exec("BEGIN TRANSACTION;");
+    }
+
+    bool commitTransaction() {
+        return manager.exec("COMMIT;");
+    }
 }; // class DbMap
-
-
-// static member initialization
-template<typename T>
-std::string DbMap<T>::table_name(""); // table name
-
-template<typename T>
-DbManager   DbMap<T>::manager;    // database manager
 
 
 
@@ -104,12 +103,18 @@ DbManager   DbMap<T>::manager;    // database manager
 template<typename T>
 class DbMap<T>::Inserter {
 protected:
+    DbMap     &dbmap; // reference is const pointer to DbMap
+    DbManager &manager;
+
     DbStatement dbstmt;
     uint32_t index = 0;
 
 public:
-    Inserter () : index(0) { prepare(); }
-    ~Inserter() { dbstmt.finalize(); }
+    Inserter(DbMap &m) : dbmap(m), manager(m.getManager()) { resetIndex(); }
+
+    DbManager& getManager() {
+        return manager;
+    }
 
 public: // insert one 
     bool insertOne(T* obj) {
@@ -118,19 +123,17 @@ public: // insert one
 
 public: // insert many
     bool prepare() {
-        if (!DbMap<T>::inited()) {
+        if (!dbmap.inited()) {
             std::cerr << "DbMap::Inserter::prepare: not inited" << std::endl;
             return false;
         }
 
-        const std::string &table_name = DbMap<T>::getTableName();
         const std::string sql =
-            fmt::format(SqlStatement<T>::insertPlaceHolderStatement(), table_name);
+            fmt::format(SqlStatement<T>::insertPlaceHolderStatement(), dbmap.getTableName());
         #if DEBUG_SQLITE3_API
             std::cout << "DbMap::Inserter::prepare: " << sql << std::endl;
         #endif
 
-        DbManager &manager = DbMap<T>::getManager();
         if (!manager.initStatement(dbstmt)) {
             std::cerr << "DbMap::Inserter::prepare: init statement failed" << std::endl;
             return false;
@@ -146,7 +149,7 @@ public: // insert many
 
 
     bool insert(T* obj) {
-        if (!DbMap<T>::inited()) {
+        if (!dbmap.inited()) {
             std::cerr << "DbMap::Inserter::insert: not inited" << std::endl;
             return false;
         }
@@ -165,7 +168,7 @@ public: // insert many
     }
 
     bool finalize() {
-        if (!DbMap<T>::inited()) {
+        if (!dbmap.inited()) {
             std::cerr << "DbMap::insertFinalize: not inited" << std::endl;
             return false;
         }
@@ -209,25 +212,29 @@ public:
 template<typename T>
 class DbMap<T>::Fetcher {
 protected:
+    DbMap     &dbmap;
+    DbManager &manager;
+
     DbStatement dbstmt;
     uint32_t index = 0;
 
 public:
-    Fetcher () = default;
-    ~Fetcher() { dbstmt.finalize(); }
+    Fetcher(DbMap &m) : dbmap(m), manager(m.getManager()) { resetIndex(); }
+
+    DbManager& getManager() {
+        return manager;
+    }
 
 public:
     bool prepare2Scan() {
-        if (!DbMap<T>::inited()) {
+        if (!dbmap.inited()) {
             std::cerr << "DbMap::Fetcher::prepare: not inited" << std::endl;
             return false;
         }
 
-        const std::string &table_name = DbMap<T>::getTableName();
         const std::string sql =
-            fmt::format(SqlStatement<T>::scanStatement(), table_name);
+            fmt::format(SqlStatement<T>::scanStatement(), dbmap.getTableName());
 
-        DbManager &manager = DbMap<T>::getManager();
         if (!manager.initStatement(dbstmt)) {
             std::cerr << "DbMap::Fetcher::prepare: init statement failed" << std::endl;
             return false;
@@ -243,16 +250,14 @@ public:
 
 
     bool prepare2Lookup(T* obj) {
-        if (!DbMap<T>::inited()) {
+        if (!dbmap.inited()) {
             std::cerr << "DbMap::Fetcher::prepare: not inited" << std::endl;
             return false;
         }
 
-        const std::string &table_name = DbMap<T>::getTableName();
         const std::string sql =
-            fmt::format(SqlStatement<T>::lookupStatement(obj), table_name);
+            fmt::format(SqlStatement<T>::lookupStatement(obj), dbmap.getTableName());
 
-        DbManager &manager = DbMap<T>::getManager();
         if (!manager.initStatement(dbstmt)) {
             std::cerr << "DbMap::Fetcher::prepare: init statement failed" << std::endl;
             return false;
@@ -268,7 +273,7 @@ public:
 
 
     bool fetch(T* obj) {
-        if (!DbMap<T>::inited()) {
+        if (!dbmap.inited()) {
             std::cerr << "DbMap::Inserter::insert: not inited" << std::endl;
             return false;
         }
@@ -282,7 +287,7 @@ public:
     }
 
     bool finalize() {
-        if (!DbMap<T>::inited()) {
+        if (!dbmap.inited()) {
             std::cerr << "DbMap::scanFinalize: not inited" << std::endl;
             return false;
         }
@@ -318,7 +323,7 @@ public:
      */
     template <typename ElemType>
     void operator()(ElemType &elem) {
-        auto dbtype = CppTypeToDbType<ElemType>::dbType;
+        auto dbtype = Cpp2DbType<ElemType>::dbType;
         dbstmt.fetchColumn(index++, elem);
     }
 };
@@ -328,21 +333,26 @@ public:
 // delete object from database
 template<typename T>
 class DbMap<T>::Deleter {
+protected:
+    DbMap     &dbmap;
+    DbManager &manager;
+
 public:
-    Deleter () = default;
-    ~Deleter() = default;
+    Deleter(DbMap &m) : dbmap(m), manager(m.getManager()) {}
+
+    DbManager& getManager() {
+        return manager;
+    }
 
 public:
     bool deleteByPrimaryKeys(T* obj) {
-        if (!DbMap<T>::inited()) {
+        if (!dbmap.inited()) {
             std::cerr << "DbMap::Deleter::deleteOne: not inited" << std::endl;
             return false;
         }
 
-        const std::string &table_name = DbMap<T>::getTableName();
-        DbManager &manager = DbMap<T>::getManager();
         const std::string sql =
-            fmt::format(SqlStatement<T>::deleteStatement(obj), table_name);
+            fmt::format(SqlStatement<T>::deleteStatement(obj), dbmap.getTableName());
         return manager.exec(sql);
     }
 }; // class Deleter
@@ -352,21 +362,26 @@ public:
 // update object to database
 template<typename T>
 class DbMap<T>::Updater {
+protected:
+    DbMap     &dbmap;
+    DbManager &manager;
+
 public:
-    Updater() = default;
-    ~Updater() = default;
+    Updater(DbMap &m) : dbmap(m), manager(m.getManager()) {}
+
+    DbManager& getManager() {
+        return manager;
+    }
 
 public:
     bool update(T* org_obj, T* new_obj) {
-        if (!DbMap<T>::inited()) {
+        if (!dbmap.inited()) {
             std::cerr << "DbMap::Updater::update: not inited" << std::endl;
             return false;
         }
 
-        const std::string &table_name = DbMap<T>::getTableName();
-        DbManager &manager = DbMap<T>::getManager();
         const std::string sql =
-            fmt::format(SqlStatement<T>::updateStatement(org_obj, new_obj), table_name);
+            fmt::format(SqlStatement<T>::updateStatement(org_obj, new_obj), dbmap.getTableName());
         return manager.exec(sql);
     }
 }; // class Updater

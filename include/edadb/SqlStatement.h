@@ -5,7 +5,17 @@
 
 #pragma once
 
+#include <vector>   
+#include <iostream>
 #include <sstream>
+
+#include <boost/fusion/include/for_each.hpp>
+#include <boost/fusion/include/algorithm.hpp>
+#include <boost/fusion/include/pair.hpp>
+#include <boost/fusion/include/vector.hpp>
+
+#include "Cpp2DbType.h"
+#include "TypeMetaData.h"
 
 namespace edadb {
 
@@ -30,7 +40,7 @@ protected:  // some utility functions
     }
     
     /**
-     * @brief Convert binary value to string template specialization.
+     * @brief Convert string value to string.
      * @param val The binary value.
      * @return The string value.
      */

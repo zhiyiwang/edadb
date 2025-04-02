@@ -6,4 +6,4 @@ message(STATUS "THIRDPARTY_BINARY_DIR @ " ${THIRDPARTY_BINARY_DIR})
 
 
 add_subdirectory(thirdparty)
-add_subdirectory(edadb)
+add_subdirectory(core)

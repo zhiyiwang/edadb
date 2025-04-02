@@ -30,35 +30,14 @@ public:
     ~DbStatement() = default;
 
 public:
-    /**
-     * @brief Prepare the SQL statement
-     */
-    bool stmtIsPrepared() {
-        return (stmt != nullptr);
-    }
-
-    /**
-     * @brief check if the statement is null
-     */
-    bool stmtIsNull() {
-        return (stmt == nullptr);
-    }
-
-    /**
-     * @brief check if the database is null
-     */
-    bool invalidDb() {
-        return (db == nullptr);
-    }
+    inline bool invalidDb () { return (db   == nullptr); }
+    inline bool stmtIsNull() { return (stmt == nullptr); }
+    inline bool stmtIsPrepared() { return (stmt != nullptr); }
 
     /**
      * @brief prepare the SQL statement
      */
     bool prepare(const std::string &sql) {
-        #if DEBUG_SQLITE3_API
-            std::cout << "DbManager::prepareSQL: " << sql << std::endl;
-        #endif
-
         if (invalidDb()) {
             std::cerr << "DbStatement::prepare: invalid database" << std::endl;
             return false;
@@ -298,14 +277,4 @@ public: // fetch column
         *value = (const wchar_t*)sqlite3_column_text16(stmt, index);
         return true;
     }
-
-
-
-
-
-
-
-
-
 };
-
