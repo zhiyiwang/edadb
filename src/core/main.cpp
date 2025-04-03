@@ -71,18 +71,18 @@ int testDbMap() {
 
     // scan
     std::cout << "[DbMap Scan]" << std::endl;
-    edadb::DbMap<IdbSite>::Fetcher fetcher(dbm);
-    fetcher.prepare2Scan();
+    edadb::DbMap<IdbSite>::Reader reader(dbm);
+    reader.prepare();
 
     IdbSite got; 
     bool got_flag = false;
     uint32_t cnt = 0;
-    while (got_flag = fetcher.fetch(&got)) {
+    while (got_flag = reader.read(&got)) {
         std::cout << "IdbSite [" << cnt++ << "] :  ";
         got.print();
     }
 
-    fetcher.finalize();
+    reader.finalize();
     std::cout << std::endl << std::endl;
 
     // update 
@@ -93,13 +93,13 @@ int testDbMap() {
     updater.update(&p2, &p2_new);
 
     // scan
-    fetcher.prepare2Scan();
+    reader.prepare();
     cnt = 0;
-    while (got_flag = fetcher.fetch(&got)) {
+    while (got_flag = reader.read(&got)) {
         std::cout << "IdbSite [" << cnt++ << "] :  ";
         got.print();
     }
-    fetcher.finalize();
+    reader.finalize();
     std::cout << std::endl << std::endl;
 
     // delete
@@ -109,27 +109,27 @@ int testDbMap() {
     deleter.deleteByPrimaryKeys(&p2_new);
 
     // scan
-    fetcher.prepare2Scan();
+    reader.prepare();
     cnt = 0;
-    while (got_flag = fetcher.fetch(&got)) {
+    while (got_flag = reader.read(&got)) {
         std::cout << "IdbSite [" << cnt++ << "] :  ";
         got.print();
     }
-    fetcher.finalize();
+    reader.finalize();
     std::cout << std::endl << std::endl;
 
     // lookup
     std::cout << "[DbMap Lookup]" << std::endl;
     IdbSite lookup_idsite("Site3",0,0);
-    fetcher.prepare2Lookup(&lookup_idsite);
-    got_flag = fetcher.fetch(&got);
+    reader.prepare(&lookup_idsite);
+    got_flag = reader.read(&got);
     if (got_flag) {
         std::cout << "IdbSite :  ";
         got.print();
     } else {
         std::cout << "IdbSite not found" << std::endl;
     }
-    fetcher.finalize();
+    reader.finalize();
 
 
     return 0;

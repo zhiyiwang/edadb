@@ -37,8 +37,8 @@ protected:
     sqlite3     *db = nullptr; // database handler
 
 public:
-    static const uint32_t s_bind_column_begin_index  = 1; // sqlite3 bind column index starts from 1
-    static const uint32_t s_fetch_column_begin_index = 0; // sqlite3 fetch column index starts from 0
+    static const uint32_t s_bind_column_begin_index = 1; // sqlite3 bind column index starts from 1
+    static const uint32_t s_read_column_begin_index = 0; // sqlite3 fetch column index starts from 0
 
 protected:
     /**

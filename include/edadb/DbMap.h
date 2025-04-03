@@ -29,8 +29,9 @@ private:
     friend class Singleton< DbMap<T> >;
 
 public:
+    class Reader;  // read object from database
+
     class Inserter; // insert object to database
-    class Fetcher;  // fetch  object from database, such as select statement
     class Updater;  // update object to database
     class Deleter;  // delete object from database
 
@@ -204,121 +205,6 @@ public:
 
 
 
-// fetch values for scan statement
-template<typename T>
-class DbMap<T>::Fetcher {
-protected:
-    DbMap     &dbmap;
-    DbManager &manager;
-
-    DbStatement dbstmt;
-    uint32_t index = 0;
-
-public:
-    Fetcher (DbMap &m) : dbmap(m), manager(m.getManager()) { resetIndex(); }
-    ~Fetcher() = default;
-
-public:
-    bool prepare2Scan() {
-        if (!dbmap.inited()) {
-            std::cerr << "DbMap::Fetcher::prepare: not inited" << std::endl;
-            return false;
-        }
-
-        if (!manager.initStatement(dbstmt)) {
-            std::cerr << "DbMap::Fetcher::prepare: init statement failed" << std::endl;
-            return false;
-        }
-
-        const std::string sql =
-            fmt::format(SqlStatement<T>::scanStatement(), dbmap.getTableName());
-        if (!dbstmt.prepare(sql)) {
-            std::cerr << "DbMap::Fetcher::prepare: prepare statement failed" << std::endl;
-            return false;
-        }
-
-        return true;
-    }
-
-
-    bool prepare2Lookup(T* obj) {
-        if (!dbmap.inited()) {
-            std::cerr << "DbMap::Fetcher::prepare: not inited" << std::endl;
-            return false;
-        }
-
-        if (!manager.initStatement(dbstmt)) {
-            std::cerr << "DbMap::Fetcher::prepare: init statement failed" << std::endl;
-            return false;
-        }
-
-        const std::string sql =
-            fmt::format(SqlStatement<T>::lookupStatement(obj), dbmap.getTableName());
-        if (!dbstmt.prepare(sql)) {
-            std::cerr << "DbMap::Fetcher::prepare: prepare statement failed" << std::endl;
-            return false;
-        }
-
-        return true;
-    }
-
-
-    bool fetch(T* obj) {
-        if (!dbmap.inited()) {
-            std::cerr << "DbMap::Inserter::insert: not inited" << std::endl;
-            return false;
-        }
-
-        if (!dbstmt.fetchStep()) {
-            return false; // no more row
-        }
-
-        fetchObject(obj);
-        return true;
-    }
-
-    bool finalize() {
-        if (!dbmap.inited()) {
-            std::cerr << "DbMap::scanFinalize: not inited" << std::endl;
-            return false;
-        }
-
-        return dbstmt.finalize();
-    }
-
-
-private:
-    /** reset index to begin to fetch */
-    void resetIndex() {
-        index = manager.s_fetch_column_begin_index;
-    }
-
-    /**
-     * @brief fetch the object from the database.
-     * @param obj The object to fetch.
-     */
-    void fetchObject(T* obj) {
-        // reset index to begin to fetch
-        resetIndex();
-
-        // iterate through the values and fetch them
-        auto values = TypeMetaData<T>::getVal(obj);
-        boost::fusion::for_each(values, *this);
-    }
-
-public:
-    /**
-     * @brief Operator to fetch each element in obj
-     *   invoked by boost::fusion::for_each @ fetchValues
-     * @param elem The element to fetch from column in db row.
-     */
-    template <typename ElemType>
-    void operator()(ElemType &elem) {
-        dbstmt.fetchColumn(index++, elem);
-    }
-};
-
-
 
 // delete object from database
 template<typename T>
@@ -367,6 +253,148 @@ public:
         return manager.exec(sql);
     }
 }; // class Updater
+
+
+
+// DbMap Reader: read object from database
+template<typename T>
+class DbMap<T>::Reader {
+protected:
+    DbMap     &dbmap;
+    DbManager &manager;
+
+    // thread local variables  
+    DbStatement dbstmt; 
+    uint32_t index = 0;
+
+public:
+    Reader (DbMap &m) : dbmap(m), manager(m.getManager()) { resetIndex(); }
+    ~Reader() = default;
+
+public:
+    /**
+     * @brief prepare to read the object from the database W/WO predicate.
+     * @param pred The predicate to filter the object.
+     * @return true if prepared; otherwise, false.
+     */
+    bool prepare(const std::string &pred = "") {
+        if (!dbmap.inited()) {
+            std::cerr << "DbMap<" << typeid(T).name() << ">::Reader::" 
+                << "prepare2Scan: not inited" << std::endl;
+            return false;
+        }
+
+        if (!manager.initStatement(dbstmt)) {
+            std::cerr << "DbMap<" << typeid(T).name() << ">::Reader::"
+                << "prepare2Scan: init statement failed" << std::endl;
+            return false;
+        }
+
+        std::string sql =
+            fmt::format(SqlStatement<T>::scanStatement(), dbmap.getTableName());
+        sql += (pred.empty() ? "" : " WHERE " + pred + ";");
+        
+        if (!dbstmt.prepare(sql)) {
+            std::cerr << "DbMap<" << typeid(T).name() << ">::Reader::"
+                << "prepare2Scan: prepare statement failed" << std::endl;
+            return false;
+        }
+
+        return true;
+    }
+
+
+    /**
+     * @brief prepare to read the object from the database by primary key
+     * @param obj The object to read.
+     * @return true if prepared; otherwise, false.
+     */
+    bool prepare(T* obj) {
+        if (!dbmap.inited()) {
+            std::cerr << "DbMap<" << typeid(T).name() << ">::Reader::"
+                << "prepare: not inited" << std::endl;
+            return false;
+        }
+
+        if (!manager.initStatement(dbstmt)) {
+            std::cerr << "DbMap<" << typeid(T).name() << ">::Reader::"
+                << "prepare: init statement failed" << std::endl;
+            return false;
+        }
+
+        std::string sql =
+            fmt::format(SqlStatement<T>::lookupStatement(obj), dbmap.getTableName());
+        if (!dbstmt.prepare(sql)) {
+            std::cerr << "DbMap<" << typeid(T).name() << ">::Reader::"
+                << "prepare: prepare statement failed" << std::endl;
+            return false;
+        }
+
+        return true;
+    }
+
+
+    bool read(T* obj) {
+        if (!dbmap.inited()) {
+            std::cerr << "DbMap<" << typeid(T).name() << ">::Reader::"
+                << "read: not inited" << std::endl;
+            return false;
+        }
+
+        if (!dbstmt.fetchStep()) {
+            return false; // no more row
+        }
+
+        readObject(obj);
+        return true;
+    }
+
+    bool finalize() {
+        if (!dbmap.inited()) {
+            std::cerr << "DbMap::scanFinalize: not inited" << std::endl;
+            return false;
+        }
+
+        return dbstmt.finalize();
+    }
+
+
+private:
+    /** reset index to begin to read */
+    void resetIndex() {
+        index = manager.s_read_column_begin_index;
+    }
+
+    /**
+     * @brief read the object from the database.
+     * @param obj The object to read.
+     */
+    void readObject(T* obj) {
+        // reset index to begin to read 
+        resetIndex();
+
+        // iterate through the values and read them
+        auto values = TypeMetaData<T>::getVal(obj);
+        boost::fusion::for_each(values, *this);
+    }
+
+public:
+    /**
+     * @brief Operator to read each element in obj
+     *   invoked by boost::fusion::for_each @ readObject
+     * @param elem The element to read from column in db row.
+     */
+    template <typename ElemType>
+    void operator()(ElemType &elem) {
+        dbstmt.fetchColumn(index++, elem);
+    }
+};
+
+
+
+
+
+
 
 
 
