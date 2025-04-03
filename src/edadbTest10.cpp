@@ -4,7 +4,7 @@
 #include <boost/geometry/geometries/point_xy.hpp>
 #include <boost/geometry/geometries/polygon.hpp>
 /*
-* 影子类
+* 影子类 未完成 尝试在Test11中使用 序列化函数
 */
 
 namespace bg = boost::geometry;
@@ -18,14 +18,36 @@ struct IdbCoordinate {
   IdbCoordinate(int32_t _x = 0, int32_t _y = 0) : x(_x), y(_y) {}
 };
 
-#include <istream>
-#include <ostream>
-#include <streambuf>
-
-class DbIstream : public std::istream {
-  DbIstream(std::istream& is) : std::istream(is.rdbuf()) {}
-  
+template <typename T> // 上层程序员提供的 其实也可以替换掉external类
+class Shadow{
+  public:
+  public:// 根据T的具体内容
+    void get(T* obj);
+    void set(T* obj);
 };
+
+template<>
+class Shadow<polygon_t>{
+  public:
+    typedef polygon_t::ring_type ring_type;
+    typedef polygon_t::inner_container_type inner_container_type;
+
+    ring_type m_outer;
+    inner_container_type m_inners;
+  public:
+    void get(polygon_t* obj){
+      m_outer = obj->outer();
+      m_inners = obj->inners();
+    }
+    void set(polygon_t* obj){
+      obj->outer() = m_outer;
+      obj->inners() = m_inners;
+    }
+};
+
+//Table4ExternalClass (myclass, tablename,shadowclass)
+//Table4ExternalClass (polygon_t, "polygon_t_table",polygon_shadow)
+
 /*
 1. connect 参数
 2. 调研vector和指针的出现情况  怎么用的，是不是

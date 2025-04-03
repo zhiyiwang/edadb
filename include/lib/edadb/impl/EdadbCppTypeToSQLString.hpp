@@ -26,7 +26,7 @@ namespace edadb {
         kNumeric,
         kText,
         kComposite,
-        kExternalB
+        kExternal
     };
 
     /// @class CppTypeToDbType
@@ -129,7 +129,7 @@ namespace edadb {
     }
 
     template<>
-    inline std::string const &cppTypeEnumToDbTypeString<DbTypes::kExternalB>() {
+    inline std::string const &cppTypeEnumToDbTypeString<DbTypes::kExternal>() {
         const static std::string ret = "BLOB";
         return ret;
     }

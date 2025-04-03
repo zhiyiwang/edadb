@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.6)
 
 project(edadb)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-unused-variable -Wno-pessimizing-move -Wno-reorder")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-unused-variable -Wno-pessimizing-move -Wno-reorder -std=c++20")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g -std=c++20")
 
 set(CMAKE_BUILD_TYPE Debug)
@@ -18,17 +18,17 @@ set(THIRD_PARTY_HEADER
     include/third_party/sqlite
     include/third_party/unqlite
 )
-set(CMAKE_CXX_STANDARD 14)
+# set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_VERBOSE_MAKEFILE ON)
 set(SOURCE_FILES
     src/sqlite/sqlite3.c
     # src/edadbTest1.cpp
-    
-    src/edadbTest8.cpp
+     
+    src/edadbTest14.cpp
 	
         # include/lib/edadb/edadb.hpp
         # include/lib/edadb/edadbTestMacro.hpp
-        include/lib/edadb/edadbTest8.hpp
+        include/lib/edadb/edadbTest14.hpp
         include/lib/utils/MD5.hpp
         include/lib/utils/Singleton.hpp
 )

@@ -34,7 +34,7 @@ public:
 };
     
 
-bool writeFuncType(Pra *obj, DbOstream* so){
-    // so->write(obj->outer());
-    return true;
-}
+// bool writeFuncType(Pra *obj, DbOstream* so){
+//     // so->write(obj->outer());
+//     return true;
+// }
