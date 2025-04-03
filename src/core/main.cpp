@@ -43,7 +43,7 @@ void testSqlStatement() {
     
 
 int testDbMap() {
-    edadb::DbMap<IdbSite> dbm;
+    edadb::DbMap<IdbSite> &dbm = edadb::DbMap<IdbSite>::i();
     if (!dbm.init("sqlite.db")) {
         std::cerr << "DbMap::init failed" << std::endl;
         return 1;

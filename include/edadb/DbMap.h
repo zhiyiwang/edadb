@@ -21,23 +21,34 @@ namespace edadb {
  * @tparam T The class type.
  */
 template<typename T>
-class DbMap {
+class DbMap : public Singleton< DbMap<T> > {
+private:
+    /**
+     * @brief friend class for Singleton pattern.
+     */
+    friend class Singleton< DbMap<T> >;
+
 public:
     class Inserter; // insert object to database
     class Fetcher;  // fetch  object from database, such as select statement
     class Updater;  // update object to database
     class Deleter;  // delete object from database
-    
 
 protected:
     const std::string table_name; // defined in TypeMetaData<T> by TABLE4CLASS macro
     DbManager&        manager; // Singleton DbManager ins to connect to database
     bool   mgr_inited = false; // DbManager is inited
 
-
-public:
-    ~DbMap() = default;
+protected:
+    /**
+     * @brief protected ctor to avoid direct instantiation, use Singleton instead.
+     */
     DbMap () : table_name(TypeMetaData<T>::table_name()), manager(DbManager::i()) {}
+
+    /**
+     * @brief protected dtor to avoid direct instantiation, use Singleton instead.
+     */
+    ~DbMap() = default;
 
 public:
     const std::string& getTableName() { return table_name; }
