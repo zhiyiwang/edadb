@@ -13,7 +13,6 @@ namespace edadb {
  */
 template<typename T>
 struct TypeMetaData {
-    using MT = boost::fusion::vector<void>;
     static std::string const& class_name();
     boost::fusion::vector<boost::fusion::pair<void, std::string>> const& tuple_type_pair();
 };
@@ -27,7 +26,7 @@ struct TypeMetaData {
 template<typename T>
 struct TypeMetaDataPrinter {
 private:
-    uint32_t index = 0;
+    uint32_t index = 0; // print index
 
 public:
     TypeMetaDataPrinter () = default;

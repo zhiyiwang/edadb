@@ -126,6 +126,10 @@ struct SqlStatement : public SqlStatementBase {
         template <typename ValueType>
         void operator()(ValueType const& x) 
         {
+            // Column name:
+            // use defined column name in TypeMetaData<T>::column_names()
+            std::string name = TypeMetaData<T>::column_names()[idx];
+
             // ValueType:
             //   defined using boost::fusion::make_pair<int*>(std::string("name"))
             //   the type is boost::fusion::pair<int*, std::string> 
@@ -133,9 +137,6 @@ struct SqlStatement : public SqlStatementBase {
             using ElemType = typename ValueType::first_type;
             using CppType = typename std::remove_const<typename std::remove_pointer<ElemType>::type>::type;
             std::string sqlTypeString = edadb::getSqlTypeString<CppType> ();
-
-            // use defined column name
-            std::string name = TypeMetaData<T>::column_names()[idx];
 
             if(idx++ == 0) {
                 sql += name + " " + sqlTypeString + " PRIMARY KEY";  

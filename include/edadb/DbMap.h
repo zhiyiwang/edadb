@@ -30,55 +30,47 @@ public:
     
 
 protected:
-    std::string table_name;
-    DbManager   manager;
+    const std::string table_name; // defined in TypeMetaData<T> by TABLE4CLASS macro
+    DbManager&        manager; // Singleton DbManager ins to connect to database
+    bool   mgr_inited = false; // DbManager is inited
+
 
 public:
-    DbMap () = default;
     ~DbMap() = default;
+    DbMap () : table_name(TypeMetaData<T>::table_name()), manager(DbManager::i()) {}
 
 public:
     const std::string& getTableName() { return table_name; }
     DbManager&         getManager  () { return manager   ; }
+    bool               inited      () { return mgr_inited; }
 
 public:
-    bool init(const std::string& c, const std::string& t) {
-        table_name = t;
-        if (table_name.empty()) {
-            std::cerr << "DbMap::init: table name is empty" << std::endl;
+    bool init(const std::string& c) {
+        if (mgr_inited) {
+            std::cerr << "DbMap::init: already inited" << std::endl;
             return false;
         }
-
-        if (!manager.connect(c)) {
+        
+        mgr_inited = manager.connect(c);
+        if (!mgr_inited) 
             std::cerr << "DbMap::init: connect failed" << std::endl;
-            return false;
-        }
-
-        return true;
-    }
-
-    bool inited() {
-        return !table_name.empty();
+        return mgr_inited;
     }
 
 public:
     bool createTable() {
-        if (!inited()) {
+        if (!mgr_inited) {
             std::cerr << "DbMap::createTable: not inited" << std::endl;
             return false;
         }
 
         const std::string sql =
             fmt::format(SqlStatement<T>::createTableStatement(), table_name);
-        #if DEBUG_SQLITE3_API
-            std::cout << "Create Table SQL: " << std::endl;
-            std::cout << sql << std::endl;
-        #endif
         return manager.exec(sql);
     }
 
     bool dropTable() {
-        if (!inited()) {
+        if (!mgr_inited) {
             std::cerr << "DbMap::dropTable: not inited" << std::endl;
             return false;
         }
@@ -110,11 +102,8 @@ protected:
     uint32_t index = 0;
 
 public:
-    Inserter(DbMap &m) : dbmap(m), manager(m.getManager()) { resetIndex(); }
-
-    DbManager& getManager() {
-        return manager;
-    }
+    Inserter (DbMap &m) : dbmap(m), manager(m.getManager()) { resetIndex(); }
+    ~Inserter() = default;
 
 public: // insert one 
     bool insertOne(T* obj) {
@@ -128,17 +117,13 @@ public: // insert many
             return false;
         }
 
-        const std::string sql =
-            fmt::format(SqlStatement<T>::insertPlaceHolderStatement(), dbmap.getTableName());
-        #if DEBUG_SQLITE3_API
-            std::cout << "DbMap::Inserter::prepare: " << sql << std::endl;
-        #endif
-
         if (!manager.initStatement(dbstmt)) {
             std::cerr << "DbMap::Inserter::prepare: init statement failed" << std::endl;
             return false;
         }
 
+        const std::string sql =
+            fmt::format(SqlStatement<T>::insertPlaceHolderStatement(), dbmap.getTableName());
         if (!dbstmt.prepare(sql)) {
             std::cerr << "DbMap::Inserter::prepare: prepare statement failed" << std::endl;
             return false;
@@ -219,11 +204,8 @@ protected:
     uint32_t index = 0;
 
 public:
-    Fetcher(DbMap &m) : dbmap(m), manager(m.getManager()) { resetIndex(); }
-
-    DbManager& getManager() {
-        return manager;
-    }
+    Fetcher (DbMap &m) : dbmap(m), manager(m.getManager()) { resetIndex(); }
+    ~Fetcher() = default;
 
 public:
     bool prepare2Scan() {
@@ -232,14 +214,13 @@ public:
             return false;
         }
 
-        const std::string sql =
-            fmt::format(SqlStatement<T>::scanStatement(), dbmap.getTableName());
-
         if (!manager.initStatement(dbstmt)) {
             std::cerr << "DbMap::Fetcher::prepare: init statement failed" << std::endl;
             return false;
         }
 
+        const std::string sql =
+            fmt::format(SqlStatement<T>::scanStatement(), dbmap.getTableName());
         if (!dbstmt.prepare(sql)) {
             std::cerr << "DbMap::Fetcher::prepare: prepare statement failed" << std::endl;
             return false;
@@ -255,14 +236,13 @@ public:
             return false;
         }
 
-        const std::string sql =
-            fmt::format(SqlStatement<T>::lookupStatement(obj), dbmap.getTableName());
-
         if (!manager.initStatement(dbstmt)) {
             std::cerr << "DbMap::Fetcher::prepare: init statement failed" << std::endl;
             return false;
         }
 
+        const std::string sql =
+            fmt::format(SqlStatement<T>::lookupStatement(obj), dbmap.getTableName());
         if (!dbstmt.prepare(sql)) {
             std::cerr << "DbMap::Fetcher::prepare: prepare statement failed" << std::endl;
             return false;
@@ -339,10 +319,6 @@ protected:
 public:
     Deleter(DbMap &m) : dbmap(m), manager(m.getManager()) {}
 
-    DbManager& getManager() {
-        return manager;
-    }
-
 public:
     bool deleteByPrimaryKeys(T* obj) {
         if (!dbmap.inited()) {
@@ -367,10 +343,6 @@ protected:
 
 public:
     Updater(DbMap &m) : dbmap(m), manager(m.getManager()) {}
-
-    DbManager& getManager() {
-        return manager;
-    }
 
 public:
     bool update(T* org_obj, T* new_obj) {

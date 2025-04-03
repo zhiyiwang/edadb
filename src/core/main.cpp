@@ -19,8 +19,7 @@ public:
     }
 };
 
-//TABLE4CLASS( IdbSite, "table_name", (name, width, height) );
-TABLE4CLASS_COLNAME( IdbSite, "table_name", (name, width, height), ("name_col","width_col","height_col") );
+TABLE4CLASS_COLNAME( IdbSite, "IdbSite_table", (name, width, height), ("name_col","width_col","height_col") );
 
 
 
@@ -45,7 +44,7 @@ void testSqlStatement() {
 
 int testDbMap() {
     edadb::DbMap<IdbSite> dbm;
-    if (!dbm.init("sqlite.db", "IdbSite")) {
+    if (!dbm.init("sqlite.db")) {
         std::cerr << "DbMap::init failed" << std::endl;
         return 1;
     }

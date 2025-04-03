@@ -11,26 +11,13 @@
 #include <string>
 #include <stdint.h>
 #include <sqlite3.h>
-#include <boost/core/noncopyable.hpp>
 
+#include "Singleton.h"
 #include "Cpp2SqlType.h"
 #include "DbStatement.h"
 
 namespace edadb {
 
-
-/**
- * @class Singleton
- * @brief This class is a singleton pattern.
- */
-template<class T>
-class Singleton : public boost::noncopyable {
-public:
-    static T &i() {
-        static T _me;
-        return _me;
-    }
-}; 
 
 
 /**
@@ -39,6 +26,12 @@ public:
  *    Since Sqlite3 use R/W lock, we define Singleton pattern for this class.
  */
 class DbManager : public Singleton<DbManager> {
+private:
+    /**
+     * @brief friend class for Singleton pattern.
+     */
+    friend class Singleton<DbManager>;
+
 protected:
     std::string connect_param; // database connection parameter
     sqlite3     *db = nullptr; // database handler
@@ -47,19 +40,21 @@ public:
     static const uint32_t s_bind_column_begin_index  = 1; // sqlite3 bind column index starts from 1
     static const uint32_t s_fetch_column_begin_index = 0; // sqlite3 fetch column index starts from 0
 
-public:
+protected:
+    /**
+     * @brief protected ctor to avoid direct instantiation, use Singleton instead.
+     */
     DbManager(void) = default;
+
+    /**
+     * @brief protected dtor to avoid direct instantiation, use Singleton instead.
+     */
     ~DbManager() {
         close();
     }
 
     DbManager(const DbManager &) = delete;
     DbManager &operator=(const DbManager &) = delete;
-
-public:
-    sqlite3 *getDb() {
-        return db;
-    }
 
 public: // database operation
     /**
