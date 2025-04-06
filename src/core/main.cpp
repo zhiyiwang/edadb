@@ -57,16 +57,29 @@ int testDbMap() {
     std::cout << "[DbMap Insert]" << std::endl;
     IdbSite p1("Site1",100,110), p2("Site2",200,210), p3("Site3",300,310), p4("Site4",400,410), p5("Site5",500,510);
     
-    
-
-    edadb::DbMap<IdbSite>::Inserter inserter(dbm);
-    inserter.prepare(); // todo: do not call prepare,move to ctor
-    inserter.insert(&p1); // todo: check prepare success, stmt is null?
-    inserter.insert(&p2);
-    inserter.insert(&p3);
-    inserter.insert(&p4);
-    inserter.insert(&p5);
-    inserter.finalize(); // todo: to dtor
+    // insert records
+    edadb::DbMap<IdbSite>::Writer writer;
+    if (writer.insert(&p1) == false) {
+        std::cerr << "DbMap::Writer::insert failed" << std::endl;
+        return 1;
+    }
+    if (writer.insert(&p2) == false) {
+        std::cerr << "DbMap::Writer::insert failed" << std::endl;
+        return 1;
+    }  
+    if (writer.insert(&p3) == false) {
+        std::cerr << "DbMap::Writer::insert failed" << std::endl;
+        return 1;
+    }
+    if (writer.insert(&p4) == false) {
+        std::cerr << "DbMap::Writer::insert failed" << std::endl;
+        return 1;
+    }
+    if (writer.insert(&p5) == false) {
+        std::cerr << "DbMap::Writer::insert failed" << std::endl;
+        return 1;
+    }
+    writer.finalize(); 
     std::cout << std::endl << std::endl;
 
     // scan
@@ -88,9 +101,8 @@ int testDbMap() {
     // update 
     std::cout << "[DbMap Update]" << std::endl;
     IdbSite p1_new("Site1_new",1000,1100), p2_new("Site2_new",2000,2100);
-    edadb::DbMap<IdbSite>::Updater updater(dbm);
-    updater.update(&p1, &p1_new);
-    updater.update(&p2, &p2_new);
+    writer.update(&p1, &p1_new);
+    writer.update(&p2, &p2_new);
 
     // scan
     reader.prepare();
@@ -104,9 +116,8 @@ int testDbMap() {
 
     // delete
     std::cout << "[DbMap Delete]" << std::endl;
-    edadb::DbMap<IdbSite>::Deleter deleter(dbm);
-    deleter.deleteByPrimaryKeys(&p1_new);
-    deleter.deleteByPrimaryKeys(&p2_new);
+    writer.deleteByPrimaryKeys(&p1_new);
+    writer.deleteByPrimaryKeys(&p2_new);
 
     // scan
     reader.prepare();

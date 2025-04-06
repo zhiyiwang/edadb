@@ -29,11 +29,8 @@ private:
     friend class Singleton< DbMap<T> >;
 
 public:
+    class Writer;  // write object to database
     class Reader;  // read object from database
-
-    class Inserter; // insert object to database
-    class Updater;  // update object to database
-    class Deleter;  // delete object from database
 
 protected:
     const std::string table_name; // defined in TypeMetaData<T> by TABLE4CLASS macro
@@ -103,74 +100,57 @@ public:
 
 
 
-// insert object to database
-template<typename T>
-class DbMap<T>::Inserter {
-protected:
-    DbMap     &dbmap; // reference is const pointer to DbMap
-    DbManager &manager;
 
-    DbStatement dbstmt;
-    uint32_t index = 0;
+
+// enum for DbMap operation
+enum class DbMapOperation {
+    NONE,
+    INSERT,
+    UPDATE,
+    DELETE,
+    MAX
+};
+
+// DbMap Writer: write database, include insert, update, delete
+template<typename T>
+class DbMap<T>::Writer {
+protected:
+    // reference is const pointer to DbMap
+    // inline static: static variable, no need to declare static
+    inline static DbMap     &dbmap = DbMap<T>::i();
+    inline static DbManager &manager = dbmap.getManager();
+
+    // inline static thread_local: thread local variable, no need to declare static
+    inline static thread_local DbStatement dbstmt; 
+    inline static thread_local uint32_t index = 0;
+
+    inline static thread_local DbMapOperation op = DbMapOperation::NONE;
 
 public:
-    Inserter (DbMap &m) : dbmap(m), manager(m.getManager()) { resetIndex(); }
-    ~Inserter() = default;
+    Writer () { resetIndex(); }
+    ~Writer() = default;
 
-public: // insert one 
-    bool insertOne(T* obj) {
-        return prepare() && insert(obj) && finalize();
-    }
-
-public: // insert many
-    bool prepare() {
-        if (!dbmap.inited()) {
-            std::cerr << "DbMap::Inserter::prepare: not inited" << std::endl;
-            return false;
-        }
-
-        if (!manager.initStatement(dbstmt)) {
-            std::cerr << "DbMap::Inserter::prepare: init statement failed" << std::endl;
-            return false;
-        }
-
-        const std::string sql =
-            fmt::format(SqlStatement<T>::insertPlaceHolderStatement(), dbmap.getTableName());
-        if (!dbstmt.prepare(sql)) {
-            std::cerr << "DbMap::Inserter::prepare: prepare statement failed" << std::endl;
-            return false;
-        }
-
-        return true;
-    }
-
-
-    bool insert(T* obj) {
-        if (!dbmap.inited()) {
-            std::cerr << "DbMap::Inserter::insert: not inited" << std::endl;
-            return false;
-        }
-
-        bindObject(obj);
-
-        if (!dbstmt.bindStep()) {
-            return false;
-        }
-
-        if (!dbstmt.reset()) {
-            return false;
-        }
-
-        return true;
-    }
-
+public:
+    /**
+     * @brief finalize dbstmt and reset the index.
+    */
     bool finalize() {
         if (!dbmap.inited()) {
             std::cerr << "DbMap::insertFinalize: not inited" << std::endl;
             return false;
         }
 
+        op = DbMapOperation::NONE;
         return dbstmt.finalize();
+    }
+
+    /**
+     * @brief Operator to bind each element in obj 
+     * @param elem The element pointer to bind, which is defined as a cpp type pointer.
+     */
+    template <typename ElemType>
+    void operator()(const ElemType &elem) {
+        dbstmt.bindColumn(index++, elem);
     }
 
 private:
@@ -192,32 +172,73 @@ private:
         boost::fusion::for_each(values, *this);
     }
 
-public:
-    /**
-     * @brief Operator to bind each element in obj 
-     * @param elem The element pointer to bind, which is defined as a cpp type pointer.
-     */
-    template <typename ElemType>
-    void operator()(const ElemType &elem) {
-        dbstmt.bindColumn(index++, elem);
+public: // insert
+    bool insertOne(T* obj) {
+        return prepare2Insert() && insert(obj) && finalize();
     }
-};
 
+    bool prepare2Insert() {
+        if (op != DbMapOperation::NONE) {
+            std::cerr << "DbMap::Writer::prepare2Insert: already prepared" << std::endl;
+            return false;
+        }
 
+        if (!dbmap.inited()) {
+            std::cerr << "DbMap::Inserter::prepare: not inited" << std::endl;
+            return false;
+        }
 
+        if (!manager.initStatement(dbstmt)) {
+            std::cerr << "DbMap::Inserter::prepare: init statement failed" << std::endl;
+            return false;
+        }
 
-// delete object from database
-template<typename T>
-class DbMap<T>::Deleter {
-protected:
-    DbMap     &dbmap;
-    DbManager &manager;
+        const std::string sql =
+            fmt::format(SqlStatement<T>::insertPlaceHolderStatement(), dbmap.getTableName());
+        if (!dbstmt.prepare(sql)) {
+            std::cerr << "DbMap::Inserter::prepare: prepare statement failed" << std::endl;
+            return false;
+        }
 
-public:
-    Deleter(DbMap &m) : dbmap(m), manager(m.getManager()) {}
+        op = DbMapOperation::INSERT;
+        return true;
+    }
 
-public:
+    bool insert(T* obj) {
+        if ((op == DbMapOperation::NONE) && (!prepare2Insert())) {
+            std::cerr << "DbMap::Inserter::insert: prepare failed" << std::endl;
+            return false;
+        }
+        else if (op != DbMapOperation::INSERT) {
+            std::cerr << "DbMap::Inserter::insert: not prepared" << std::endl;
+            return false;
+        }
+
+        if (!dbmap.inited()) {
+            std::cerr << "DbMap::Inserter::insert: not inited" << std::endl;
+            return false;
+        }
+
+        bindObject(obj);
+
+        if (!dbstmt.bindStep()) {
+            return false;
+        }
+
+        if (!dbstmt.reset()) {
+            return false;
+        }
+
+        return true;
+    }
+
+public: 
     bool deleteByPrimaryKeys(T* obj) {
+        if (op != DbMapOperation::NONE) {
+            std::cerr << "DbMap::Deleter::deleteByPrimaryKeys: already prepared" << std::endl;
+            return false;
+        }
+
         if (!dbmap.inited()) {
             std::cerr << "DbMap::Deleter::deleteOne: not inited" << std::endl;
             return false;
@@ -227,22 +248,14 @@ public:
             fmt::format(SqlStatement<T>::deleteStatement(obj), dbmap.getTableName());
         return manager.exec(sql);
     }
-}; // class Deleter
-
-
-
-// update object to database
-template<typename T>
-class DbMap<T>::Updater {
-protected:
-    DbMap     &dbmap;
-    DbManager &manager;
-
-public:
-    Updater(DbMap &m) : dbmap(m), manager(m.getManager()) {}
 
 public:
     bool update(T* org_obj, T* new_obj) {
+        if (op != DbMapOperation::NONE) {
+            std::cerr << "DbMap::Deleter::deleteByPrimaryKeys: already prepared" << std::endl;
+            return false;
+        }
+
         if (!dbmap.inited()) {
             std::cerr << "DbMap::Updater::update: not inited" << std::endl;
             return false;
@@ -252,11 +265,11 @@ public:
             fmt::format(SqlStatement<T>::updateStatement(org_obj, new_obj), dbmap.getTableName());
         return manager.exec(sql);
     }
-}; // class Updater
+}; // class Writer
 
 
 
-// DbMap Reader: read object from database
+// DbMap Reader: read database
 template<typename T>
 class DbMap<T>::Reader {
 protected:
@@ -302,7 +315,6 @@ public:
 
         return true;
     }
-
 
     /**
      * @brief prepare to read the object from the database by primary key
@@ -389,11 +401,6 @@ public:
         dbstmt.fetchColumn(index++, elem);
     }
 };
-
-
-
-
-
 
 
 
