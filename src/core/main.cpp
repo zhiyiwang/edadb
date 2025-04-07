@@ -85,7 +85,7 @@ int testDbMap() {
     // scan
     std::cout << "[DbMap Scan]" << std::endl;
     edadb::DbMap<IdbSite>::Reader reader(dbm);
-    reader.prepare();
+    reader.prepareByPredicate();
 
     IdbSite got; 
     bool got_flag = false;
@@ -105,7 +105,7 @@ int testDbMap() {
     writer.update(&p2, &p2_new);
 
     // scan
-    reader.prepare();
+    reader.prepareByPredicate();
     cnt = 0;
     while (got_flag = reader.read(&got)) {
         std::cout << "IdbSite [" << cnt++ << "] :  ";
@@ -120,7 +120,7 @@ int testDbMap() {
     writer.deleteByPrimaryKeys(&p2_new);
 
     // scan
-    reader.prepare();
+    reader.prepareByPredicate();
     cnt = 0;
     while (got_flag = reader.read(&got)) {
         std::cout << "IdbSite [" << cnt++ << "] :  ";
@@ -132,7 +132,7 @@ int testDbMap() {
     // lookup
     std::cout << "[DbMap Lookup]" << std::endl;
     IdbSite lookup_idsite("Site3",0,0);
-    reader.prepare(&lookup_idsite);
+    reader.prepareByPrimaryKey(&lookup_idsite);
     got_flag = reader.read(&got);
     if (got_flag) {
         std::cout << "IdbSite :  ";

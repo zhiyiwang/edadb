@@ -116,23 +116,27 @@ template<typename T>
 class DbMap<T>::Writer {
 protected:
     // reference is const pointer to DbMap
-    // inline static: static variable, no need to declare static
+    // inline static:
+    //   inline: no need to declare static
+    //   static: var is shared by all instances of the class
     inline static DbMap     &dbmap = DbMap<T>::i();
     inline static DbManager &manager = dbmap.getManager();
 
-    // inline static thread_local: thread local variable, no need to declare static
+    // inline thread_local:
+    //   inline: no need to declare static
+    //   static thread_local: var is shared by all instances of the thread
     inline static thread_local DbStatement dbstmt; 
-    inline static thread_local uint32_t index = 0;
+    inline static thread_local uint32_t bind_idx = 0;
 
     inline static thread_local DbMapOperation op = DbMapOperation::NONE;
 
 public:
-    Writer () { resetIndex(); }
+    Writer () { resetBindIndex(); }
     ~Writer() = default;
 
 public:
     /**
-     * @brief finalize dbstmt and reset the index.
+     * @brief finalize dbstmt and reset the bind_idx
     */
     bool finalize() {
         if (!dbmap.inited()) {
@@ -142,34 +146,6 @@ public:
 
         op = DbMapOperation::NONE;
         return dbstmt.finalize();
-    }
-
-    /**
-     * @brief Operator to bind each element in obj 
-     * @param elem The element pointer to bind, which is defined as a cpp type pointer.
-     */
-    template <typename ElemType>
-    void operator()(const ElemType &elem) {
-        dbstmt.bindColumn(index++, elem);
-    }
-
-private:
-    /** reset index to begin to bind */      
-    void resetIndex() {
-        index = manager.s_bind_column_begin_index;
-    }
-
-    /**
-     * @brief bind the object to the database.
-     * @param obj The object to bind.
-     */
-    void bindObject(T* obj) {
-        // reset index to begin to bind 
-        resetIndex();
-
-        // iterate through the values and bind them
-        auto values = TypeMetaData<T>::getVal(obj);
-        boost::fusion::for_each(values, *this);
     }
 
 public: // insert
@@ -232,6 +208,34 @@ public: // insert
         return true;
     }
 
+    /**
+     * @brief Operator to bind each element in obj 
+     * @param elem The element pointer to bind, which is defined as a cpp type pointer.
+     */
+    template <typename ElemType>
+    void operator()(const ElemType &elem) {
+        dbstmt.bindColumn(bind_idx++, elem);
+    }
+
+private: // insert
+    /** reset bind_idx to begin to bind */      
+    void resetBindIndex() {
+        bind_idx = manager.s_bind_column_begin_index;
+    }
+
+    /**
+     * @brief bind the object to the database.
+     * @param obj The object to bind.
+     */
+    void bindObject(T* obj) {
+        // reset bind_idx to begin to bind 
+        resetBindIndex();
+
+        // iterate through the values and bind them
+        auto values = TypeMetaData<T>::getVal(obj);
+        boost::fusion::for_each(values, *this);
+    }
+
 public: 
     bool deleteByPrimaryKeys(T* obj) {
         if (op != DbMapOperation::NONE) {
@@ -278,10 +282,10 @@ protected:
 
     // thread local variables  
     DbStatement dbstmt; 
-    uint32_t index = 0;
+    uint32_t read_idx = 0;
 
 public:
-    Reader (DbMap &m) : dbmap(m), manager(m.getManager()) { resetIndex(); }
+    Reader (DbMap &m) : dbmap(m), manager(m.getManager()) { resetReadIndex(); }
     ~Reader() = default;
 
 public:
@@ -290,7 +294,7 @@ public:
      * @param pred The predicate to filter the object.
      * @return true if prepared; otherwise, false.
      */
-    bool prepare(const std::string &pred = "") {
+    bool prepareByPredicate(const std::string &pred = "") {
         if (!dbmap.inited()) {
             std::cerr << "DbMap<" << typeid(T).name() << ">::Reader::" 
                 << "prepare2Scan: not inited" << std::endl;
@@ -321,7 +325,7 @@ public:
      * @param obj The object to read.
      * @return true if prepared; otherwise, false.
      */
-    bool prepare(T* obj) {
+    bool prepareByPrimaryKey(T* obj) {
         if (!dbmap.inited()) {
             std::cerr << "DbMap<" << typeid(T).name() << ">::Reader::"
                 << "prepare: not inited" << std::endl;
@@ -372,9 +376,9 @@ public:
 
 
 private:
-    /** reset index to begin to read */
-    void resetIndex() {
-        index = manager.s_read_column_begin_index;
+    /** reset read_idx to begin to read */
+    void resetReadIndex() {
+        read_idx = manager.s_read_column_begin_index;
     }
 
     /**
@@ -382,8 +386,8 @@ private:
      * @param obj The object to read.
      */
     void readObject(T* obj) {
-        // reset index to begin to read 
-        resetIndex();
+        // reset read_idx to begin to read 
+        resetReadIndex();
 
         // iterate through the values and read them
         auto values = TypeMetaData<T>::getVal(obj);
@@ -398,7 +402,7 @@ public:
      */
     template <typename ElemType>
     void operator()(ElemType &elem) {
-        dbstmt.fetchColumn(index++, elem);
+        dbstmt.fetchColumn(read_idx++, elem);
     }
 };
 
