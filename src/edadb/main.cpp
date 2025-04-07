@@ -30,8 +30,12 @@ int main(void) {
     }
 #endif
 
+#if 0
     test_sqlite_lock();
-//    test_sqlite_stmt();
+    test_sqlite_stmt();
+#endif
+
+    test_cpp_var();
 
     return 0;
 }
