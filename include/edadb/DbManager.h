@@ -1,6 +1,6 @@
 /**
- * @file DbManager.hpp
- * @brief DbManager.hpp provides a way to manage the Sqlite3.
+ * @file DbManager.h
+ * @brief DbManager.h provides a way to manage the Sqlite3.
  *      This class is a child class of DatabaseManager.
  */
 
@@ -11,128 +11,30 @@
 #include <string>
 #include <stdint.h>
 #include <sqlite3.h>
+#include <assert.h>
 
+#include "Config.h"
 #include "Singleton.h"
 #include "Cpp2SqlType.h"
 #include "DbStatement.h"
+#include "DbStatement4Sqlite.h"
 
 namespace edadb {
-
-
 
 /**
  * @class DbManager
  * @brief This class manages the Sqlite3 database.
  *    Since Sqlite3 use R/W lock, we define Singleton pattern for this class.
  */
-class DbManager : public Singleton<DbManager> {
-private:
-    /**
-     * @brief friend class for Singleton pattern.
-     */
-    friend class Singleton<DbManager>;
-
-protected:
-    std::string connect_param; // database connection parameter
-    sqlite3     *db = nullptr; // database handler
-
-public:
-    static const uint32_t s_bind_column_begin_index = 1; // sqlite3 bind column index starts from 1
-    static const uint32_t s_read_column_begin_index = 0; // sqlite3 fetch column index starts from 0
-
-protected:
-    /**
-     * @brief protected ctor to avoid direct instantiation, use Singleton instead.
-     */
-    DbManager(void) = default;
-
-    /**
-     * @brief protected dtor to avoid direct instantiation, use Singleton instead.
-     */
-    ~DbManager() {
-        close();
-    }
-
-    DbManager(const DbManager &) = delete;
-    DbManager &operator=(const DbManager &) = delete;
-
-public: // database operation
-    /**
-     * @brief Connect to the database using the connection parameter.
-     * @param c The connection parameter.
-     * @return true if connected; otherwise, false.
-     */
-    bool connect(const std::string &c = "edadb.sqlite3.db") {
-        if (!connect_param.empty()) {
-            std::cerr << "Sqlite3 Error: already connected: " << connect_param << std::endl;
-            return false;
-        }
-
-        connect_param = c;
-        bool connected = (sqlite3_open(connect_param.c_str(), &db) == SQLITE_OK);
-        if (!connected) {
-            std::cerr << "Sqlite3 Error: can't open database: " << connect_param << std::endl;
-            std::cerr << "Sqlite3 Error: " << sqlite3_errmsg(db) << std::endl;
-        }
-        return connected;
-    }
-
-    /**
-     * @brief Execute the SQL statement directly.
-     * @param sql The SQL statement.
-     * @return true if executed; otherwise, false.
-     */
-    bool exec(const std::string &sql) {
-        char *zErrMsg = nullptr;
-        bool executed = (sqlite3_exec(db, sql.c_str(), 0, 0, &zErrMsg) == SQLITE_OK);
-        if (!executed) {
-            std::cerr << "Sqlite3 Error: can't execute SQL: " << sql << std::endl;
-            std::cerr << "Sqlite3 Error: " << zErrMsg << std::endl;
-            sqlite3_free(zErrMsg);
-        }
-        return executed;
-    }
-
-    /**
-     * @brief Close the database.
-     * @return true if closed; otherwise, false.
-    */
-    bool close() {
-        // success close if not connected 
-        if (connect_param.empty()) {
-            return true;
-        }
-
-        bool closed = (sqlite3_close(db) == SQLITE_OK);
-        if (!closed) {
-            std::cerr << "Sqlite3 Error: can't close database: " << connect_param << std::endl;
-            std::cerr << "Sqlite3 Error: " << sqlite3_errmsg(db) << std::endl;
-        }
-        connect_param.clear();
-        return closed;
-    }
-
-
-public: // sqlite3 statement operation 
-    /**
-     * @brief Initialize the SQL statement
-     * @param stmt The sqlite3 statement
-     * @return true if initialized; otherwise, false
-     */
-    bool initStatement(DbStatement &dbstmt) {
-        dbstmt.db = db;
-        dbstmt.stmt = nullptr;
-        dbstmt.zErrMsg = nullptr;
-        return true;
-    }
-
-    /**
-     * @brief check the number of rows changed by the last statement.
-     * @return The number of rows changed.
-     */
-    int changes() {
-        return sqlite3_changes(db);
-    }
+template<DbBackendType DBType>
+class DbManagerImpl : public Singleton< DbManagerImpl<DBType> > {
+    static_assert(DBType != DBType, "DbManager is not implemented for this backend type.");   
 };
+
+/**
+ * DbManager is defined in backend, such as backend/DbBackendType/DbManager4Sqlite.h:
+ *   using DbManager = std::enable_if_t< Config::backend_type == DbBackendType::SQLITE,
+ *        DbManagerImpl<DbBackendType::SQLITE>>;
+ */
 
 } // namespace edadb

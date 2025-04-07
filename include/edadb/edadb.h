@@ -36,6 +36,9 @@
 #include "TypeMetaData.h"
 #include "Table4Class.h"
 #include "SqlStatement.h"
+#include "DbBackendType.h"
+#include "DbStatement.h"
+#include "DbStatement4Sqlite.h"
 #include "DbManager.h"
+#include "DbManager4Sqlite.h"
 #include "DbMap.h"
-

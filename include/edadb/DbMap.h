@@ -9,9 +9,12 @@
 #include <string>
 #include <stdint.h>
 
+#include "DbBackendType.h"
 #include "SqlStatement.h"
 #include "DbStatement.h"
+#include "DbStatement4Sqlite.h"
 #include "DbManager.h"
+#include "DbManager4Sqlite.h"
 
 namespace edadb {
 
