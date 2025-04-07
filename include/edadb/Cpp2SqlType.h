@@ -85,6 +85,9 @@ struct Cpp2SqlType {
 
 template<typename T>
 struct Cpp2SqlType<T*> {
+    // T cannot be pointer type
+    static_assert(!std::is_pointer<T>::value, "Cpp2SqlType<T*>: T cannot be pointer type");
+
     using cppType = T;
     static constexpr SqlType sqlType = Cpp2SqlType<T>::sqlType;
 };
