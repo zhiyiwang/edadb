@@ -1,10 +1,10 @@
 // #include "lib/edadb/edadbTestMacro.hpp"
-#include "lib/edadb/edadbTest14.hpp"
+#include "lib/edadb/edadbTest15.hpp"
 #include <boost/geometry.hpp>
 #include <boost/geometry/geometries/point_xy.hpp>
 #include <boost/geometry/geometries/polygon.hpp>
 /*
-* 影子类支持外部类
+* 支持外部类数组
 */
 
 class ExternalClass1{
@@ -29,43 +29,6 @@ class ExternalClass2{
     }
 };
 
-// // 序列化函数
-// bool writeFuncType1(ExternalClass1* obj, edadb::DbOstream* so) {
-//   int val = obj->get();
-//   so->write(reinterpret_cast<const char*>(&val), sizeof(val));
-//   return so->good(); // 写入过程出问题会返回false
-// }
-
-// bool writeFuncType2(ExternalClass2* obj, edadb::DbOstream* so) {
-//   int val = obj->get();
-//   so->write(reinterpret_cast<const char*>(&val), sizeof(val));
-//   return so->good();
-// }
-
-// // 反序列化函数
-// bool readFuncType1(ExternalClass1* obj, edadb::DbIstream* si) {
-//   int val;
-//   si->read(reinterpret_cast<char*>(&val), sizeof(val));
-
-//   if (si->gcount() != sizeof(val)) {
-//       return false; // 读取长度不匹配
-//   }
-
-//   obj->set(val);
-//   return true;
-// }
-
-// bool readFuncType2(ExternalClass2* obj, edadb::DbIstream* si) {
-//   int val;
-//   si->read(reinterpret_cast<char*>(&val), sizeof(val));
-
-//   if (si->gcount() != sizeof(val)) {
-//       return false; // 读取长度不匹配
-//   }
-
-//   obj->set(val);
-//   return true;
-// }
 
 template<>
 class edadb::Shadow<ExternalClass1>{
@@ -327,11 +290,6 @@ int main() {
 
   via1->_type = IdbVia::ViaType::kVia1; // 不能用int赋值，赋值一个大数不允许
   via1->_normal_enum = kEnum2; // 不能用int赋值，赋值一个大数不允许
-  std::cout<<"为via1->_normal_enum输入一个大数\n";
-  // scanf("%d", &via1->_normal_enum); // 500
-  scanf("%d", (int*)&via1->_normal_enum); // 500
-  std::cout<<"为via1->_type输入一个大数\n";
-  scanf("%d", (int*)&via1->_type); // 500
   std::cout<<"via1->_normal_enum = "<<via1->_normal_enum<<"\n"; // 1
   db_Via.updateDb(via1);
 

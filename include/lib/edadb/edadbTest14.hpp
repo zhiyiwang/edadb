@@ -867,7 +867,7 @@ template <typename T>
             if constexpr (dbType == DbTypes::kComposite){
                 const auto vals = TypeMetaData<T>::getVal(obj);
                 // const auto vecs = TypeMetaData<T>::tuple_type_pair();
-                auto p = new typename SqlString<T>::fillSO(str);// CTSOForeachHelper
+                auto p = new typename SqlString<T>::fillSO(str);
                 boost::fusion::for_each(vals, *p);
                 delete p;
             }
@@ -875,7 +875,7 @@ template <typename T>
                 Shadow<T> *shadowObj = new Shadow<T>;
                 shadowObj->toShadow(obj); // 临时变量
                 const auto vals = TypeMetaData<Shadow<T>>::getVal(shadowObj);
-                auto p = new typename SqlString<Shadow<T>>::fillSO(str);// CTSOForeachHelper
+                auto p = new typename SqlString<Shadow<T>>::fillSO(str);
                 boost::fusion::for_each(vals, *p);
                 delete p;
                 delete shadowObj;

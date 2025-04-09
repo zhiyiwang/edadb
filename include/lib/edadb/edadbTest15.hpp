@@ -42,7 +42,7 @@
 #define EDADB_DEBUG 1 
 
 /*
-* 影子类支持外部类
+* 支持外部类数组
 */
 
 namespace edadb{
@@ -707,26 +707,43 @@ template<typename T, typename Q>
       public:
         static std::string const& createTableStr() { // create_table_str
             static const auto vecs_T = TypeMetaData<T>::tuple_type_pair();
-            static const auto vecs_Q = TypeMetaData<Q>::tuple_type_pair();
             auto &first_pair_T = boost::fusion::at_c<0>(vecs_T);
-            auto &first_pair_Q = boost::fusion::at_c<0>(vecs_Q);
-
-            // using decay_t = typename decay<T>::type; decay_t移除const,volatile,引用 移除指针在后面ConvertCPPTypeToSOCISupportType()
             using FirstType_T = std::decay_t<decltype(boost::fusion::at_c<0>(typename TypeMetaData<T>::TupType()))>;
-            using FirstType_Q = std::decay_t<decltype(boost::fusion::at_c<0>(typename TypeMetaData<Q>::TupType()))>;
-
             std::string type_T = edadb::cppTypeToDbTypeString<typename edadb::ConvertCPPTypeToSOCISupportType<FirstType_T>::type>();
             static std::string sql;
-            if (sql.empty()) {
 
-                sql = "CREATE TABLE IF NOT EXISTS \"{}\" (";
-                sql += TypeMetaData<T>::class_name() + "_" + first_pair_T.second + " " + type_T;
-                
-                auto p = new typename SqlStringT2T<T,Q>::CTForeachHelperT2T(sql); //CTForeachHelperT2T
-                boost::fusion::for_each(vecs_Q, *p);
-                sql += ", PRIMARY KEY (" + TypeMetaData<T>::class_name() + "_" + first_pair_T.second + ", " + first_pair_Q.second + ")"; 
-                sql += ", FOREIGN KEY (" + TypeMetaData<T>::class_name() + "_" + first_pair_T.second + ") REFERENCES {}" + "(" + first_pair_T.second + ") ON DELETE CASCADE ON UPDATE CASCADE";
-                sql += ")";
+
+            constexpr edadb::DbTypes db_type = CppTypeToDbType<Q>::ret;
+            if constexpr (db_type == DbTypes::kComposite){
+                static const auto vecs_Q = TypeMetaData<Q>::tuple_type_pair();
+                auto &first_pair_Q = boost::fusion::at_c<0>(vecs_Q);
+                using FirstType_Q = std::decay_t<decltype(boost::fusion::at_c<0>(typename TypeMetaData<Q>::TupType()))>;
+                if (sql.empty()) {
+                    sql = "CREATE TABLE IF NOT EXISTS \"{}\" (";
+                    sql += TypeMetaData<T>::class_name() + "_" + first_pair_T.second + " " + type_T;
+                    
+                    auto p = new typename SqlStringT2T<T,Q>::CTForeachHelperT2T(sql); //CTForeachHelperT2T
+                    boost::fusion::for_each(vecs_Q, *p);
+                    sql += ", PRIMARY KEY (" + TypeMetaData<T>::class_name() + "_" + first_pair_T.second + ", " + first_pair_Q.second + ")"; 
+                    sql += ", FOREIGN KEY (" + TypeMetaData<T>::class_name() + "_" + first_pair_T.second + ") REFERENCES {}" + "(" + first_pair_T.second + ") ON DELETE CASCADE ON UPDATE CASCADE";
+                    sql += ")";
+                }
+            }
+            else if constexpr (db_type == DbTypes::kExternal) {
+                static const auto vecs_Q = TypeMetaData<Shadow<Q>>::tuple_type_pair();
+                auto &first_pair_Q = boost::fusion::at_c<0>(vecs_Q);
+                using FirstType_Q = std::decay_t<decltype(boost::fusion::at_c<0>(typename TypeMetaData<Shadow<Q>>::TupType()))>;
+            // }
+                if (sql.empty()) {
+                    sql = "CREATE TABLE IF NOT EXISTS \"{}\" (";
+                    sql += TypeMetaData<T>::class_name() + "_" + first_pair_T.second + " " + type_T;
+                    
+                    auto p = new typename SqlStringT2T<T,Q>::CTForeachHelperT2T(sql); //CTForeachHelperT2T
+                    boost::fusion::for_each(vecs_Q, *p);
+                    sql += ", PRIMARY KEY (" + TypeMetaData<T>::class_name() + "_" + first_pair_T.second + ", " + first_pair_Q.second + ")"; 
+                    sql += ", FOREIGN KEY (" + TypeMetaData<T>::class_name() + "_" + first_pair_T.second + ") REFERENCES {}" + "(" + first_pair_T.second + ") ON DELETE CASCADE ON UPDATE CASCADE";
+                    sql += ")";
+                }
             }
             return sql;
         }
@@ -800,7 +817,7 @@ template<typename T, typename Q>
             }
             else if constexpr (db_type == DbTypes::kExternal){
                 const auto vecs_Q = TypeMetaData<Shadow<Q>>::tuple_type_pair();  
-                auto shadowObj = std::make_unique<Shadow<Q>>();
+                auto shadowObj = new Shadow<Q>;
                 shadowObj->toShadow(obj2);
                 const auto vals_Q = TypeMetaData<Shadow<Q>>::getVal(shadowObj);
                 auto& first_pair_Q = boost::fusion::at_c<0>(vecs_Q);
@@ -1028,7 +1045,7 @@ struct GetAllObjects {
     };
 
 
-void dbgPrint(){std::cout<<"Edadb Test 14 starting \n";}
+void dbgPrint(){std::cout<<"Edadb Test 15 starting \n";}
 
 template<typename T>
     class DbMap {
@@ -1311,13 +1328,28 @@ template<typename T>
             vec->clear();
             for (soci::rowset<soci::row>::const_iterator row_itr = rows.begin(); row_itr != rows.end(); ++row_itr) {
                 auto const& row = *row_itr;
-                Q* b = new Q;
-                auto member_names_Q = SqlString<Q>::member_names;
-                auto vals_Q = TypeMetaData<Q>::getVal(b);
-                int count = 0;
-                boost::fusion::for_each(vals_Q, GetAllObjects<Q>(row, member_names_Q, count));
-                vec->emplace_back(std::move(*b));
-                delete b;
+                const edadb::DbTypes db_type = CppTypeToDbType<Q>::ret;
+                if constexpr (db_type == DbTypes::kComposite){
+                    Q* b = new Q;
+                    auto member_names_Q = SqlString<Q>::member_names;
+                    auto vals_Q = TypeMetaData<Q>::getVal(b);
+                    int count = 0;
+                    boost::fusion::for_each(vals_Q, GetAllObjects<Q>(row, member_names_Q, count));
+                    vec->emplace_back(std::move(*b));
+                    delete b;
+                }
+                else if constexpr (db_type == DbTypes::kExternal){
+                    Shadow<Q> *shadowObj = new Shadow<Q>;
+                    auto member_names_Q = SqlString<Shadow<Q>>::member_names;
+                    auto vals_Q = TypeMetaData<Shadow<Q>>::getVal(shadowObj);
+                    int count = 0;
+                    boost::fusion::for_each(vals_Q, GetAllObjects<Q>(row, member_names_Q, count));
+                    Q * b = new Q;
+                    shadowObj->fromShadow(b);
+                    vec->emplace_back(std::move(*b));
+                    delete b;
+                    delete shadowObj;
+                }
             }
             return true;
         } catch (const std::exception& e) {
@@ -1410,6 +1442,12 @@ TABLE4CLASS_COLNAME(myclass, tablename, CLASS_ELEMS_TUP, (EXPAND_member_names(CL
 
 # define Table4ExternalClass(myclass, CLASS_ELEMS_TUP) \
 namespace edadb{\
+template<> struct TypeMetaData<myclass>{\
+    inline static std::string const& class_name(){\
+        static std::string const class_name = BOOST_STRINGIZE(myclass);\
+        return class_name;\
+    }\
+};\
 template<>\
 struct CppTypeToDbType<myclass>{\
     static const DbTypes ret = DbTypes::kExternal;\

@@ -14,34 +14,37 @@ Consolidate compiler generated dependencies of target edadb
 make[2]: Leaving directory '/home/ran/Codes/edadb/build'
 make  -f CMakeFiles/edadb.dir/build.make CMakeFiles/edadb.dir/build
 make[2]: Entering directory '/home/ran/Codes/edadb/build'
-[ 33%] Building CXX object CMakeFiles/edadb.dir/src/edadbTest14.cpp.o
-/usr/bin/c++ -DBUN_SQLITE -DFMT_HEADER_ONLY -I/home/ran/Codes/edadb/include -I/home/ran/Codes/edadb/include/third_party -I/home/ran/Codes/edadb/include/third_party/hdr -I/home/ran/Codes/edadb/include/third_party/json -I/home/ran/Codes/edadb/include/third_party/msgpack -I/home/ran/Codes/edadb/include/third_party/rapidjson -I/home/ran/Codes/edadb/include/third_party/spdlog -I/home/ran/Codes/edadb/include/third_party/sqlite -I/home/ran/Codes/edadb/include/third_party/unqlite -Wall -Wno-unused-variable -Wno-pessimizing-move -Wno-reorder -std=c++20 -g -O0 -g -std=c++20 -MD -MT CMakeFiles/edadb.dir/src/edadbTest14.cpp.o -MF CMakeFiles/edadb.dir/src/edadbTest14.cpp.o.d -o CMakeFiles/edadb.dir/src/edadbTest14.cpp.o -c /home/ran/Codes/edadb/src/edadbTest14.cpp
-In file included from /home/ran/Codes/edadb/src/edadbTest14.cpp:2:
-/home/ran/Codes/edadb/include/lib/edadb/edadbTest14.hpp:1581:20: warning: backslash and newline separated by space
- 1581 |     class DbMapAll{\
+[ 33%] Building CXX object CMakeFiles/edadb.dir/src/edadbTest15.cpp.o
+/usr/bin/c++ -DBUN_SQLITE -DFMT_HEADER_ONLY -I/home/ran/Codes/edadb/include -I/home/ran/Codes/edadb/include/third_party -I/home/ran/Codes/edadb/include/third_party/hdr -I/home/ran/Codes/edadb/include/third_party/json -I/home/ran/Codes/edadb/include/third_party/msgpack -I/home/ran/Codes/edadb/include/third_party/rapidjson -I/home/ran/Codes/edadb/include/third_party/spdlog -I/home/ran/Codes/edadb/include/third_party/sqlite -I/home/ran/Codes/edadb/include/third_party/unqlite -Wall -Wno-unused-variable -Wno-pessimizing-move -Wno-reorder -std=c++20 -g -O0 -g -std=c++20 -MD -MT CMakeFiles/edadb.dir/src/edadbTest15.cpp.o -MF CMakeFiles/edadb.dir/src/edadbTest15.cpp.o.d -o CMakeFiles/edadb.dir/src/edadbTest15.cpp.o -c /home/ran/Codes/edadb/src/edadbTest15.cpp
+In file included from /home/ran/Codes/edadb/src/edadbTest15.cpp:2:
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest15.hpp:1654:20: warning: backslash and newline separated by space
+ 1654 |     class DbMapAll{\
       |                     
-/home/ran/Codes/edadb/include/lib/edadb/edadbTest14.hpp:1582:17: warning: backslash and newline separated by space
- 1582 |         private:\
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest15.hpp:1655:17: warning: backslash and newline separated by space
+ 1655 |         private:\
       |                  
-In file included from /home/ran/Codes/edadb/src/edadbTest14.cpp:2:
-/home/ran/Codes/edadb/include/lib/edadb/edadbTest14.hpp: In static member function ‘static const string& edadb::SqlStringT2T<T, Q>::createTableStr()’:
-/home/ran/Codes/edadb/include/lib/edadb/edadbTest14.hpp:716:19: warning: typedef ‘using FirstType_Q = std::decay_t<decltype (at_c<0>(typename edadb::TypeMetaData<Q>::TupType()))>’ locally defined but not used [-Wunused-local-typedefs]
-  716 |             using FirstType_Q = std::decay_t<decltype(boost::fusion::at_c<0>(typename TypeMetaData<Q>::TupType()))>;
-      |                   ^~~~~~~~~~~
+In file included from /home/ran/Codes/edadb/src/edadbTest15.cpp:2:
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest15.hpp: In static member function ‘static const string& edadb::SqlStringT2T<T, Q>::createTableStr()’:
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest15.hpp:720:23: warning: typedef ‘using FirstType_Q = std::decay_t<decltype (at_c<0>(typename edadb::TypeMetaData<Q>::TupType()))>’ locally defined but not used [-Wunused-local-typedefs]
+  720 |                 using FirstType_Q = std::decay_t<decltype(boost::fusion::at_c<0>(typename TypeMetaData<Q>::TupType()))>;
+      |                       ^~~~~~~~~~~
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest15.hpp:735:23: warning: typedef ‘using FirstType_Q = std::decay_t<decltype (at_c<0>(typename edadb::TypeMetaData<edadb::Shadow<Q> >::TupType()))>’ locally defined but not used [-Wunused-local-typedefs]
+  735 |                 using FirstType_Q = std::decay_t<decltype(boost::fusion::at_c<0>(typename TypeMetaData<Shadow<Q>>::TupType()))>;
+      |                       ^~~~~~~~~~~
 In file included from /usr/include/boost/math/tools/cxx03_warn.hpp:9,
                  from /usr/include/boost/math/constants/constants.hpp:11,
                  from /usr/include/boost/geometry/util/math.hpp:29,
                  from /usr/include/boost/geometry/core/radian_access.hpp:33,
                  from /usr/include/boost/geometry/geometry.hpp:51,
                  from /usr/include/boost/geometry.hpp:17,
-                 from /home/ran/Codes/edadb/src/edadbTest14.cpp:3:
+                 from /home/ran/Codes/edadb/src/edadbTest15.cpp:3:
 /usr/include/boost/detail/no_exceptions_support.hpp: At global scope:
 /usr/include/boost/detail/no_exceptions_support.hpp:17:1: note: ‘#pragma message: This header is deprecated. Use <boost/core/no_exceptions_support.hpp> instead.’
    17 | BOOST_HEADER_DEPRECATED("<boost/core/no_exceptions_support.hpp>")
       | ^~~~~~~~~~~~~~~~~~~~~~~
 [ 66%] Linking CXX executable edadb
 /usr/bin/cmake -E cmake_link_script CMakeFiles/edadb.dir/link.txt --verbose=1
-/usr/bin/c++  -Wall -Wno-unused-variable -Wno-pessimizing-move -Wno-reorder -std=c++20 -g -O0 -g -std=c++20 CMakeFiles/edadb.dir/src/sqlite/sqlite3.c.o CMakeFiles/edadb.dir/src/edadbTest14.cpp.o -o edadb  -Wl,-Bstatic -lsoci_sqlite3 -lsoci_core -Wl,-Bdynamic -ldl -lpthread 
+/usr/bin/c++  -Wall -Wno-unused-variable -Wno-pessimizing-move -Wno-reorder -std=c++20 -g -O0 -g -std=c++20 CMakeFiles/edadb.dir/src/sqlite/sqlite3.c.o CMakeFiles/edadb.dir/src/edadbTest15.cpp.o -o edadb  -Wl,-Bstatic -lsoci_sqlite3 -lsoci_core -Wl,-Bdynamic -ldl -lpthread 
 make[2]: Leaving directory '/home/ran/Codes/edadb/build'
 [100%] Built target edadb
 make[1]: Leaving directory '/home/ran/Codes/edadb/build'
