@@ -134,6 +134,7 @@ int testDbMap() {
         got.print();
     } 
 
+
     // update 
     std::cout << "[DbMap Update]" << std::endl;
     IdbSite p1_new("Site1_new",1000,1100), p2_new("Site2_new",2000,2100);
@@ -147,6 +148,7 @@ int testDbMap() {
         std::cerr << "DbMap::Writer::update failed" << std::endl;
         return 1;
     }
+
 
     // scan
 //    reader.prepareByPredicate();
@@ -162,6 +164,7 @@ int testDbMap() {
         got.print();
     }
     std::cout << std::endl << std::endl;
+
 
     // delete
     std::cout << "[DbMap Delete]" << std::endl;
@@ -192,6 +195,7 @@ int testDbMap() {
     }
     std::cout << std::endl << std::endl;
 
+
     // lookup
     std::cout << "[DbMap Lookup]" << std::endl;
     IdbSite lookup_idsite("Site3",0,0);
@@ -210,6 +214,7 @@ int testDbMap() {
     } else {
         std::cout << "IdbSite not found" << std::endl;
     }
+
 
     return 0;
 }
