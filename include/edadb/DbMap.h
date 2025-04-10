@@ -156,6 +156,29 @@ public: // insert
         return prepare2Insert() && insert(obj) && finalize();
     }
 
+    bool insertVector(std::vector<T*> &objs) {
+        if (objs.empty()) {
+            std::cerr << "DbMap::insertVector: empty vector" << std::endl;
+            return false;
+        }
+
+        if (!prepare2Insert()) {
+            std::cerr << "DbMap::insertVector: prepare failed" << std::endl;
+            return false;
+        }
+
+        for (auto obj : objs) {
+            if (!insert(obj)) {
+                std::cerr << "DbMap::insertVector: insert failed" << std::endl;
+                return false;
+            }
+        }
+
+        return finalize();  
+    } 
+
+
+public: // insert utility
     bool prepare2Insert() {
         if (op != DbMapOperation::NONE) {
             std::cerr << "DbMap::Writer::prepare2Insert: already prepared" << std::endl;

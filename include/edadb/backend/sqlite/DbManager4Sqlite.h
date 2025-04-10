@@ -113,6 +113,7 @@ public: // database operation
             std::cerr << "Sqlite3 Error: " << sqlite3_errmsg(db) << std::endl;
         }
         connect_param.clear();
+        db = nullptr;
         return closed;
     }
 
