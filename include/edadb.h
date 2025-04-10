@@ -107,10 +107,31 @@ bool insertVector(std::vector<T*>& obj_ptr_vec) {
  * @return use decltype to return the type of the update function, which is bool.
  */
 template <typename T>
-bool updateObject(T* obj_ptr_org, T* obj_ptr_new) {
+bool updateObjectBySqlStmt(T* obj_ptr_org, T* obj_ptr_new) {
     typename DbMap<T>::Writer writer;
-    return writer.update(obj_ptr_org, obj_ptr_new);
+    return writer.updateBySqlStmt(obj_ptr_org, obj_ptr_new);
 }
+
+/**
+ * @brief DbMapWriter: This is a type alias for the DbMap Writer class.
+ * @tparam T The class type.
+ */
+template <typename T>
+using DbMapWriter = typename edadb::DbMap<T>::Writer;
+
+
+template <typename T>
+int updateObject(T* org_obj_ptr, T* new_obj_ptr) {
+    typename DbMap<T>::Writer writer;
+    return writer.updateOne(org_obj_ptr, new_obj_ptr);
+}
+
+template <typename T>
+bool updateVector(std::vector<T*>& org_vec_ptr, std::vector<T*>& new_vec_ptr) {
+    typename DbMap<T>::Writer writer;
+    return writer.updateVector(org_vec_ptr, new_vec_ptr);
+}
+
 
 /**
  * @brief Delete the object from the database.

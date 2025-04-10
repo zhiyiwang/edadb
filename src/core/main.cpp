@@ -137,14 +137,20 @@ int testDbMap() {
 
     // update 
     std::cout << "[DbMap Update]" << std::endl;
-    IdbSite p1_new("Site1_new",1000,1100), p2_new("Site2_new",2000,2100);
-//    writer.update(&p1, &p1_new);
-//    writer.update(&p2, &p2_new);
+    IdbSite p1_new("Site1_new",1000,1100), p2_new("Site2_new",2000,2100), p3_new("Site3_new",3000,3100);
+//    writer.updateBySqlStmt(&p1, &p1_new);
+//    writer.updateBySqlStmt(&p2, &p2_new);
     if (!edadb::updateObject<IdbSite>(&p1, &p1_new)) {
         std::cerr << "DbMap::Writer::update failed" << std::endl;
         return 1;
     }
-    if (!edadb::updateObject<IdbSite>(&p2, &p2_new)) {
+    std::vector<IdbSite*> org_vec, new_vec;
+    org_vec.push_back(&p2);
+    org_vec.push_back(&p3);
+    new_vec.push_back(&p2_new);
+    new_vec.push_back(&p3_new);
+
+    if (!edadb::updateVector<IdbSite>(org_vec, new_vec)) {
         std::cerr << "DbMap::Writer::update failed" << std::endl;
         return 1;
     }
@@ -198,7 +204,7 @@ int testDbMap() {
 
     // lookup
     std::cout << "[DbMap Lookup]" << std::endl;
-    IdbSite lookup_idsite("Site3",0,0);
+    IdbSite lookup_idsite("Site4",0,0);
 //    reader.prepareByPrimaryKey(&lookup_idsite);
 //    got_flag = reader.read(&got);
 //    if (got_flag) {

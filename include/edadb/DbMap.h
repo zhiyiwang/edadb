@@ -137,7 +137,7 @@ public:
     Writer () { resetBindIndex(); }
     ~Writer() = default;
 
-public:
+public: // finalize utility
     /**
      * @brief finalize dbstmt and reset the bind_idx
     */
@@ -151,7 +151,7 @@ public:
         return dbstmt.finalize();
     }
 
-public: // insert
+public: // insert API
     bool insertOne(T* obj) {
         return prepare2Insert() && insert(obj) && finalize();
     }
@@ -243,7 +243,7 @@ public: // insert utility
         dbstmt.bindColumn(bind_idx++, elem);
     }
 
-private: // insert
+private: // insert utility
     /** reset bind_idx to begin to bind */      
     void resetBindIndex() {
         bind_idx = manager.s_bind_column_begin_index;
@@ -262,7 +262,7 @@ private: // insert
         boost::fusion::for_each(values, *this);
     }
 
-public: 
+public:  // Delete API
     bool deleteByPrimaryKeys(T* obj) {
         if (op != DbMapOperation::NONE) {
             std::cerr << "DbMap::Deleter::deleteByPrimaryKeys: already prepared" << std::endl;
@@ -279,8 +279,8 @@ public:
         return manager.exec(sql);
     }
 
-public:
-    bool update(T* org_obj, T* new_obj) {
+public: // update API
+    bool updateBySqlStmt(T* org_obj, T* new_obj) {
         if (op != DbMapOperation::NONE) {
             std::cerr << "DbMap::Deleter::deleteByPrimaryKeys: already prepared" << std::endl;
             return false;
@@ -295,6 +295,98 @@ public:
             fmt::format(SqlStatement<T>::updateStatement(org_obj, new_obj), dbmap.getTableName());
         return manager.exec(sql);
     }
+
+    bool updateOne(T* org_obj, T* new_obj) {
+        return prepare2Update() && update(org_obj, new_obj) && finalize();
+    }
+
+    bool updateVector(std::vector<T*> &org_objs, std::vector<T*> &new_objs) {
+        if (org_objs.empty() || new_objs.empty()) {
+            std::cerr << "DbMap::updateVector: empty vector" << std::endl;
+            return false;
+        }
+
+        if (org_objs.size() != new_objs.size()) {
+            std::cerr << "DbMap::updateVector: size mismatch" << std::endl;
+            return false;
+        }
+
+        if (!prepare2Update()) {
+            std::cerr << "DbMap::updateVector: prepare failed" << std::endl;
+            return false;
+        }
+
+        for (size_t i = 0; i < org_objs.size(); ++i) {
+            if (!update(org_objs[i], new_objs[i])) {
+                std::cerr << "DbMap::updateVector: update failed" << std::endl;
+                return false;
+            }
+        }
+
+        return finalize();
+    } // updateVector
+    
+
+public:
+    bool prepare2Update() {
+        if (op != DbMapOperation::NONE) {
+            std::cerr << "DbMap::Updater::prepare2Update: already prepared" << std::endl;
+            return false;
+        }
+
+        if (!dbmap.inited()) {
+            std::cerr << "DbMap::Updater::prepare2Update: not inited" << std::endl;
+            return false;
+        }
+
+        if (!manager.initStatement(dbstmt)) {
+            std::cerr << "DbMap::Updater::prepare2Update: init statement failed" << std::endl;
+            return false;
+        }
+
+        const std::string sql =
+            fmt::format(SqlStatement<T>::updatePlaceHolderStatement(), dbmap.getTableName());
+        if (!dbstmt.prepare(sql)) {
+            std::cerr << "DbMap::Updater::prepare2Update: prepare statement failed" << std::endl;
+            return false;
+        }
+
+        op = DbMapOperation::UPDATE;
+        return true;
+    }
+
+    bool update(T* org_obj, T* new_obj) {
+        if ((op == DbMapOperation::NONE) && (!prepare2Update())) {
+            std::cerr << "DbMap::Updater::update: prepare failed" << std::endl;
+            return false;
+        }
+        else if (op != DbMapOperation::UPDATE) {
+            std::cerr << "DbMap::Updater::update: not prepared" << std::endl;
+            return false;
+        }
+
+        if (!dbmap.inited()) {
+            std::cerr << "DbMap::Updater::update: not inited" << std::endl;
+            return false;
+        }
+
+        // bind new_obj to the database
+        bindObject(new_obj);
+
+        // bind the primary key value in the where clause using org_obj
+        auto pk_val_ptr = boost::fusion::at_c<0>(TypeMetaData<T>::getVal(org_obj));
+        dbstmt.bindColumn(bind_idx++, pk_val_ptr);
+
+        if (!dbstmt.bindStep()) {
+            return false;
+        }
+
+        if (!dbstmt.reset()) {
+            return false;
+        }
+
+        return true;
+    } // update 
 }; // class Writer
 
 
