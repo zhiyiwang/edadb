@@ -19,6 +19,7 @@
 namespace edadb {
 
 
+
 /**
  * @brief DbMap class maps objects to relations.
  * @tparam T The class type.
@@ -99,9 +100,8 @@ public:
     bool commitTransaction() {
         return manager.exec("COMMIT;");
     }
+
 }; // class DbMap
-
-
 
 
 
@@ -113,6 +113,51 @@ enum class DbMapOperation {
     DELETE,
     MAX
 };
+
+/**
+ * Operation traits for DbMap operation.
+ */
+template<typename T, DbMapOperation OP>
+struct OpTraits {
+    static_assert(OP != OP, "DbMapOperation is not implemented for this operation.");
+};
+
+
+template<typename T>
+struct OpTraits<T, DbMapOperation::INSERT> {
+    static constexpr const char* name() { return "Inserter"; }
+    static std::string getSQL(DbMap<T> &dbmap) {
+        return SqlStatement<T>::insertPlaceHolderStatement();
+    }
+    static DbMapOperation op() {
+        return DbMapOperation::INSERT;
+    }
+};
+
+template<typename T>
+struct OpTraits<T, DbMapOperation::UPDATE> {
+    static constexpr const char* name() { return "Updater"; }
+    static std::string getSQL(DbMap<T> &dbmap) {
+        return SqlStatement<T>::updatePlaceHolderStatement();
+    }
+    static DbMapOperation op() {
+        return DbMapOperation::UPDATE;
+    }
+};
+
+template<typename T>
+struct OpTraits<T, DbMapOperation::DELETE> {
+    static constexpr const char* name() { return "Deleter"; }
+    static std::string getSQL(DbMap<T> &dbmap) {
+        return SqlStatement<T>::deletePlaceHolderStatement();
+    }
+    static DbMapOperation op() {
+        return DbMapOperation::DELETE;
+    }
+};
+
+
+
 
 // DbMap Writer: write database, include insert, update, delete
 template<typename T>
@@ -133,14 +178,101 @@ protected:
 
     inline static thread_local DbMapOperation op = DbMapOperation::NONE;
 
+
 public:
     Writer () { resetBindIndex(); }
     ~Writer() = default;
 
-public: // finalize utility
+public: // utility
+    /**
+     * @brief prepare2 for the operation.
+     * @tparam OP The operation type.
+     * @return true if success, false otherwise.
+     */
+    template<DbMapOperation OP> 
+    bool prepare2() {
+        if (op != DbMapOperation::NONE) {
+            std::cerr << "DbMap::Writer::prepare2: already prepared" << std::endl;
+            return false;
+        }
+
+        if (!dbmap.inited()) {
+            std::cerr << "DbMap::Writer::prepare2: not inited" << std::endl;
+            return false;
+        }
+
+        if (!manager.initStatement(dbstmt)) {
+            std::cerr << "DbMap::Writer::prepare2: init statement failed" << std::endl;
+            return false;
+        }
+
+        const std::string sql =
+            fmt::format(OpTraits<T, OP>::getSQL(dbmap), dbmap.getTableName());
+        if (!dbstmt.prepare(sql)) {
+            std::cerr << "DbMap::Writer::prepare2: prepare statement failed" << std::endl;
+            return false;
+        }
+
+        op = OpTraits<T, OP>::op();
+        return true;
+    }
+
+    /**
+     * @brief execute the operation.
+     * @param OP The operation type.
+     * @param Func The function to execute, which is a lambda function.
+     * @return true if success, false otherwise.
+     */
+    template<DbMapOperation OP, typename Func>
+    bool executeOp(Func func) {
+        // check if the operation is prepared
+        if ((op == DbMapOperation::NONE) && (!prepare2<OP>())) {
+            std::cerr << "DbMap::" << OpTraits<T, OP>::name() << "::executeOp: prepare failed" << std::endl;
+            return false;
+        }
+        else if (op != OP) {
+            std::cerr << "DbMap::" << OpTraits<T, OP>::name() << "::executeOp: not prepared" << std::endl;
+            return false;
+        }
+        
+        if (!dbmap.inited()) {
+            std::cerr << "DbMap::" << OpTraits<T, OP>::name() << "::executeOp: not inited" << std::endl;
+            return false;
+        }
+        
+        // lamda function to bind the object
+        func();
+        
+        if (!dbstmt.bindStep()) {
+            return false;
+        }
+        
+        if (!dbstmt.reset()) {
+            return false;
+        }
+        
+        return true;
+    }
+
+
+    template<DbMapOperation OP, typename Func>
+    bool processVector(const std::string &errPrefix, Func&& func) {
+        if (!prepare2<OP>()) {
+            std::cerr << errPrefix << ": prepare failed" << std::endl;
+            return false;
+        }
+        
+        // lambda function to bind the object
+        if (!func())
+            return false;
+        
+        return finalize();
+    }
+
+
     /**
      * @brief finalize dbstmt and reset the bind_idx
-    */
+     */
     bool finalize() {
         if (!dbmap.inited()) {
             std::cerr << "DbMap::insertFinalize: not inited" << std::endl;
@@ -151,9 +283,10 @@ public: // finalize utility
         return dbstmt.finalize();
     }
 
+
 public: // insert API
     bool insertOne(T* obj) {
-        return prepare2Insert() && insert(obj) && finalize();
+        return prepare2<DbMapOperation::INSERT>() && insert(obj) && finalize();
     }
 
     bool insertVector(std::vector<T*> &objs) {
@@ -162,76 +295,21 @@ public: // insert API
             return false;
         }
 
-        if (!prepare2Insert()) {
-            std::cerr << "DbMap::insertVector: prepare failed" << std::endl;
-            return false;
-        }
-
-        for (auto obj : objs) {
-            if (!insert(obj)) {
-                std::cerr << "DbMap::insertVector: insert failed" << std::endl;
-                return false;
+        return processVector<DbMapOperation::INSERT>("DbMap::insertVector", [&]() {
+            for (auto obj : objs) {
+                if (!insert(obj)) {
+                    std::cerr << "DbMap::insertVector: insert failed" << std::endl;
+                    return false;
+                }
             }
-        }
-
-        return finalize();  
+            return true;
+        });
     } 
 
-
-public: // insert utility
-    bool prepare2Insert() {
-        if (op != DbMapOperation::NONE) {
-            std::cerr << "DbMap::Writer::prepare2Insert: already prepared" << std::endl;
-            return false;
-        }
-
-        if (!dbmap.inited()) {
-            std::cerr << "DbMap::Inserter::prepare: not inited" << std::endl;
-            return false;
-        }
-
-        if (!manager.initStatement(dbstmt)) {
-            std::cerr << "DbMap::Inserter::prepare: init statement failed" << std::endl;
-            return false;
-        }
-
-        const std::string sql =
-            fmt::format(SqlStatement<T>::insertPlaceHolderStatement(), dbmap.getTableName());
-        if (!dbstmt.prepare(sql)) {
-            std::cerr << "DbMap::Inserter::prepare: prepare statement failed" << std::endl;
-            return false;
-        }
-
-        op = DbMapOperation::INSERT;
-        return true;
-    }
-
     bool insert(T* obj) {
-        if ((op == DbMapOperation::NONE) && (!prepare2Insert())) {
-            std::cerr << "DbMap::Inserter::insert: prepare failed" << std::endl;
-            return false;
-        }
-        else if (op != DbMapOperation::INSERT) {
-            std::cerr << "DbMap::Inserter::insert: not prepared" << std::endl;
-            return false;
-        }
-
-        if (!dbmap.inited()) {
-            std::cerr << "DbMap::Inserter::insert: not inited" << std::endl;
-            return false;
-        }
-
-        bindObject(obj);
-
-        if (!dbstmt.bindStep()) {
-            return false;
-        }
-
-        if (!dbstmt.reset()) {
-            return false;
-        }
-
-        return true;
+        return executeOp<DbMapOperation::INSERT>([&]() {
+            bindObject(obj);
+        });
     }
 
     /**
@@ -279,10 +357,24 @@ public:  // Delete API
         return manager.exec(sql);
     }
 
+public:
+    bool deleteOne(T* obj) {
+        return prepare2<DbMapOperation::DELETE>() && deleteOp(obj) && finalize();
+    }
+
+    bool deleteOp(T* obj) {
+        return executeOp<DbMapOperation::DELETE>([&]() {
+            // bind the primary key value in the where clause using obj
+            auto pk_val_ptr = boost::fusion::at_c<0>(TypeMetaData<T>::getVal(obj));
+            dbstmt.bindColumn(bind_idx++, pk_val_ptr);
+        });
+    } // deleteOne
+
+
 public: // update API
     bool updateBySqlStmt(T* org_obj, T* new_obj) {
         if (op != DbMapOperation::NONE) {
-            std::cerr << "DbMap::Deleter::deleteByPrimaryKeys: already prepared" << std::endl;
+            std::cerr << "DbMap::Updater::update: already prepared" << std::endl;
             return false;
         }
 
@@ -297,7 +389,7 @@ public: // update API
     }
 
     bool updateOne(T* org_obj, T* new_obj) {
-        return prepare2Update() && update(org_obj, new_obj) && finalize();
+        return prepare2<DbMapOperation::UPDATE>() && update(org_obj, new_obj) && finalize();
     }
 
     bool updateVector(std::vector<T*> &org_objs, std::vector<T*> &new_objs) {
@@ -305,87 +397,33 @@ public: // update API
             std::cerr << "DbMap::updateVector: empty vector" << std::endl;
             return false;
         }
-
         if (org_objs.size() != new_objs.size()) {
             std::cerr << "DbMap::updateVector: size mismatch" << std::endl;
             return false;
         }
-
-        if (!prepare2Update()) {
-            std::cerr << "DbMap::updateVector: prepare failed" << std::endl;
-            return false;
-        }
-
-        for (size_t i = 0; i < org_objs.size(); ++i) {
-            if (!update(org_objs[i], new_objs[i])) {
-                std::cerr << "DbMap::updateVector: update failed" << std::endl;
-                return false;
+        
+        return processVector<DbMapOperation::UPDATE>("DbMap::updateVector", [&]() {
+            for (size_t i = 0; i < org_objs.size(); ++i) {
+                if (!update(org_objs[i], new_objs[i])) {
+                    std::cerr << "DbMap::updateVector: update failed" << std::endl;
+                    return false;
+                }
             }
-        }
-
-        return finalize();
+            return true;
+        });
     } // updateVector
     
 
 public:
-    bool prepare2Update() {
-        if (op != DbMapOperation::NONE) {
-            std::cerr << "DbMap::Updater::prepare2Update: already prepared" << std::endl;
-            return false;
-        }
-
-        if (!dbmap.inited()) {
-            std::cerr << "DbMap::Updater::prepare2Update: not inited" << std::endl;
-            return false;
-        }
-
-        if (!manager.initStatement(dbstmt)) {
-            std::cerr << "DbMap::Updater::prepare2Update: init statement failed" << std::endl;
-            return false;
-        }
-
-        const std::string sql =
-            fmt::format(SqlStatement<T>::updatePlaceHolderStatement(), dbmap.getTableName());
-        if (!dbstmt.prepare(sql)) {
-            std::cerr << "DbMap::Updater::prepare2Update: prepare statement failed" << std::endl;
-            return false;
-        }
-
-        op = DbMapOperation::UPDATE;
-        return true;
-    }
-
     bool update(T* org_obj, T* new_obj) {
-        if ((op == DbMapOperation::NONE) && (!prepare2Update())) {
-            std::cerr << "DbMap::Updater::update: prepare failed" << std::endl;
-            return false;
-        }
-        else if (op != DbMapOperation::UPDATE) {
-            std::cerr << "DbMap::Updater::update: not prepared" << std::endl;
-            return false;
-        }
+        return executeOp<DbMapOperation::UPDATE>([&]() {
+            // bind new_obj to the database
+            bindObject(new_obj);
 
-        if (!dbmap.inited()) {
-            std::cerr << "DbMap::Updater::update: not inited" << std::endl;
-            return false;
-        }
-
-        // bind new_obj to the database
-        bindObject(new_obj);
-
-        // bind the primary key value in the where clause using org_obj
-        auto pk_val_ptr = boost::fusion::at_c<0>(TypeMetaData<T>::getVal(org_obj));
-        dbstmt.bindColumn(bind_idx++, pk_val_ptr);
-
-        if (!dbstmt.bindStep()) {
-            return false;
-        }
-
-        if (!dbstmt.reset()) {
-            return false;
-        }
-
-        return true;
+            // bind the primary key value in the where clause using org_obj
+            auto pk_val_ptr = boost::fusion::at_c<0>(TypeMetaData<T>::getVal(org_obj));
+            dbstmt.bindColumn(bind_idx++, pk_val_ptr);
+        });
     } // update 
 }; // class Writer
 

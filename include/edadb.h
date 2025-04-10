@@ -141,7 +141,8 @@ bool updateVector(std::vector<T*>& org_vec_ptr, std::vector<T*>& new_vec_ptr) {
 template <typename T>
 bool deleteObject(T* obj_ptr) {
     typename DbMap<T>::Writer writer;
-    return writer.deleteByPrimaryKeys(obj_ptr);
+//    return writer.deleteByPrimaryKeys(obj_ptr);
+    return writer.deleteOne(obj_ptr);
 }
   
 
