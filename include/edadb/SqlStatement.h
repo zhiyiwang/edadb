@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <assert.h>
 #include <vector>   
 #include <iostream>
 #include <sstream>
@@ -49,56 +50,59 @@ protected:  // some utility functions
     }
 
 
-//////// Appenders //////////////////////////////////////////////////////
-
-    struct Appender4Name {
+//////// Column Infos //////////////////////////////////////////////////////
+    /**
+     * @brief Appender for column names to the vector.
+     */
+    struct ColumnNameType {
     private:
-        std::stringstream& ss;  
-        int idx;
+        std::vector<std::string>& name;
+        std::vector<std::string>& type;
 
     public:
-        Appender4Name(std::stringstream& s) : ss(s), idx(0) {}  
+        ColumnNameType(std::vector<std::string>& n, std::vector<std::string>& t) : name(n), type(t) {}
 
+        /**
+         * @brief Appender for column names to the vector.
+         * @param x is TypeMetaData::tuple_type_pair() element:
+         *     x.first  - pointer to the member variable
+         *     x.second - the member name
+         */
+        template <typename TuplePair>
+        void operator()(TuplePair const& x) {
+            // use the type of the first element to get the SQL type string
+            using ElemType = typename TuplePair::first_type;
+            using CppType  = typename std::remove_const<typename std::remove_pointer<ElemType>::type>::type;
+            std::string sqlTypeString = edadb::getSqlTypeString<CppType> ();
+            type.push_back(sqlTypeString);
+
+            // use the variable name as the column name
+            name.push_back(x.second);
+        }
+    };
+
+    /**
+     * @brief Appender for column names to the vector.
+     */
+    struct ColumnValues {
+    private:
+        std::vector<std::string>& values;
+    
+    public:
+        ColumnValues(std::vector<std::string>& v) : values(v) {}
+
+        /**
+         * @brief Appender for column values to the vector.
+         * @param v is TypeMetaData::TupType element:
+         *     v  - pointer to the member variable, such as obj->name
+         */
         template <typename ValueType>
-        void operator()(ValueType const& x) {
-            ss << (idx++ > 0 ? ", " : "") << x.second;
+        void operator()(ValueType& v) {
+            values.push_back(binary2String(*v));
         }
     };
+}; // SqlStatementBase
 
-
-    struct Appender4Value {
-    private:
-        std::stringstream& ss;  
-        int idx;
-
-    public:
-        Appender4Value(std::stringstream& s) : ss(s), idx(0) {}  
-
-        template<typename ValueType>
-        void operator()(ValueType val) {
-            ss << (idx++ > 0 ? ", " : "") << *val;
-        }
-
-        void operator()(std::string* val) {
-            ss << (idx++ > 0 ? ", " : "") << "\'" << *val << "\'";
-        }
-    };
-
-
-    struct Appender4PlaceHolder {
-    private:
-        std::stringstream& ss;  
-        int idx;
-
-    public:
-        Appender4PlaceHolder(std::stringstream& s) : ss(s), idx(0) {}  
-
-        template<typename ValueType>
-        void operator()(ValueType val) {
-            ss << (idx++ > 0 ? ", " : "") << "?";
-        }
-    };
-};
 
 
 /**
@@ -109,59 +113,134 @@ protected:  // some utility functions
 template<class T>
 struct SqlStatement : public SqlStatementBase {
 
-//////// Appenders //////////////////////////////////////////////////////
-    /**
-     * @brief Appender for name and type.
-     * @param sql The SQL statement to append.
-     * @param idx The index of the element.
-     */
-    struct Appender4NameType {
-    private:
-        std::string& sql;
-        int idx;
-
-    public:
-        Appender4NameType(std::string& sql) : sql(sql), idx(0) {}
-
-        template <typename ValueType>
-        void operator()(ValueType const& x) 
-        {
-            // Column name:
-            // use defined column name in TypeMetaData<T>::column_names()
-            std::string name = TypeMetaData<T>::column_names()[idx];
-
-            // ValueType:
-            //   defined using boost::fusion::make_pair<int*>(std::string("name"))
-            //   the type is boost::fusion::pair<int*, std::string> 
-            //  the first_type is int*; the second_type is std::string, which is the member name
-            using ElemType = typename ValueType::first_type;
-            using CppType = typename std::remove_const<typename std::remove_pointer<ElemType>::type>::type;
-            std::string sqlTypeString = edadb::getSqlTypeString<CppType> ();
-
-            if(idx++ == 0) {
-                sql += name + " " + sqlTypeString + " PRIMARY KEY";  
-            } else {
-                sql += ", " + name + " " + sqlTypeString;
-            }
-        }
-    };
-
-
-//////// Sql Statement /////////////////////////////////////////////////////////
-public: // create table
+//////// Standard SQL Statements //////////////////////////////////////
+public: 
     static std::string const& createTableStatement() {
         static std::string sql;
         if (sql.empty()) {
-            sql = "CREATE TABLE IF NOT EXISTS \"{}\" (";
+            /*
+             * get column names and types from TypeMetaData<T>::tuple_type_pair()
+             * NOTE:
+             * 1. name is the name of the member variable, we use user defined column name instead
+             * 2. type is the SQL type name string, such as "INTEGER", "TEXT", etc.
+             */
+            std::vector<std::string> name, type;
             const auto vecs = TypeMetaData<T>::tuple_type_pair();
-            boost::fusion::for_each(vecs, Appender4NameType(sql));
+            boost::fusion::for_each(vecs, ColumnNameType(name, type));
+
+            // get and check column names
+            const std::vector<std::string>& col_name = TypeMetaData<T>::column_names();
+            assert(name.size() == col_name.size());
+
+            sql = "CREATE TABLE IF NOT EXISTS \"{}\" (";
+            for (int i = 0; i < col_name.size(); ++i) {
+                sql += (i == 0) ? (col_name[i] + " " + type[i] + " PRIMARY KEY") :
+                    (", " + col_name[i] + " " + type[i]);
+            }
             sql += ")";
         }
         return sql;
     }
 
 
-public: // insert
+    std::string insertStatement(T* obj) {
+        std::stringstream ss;
+        ss << "INSERT INTO \"{}\" (";
+        auto names = TypeMetaData<T>::column_names();
+        for (int i = 0; i < names.size(); ++i) {
+            ss << (i > 0 ? ", " : "") << names[i];
+        }
+        ss << ") VALUES (";
+        std::vector<std::string> values;
+        boost::fusion::for_each(TypeMetaData<T>::getVal(obj), ColumnValues(values));
+        for (int i = 0; i < values.size(); ++i) {
+            ss << (i > 0 ? ", " : "") << values[i];
+        }
+        ss << ");";
+        return ss.str();
+    }
+
+
+    static std::string const &scanStatement() {
+        // select col1, col2, ... from table_name;
+        // colx is defined in TypeMetaData<T>::column_names() by TABLE4CLASS
+        static std::string sql;
+        if (sql.empty()) {
+            std::stringstream ss;
+            auto names = TypeMetaData<T>::column_names();
+            for (int i = 0; i < names.size(); ++i) {
+                ss << (i > 0 ? ", " : "") << names[i];
+            }
+            sql = "SELECT " + ss.str() + " FROM \"{}\";";
+        }
+        return sql;
+    }
+
+
+    static std::string const lookupStatement(T* obj) {
+        static std::string sql;
+        if (sql.empty()) {
+            std::stringstream ss;
+            auto names = TypeMetaData<T>::column_names();
+            for (int i = 0; i < names.size(); ++i) {
+                ss << (i > 0 ? ", " : "") << names[i];
+            }
+            sql = "SELECT " + ss.str() + " FROM \"{}\" WHERE ";
+
+            auto pk_name = names[0]; // primary key is the first element
+            sql += pk_name + " = ";
+        }
+
+        const auto vals = TypeMetaData<T>::getVal(obj);
+        auto pk_val_ptr = boost::fusion::at_c<0>(vals);
+        auto pk_val_str = binary2String(*pk_val_ptr);
+        return sql + pk_val_str + ";";
+    }
+
+
+    static std::string const deleteStatement(T* obj) {
+        static std::string sql_prefix;
+        if (sql_prefix.empty()) {
+            sql_prefix = "DELETE FROM \"{}\" WHERE ";
+
+            // primary key is the first element in the tuple
+            sql_prefix += TypeMetaData<T>::column_names()[0] + " = ";
+        }
+
+        const auto vals = TypeMetaData<T>::getVal(obj);
+        auto pk_val_ptr = boost::fusion::at_c<0>(vals);
+        auto pk_val_str = binary2String(*pk_val_ptr);
+        return sql_prefix + pk_val_str + ";";
+    }
+
+
+    static std::string const updateStatement(T* org_obj, T* new_obj) {
+        std::string sql = "UPDATE \"{}\" SET ";
+
+        // get names and values
+        std::vector<std::string> names;
+        names = TypeMetaData<T>::column_names();
+
+        std::vector<std::string> values;
+        const auto vecs = TypeMetaData<T>::tuple_type_pair();
+        boost::fusion::for_each(TypeMetaData<T>::getVal(new_obj), ColumnValues(values));
+
+        // generate sql
+        const uint32_t num = names.size();
+        for (uint32_t i = 0; i < num; ++i) {
+            sql += names[i] + " = " + values[i] + (i + 1 < num ? ", " : "");
+        }
+
+        // get primary key name and value
+        auto pk_val_ptr = boost::fusion::at_c<0>(TypeMetaData<T>::getVal(org_obj));
+        auto pk_val_str = binary2String(*pk_val_ptr);
+        sql += " WHERE " + names[0] + " = " + pk_val_str + ";";
+        return sql;
+    }
+
+
+//////// SQL Statements using Place Holder ////////////////////////
+public:
     /**
      * @brief Generate the insert statement with place holders.
      * @return The insert statement.
@@ -185,138 +264,46 @@ public: // insert
         return sql;
     }
 
-    std::string insertStatement(T* obj) {
-        std::stringstream ss;
-        ss << "INSERT INTO \"{}\" (";
-        auto names = TypeMetaData<T>::column_names();
-        for (int i = 0; i < names.size(); ++i) {
-            ss << (i > 0 ? ", " : "") << names[i];
-        }
-        ss << ") VALUES (";
-        const auto vals = TypeMetaData<T>::getVal(obj);
-        boost::fusion::for_each(vals, Appender4Value(ss));
-        ss << ");";
-        return ss.str();
-    }
-
-
-public: // scan
-    static std::string const &scanStatement() {
-        // select col1, col2, ... from table_name;
+    /**
+     * @brief Generate the update statement with place holders.
+     * @return The update statement.
+     */
+    static std::string updatePlaceHolderStatement() {
         static std::string sql;
         if (sql.empty()) {
-            std::stringstream ss;
+            sql = "UPDATE \"{}\" SET ";
             auto names = TypeMetaData<T>::column_names();
             for (int i = 0; i < names.size(); ++i) {
-                ss << (i > 0 ? ", " : "") << names[i];
+                sql += (i > 0 ? ", " : "") + names[i] + " = ?";
             }
-            sql = "SELECT " + ss.str() + " FROM \"{}\";";
+            sql += " WHERE " + names[0] + " = ?;";
         }
         return sql;
     }
 
-
-public: // lookup by primary key
-    static std::string const lookupStatement(T* obj) {
+    /**
+     * @brief Generate the delete statement with place holders.
+     * @return The delete statement.
+     */
+    static std::string deletePlaceHolderStatement() {
         static std::string sql;
         if (sql.empty()) {
-            std::stringstream ss;
+            sql = "DELETE FROM \"{}\" WHERE ";
             auto names = TypeMetaData<T>::column_names();
-            for (int i = 0; i < names.size(); ++i) {
-                ss << (i > 0 ? ", " : "") << names[i];
-            }
-            sql = "SELECT " + ss.str() + " FROM \"{}\" WHERE ";
-
-            auto pk_name = names[0]; // primary key is the first element
-            sql += pk_name + " = ";
+            sql += names[0] + " = ?;";
         }
-
-        const auto vals = TypeMetaData<T>::getVal(obj);
-        auto pk_val_ptr = boost::fusion::at_c<0>(vals);
-        auto pk_val_str = binary2String(*pk_val_ptr);
-        return sql + pk_val_str + ";";
-    }
-
-
-public: // delete by primary key
-    static std::string const deleteStatement(T* obj) {
-        static std::string sql_prefix;
-        if (sql_prefix.empty()) {
-            sql_prefix = "DELETE FROM \"{}\" WHERE ";
-
-            // primary key is the first element in the tuple
-            sql_prefix += TypeMetaData<T>::column_names()[0] + " = ";
-        }
-
-        const auto vals = TypeMetaData<T>::getVal(obj);
-        auto pk_val_ptr = boost::fusion::at_c<0>(vals);
-        auto pk_val_str = binary2String(*pk_val_ptr);
-        return sql_prefix + pk_val_str + ";";
-    }
-
-
-private: // update by primary key
-    struct UpdateNames {
-    private:
-        std::vector<std::string>& names;
-
-    public:
-        UpdateNames(std::vector<std::string>& n) : names(n) {}
-
-        template <typename ValueType>
-        void operator()(ValueType const& x) {
-            names.push_back(x.second);
-        }
-    };
-
-    struct UpdateValues {
-    private:
-        std::vector<std::string>& values;
-    
-    public:
-        UpdateValues(std::vector<std::string>& v) : values(v) {}
-
-        template <typename ValueType>
-        void operator()(ValueType& x) {
-            values.push_back(binary2String(*x));
-        }
-    };
-
-
-public: 
-    static std::string const updateStatement(T* org_obj, T* new_obj) {
-        std::string sql = "UPDATE \"{}\" SET ";
-
-        // get names and values
-        std::vector<std::string> names;
-        names = TypeMetaData<T>::column_names();
-
-        std::vector<std::string> values;
-        const auto vecs = TypeMetaData<T>::tuple_type_pair();
-        boost::fusion::for_each(TypeMetaData<T>::getVal(new_obj), UpdateValues(values));
-
-        // generate sql
-        const uint32_t num = names.size();
-        for (uint32_t i = 0; i < num; ++i) {
-            sql += names[i] + " = " + values[i] + (i + 1 < num ? ", " : "");
-        }
-
-        // get primary key name and value
-        auto pk_val_ptr = boost::fusion::at_c<0>(TypeMetaData<T>::getVal(org_obj));
-        auto pk_val_str = binary2String(*pk_val_ptr);
-        sql += " WHERE " + names[0] + " = " + pk_val_str + ";";
         return sql;
     }
+
 
 
 public: // debug
     void print(T* obj1, T* obj2) {
-        std::cout << "SqlStatement<" << typeid(T).name() << ">" << " SQLs:" << std::endl;
+        std::cout << "======== " << "SqlStatement <" << typeid(T).name() << "> ========" << std::endl;
+        std::cout << "-------- Standard SQL statements --------" << std::endl;
         std::cout << "Create Table SQL: " << std::endl << "\t" 
             << createTableStatement() << std::endl;
-        std::cout << "Insert Place Holder SQL: " << std::endl << "\t" 
-            << insertPlaceHolderStatement() << std::endl;
-        std::cout << "Insert SQL: " << std::endl << "\t" 
+       std::cout << "Insert SQL: " << std::endl << "\t" 
             << insertStatement(obj1) << std::endl;
         std::cout << "Insert SQL: " << std::endl << "\t" 
             << insertStatement(obj2) << std::endl;
@@ -330,7 +317,15 @@ public: // debug
             << deleteStatement(obj2) << std::endl;
         std::cout << "Update SQL: " << std::endl << "\t"
             << updateStatement(obj1, obj2) << std::endl;
-        std::cout << std::endl << std::endl;
+        std::cout << std::endl;
+
+        std::cout << "-------- SQL statements with Place Holder --------" << std::endl;
+        std::cout << "Insert Place Holder SQL: " << std::endl << "\t" 
+            << insertPlaceHolderStatement() << std::endl;
+        std::cout << "Update Place Holder SQL: " << std::endl << "\t"
+            << updatePlaceHolderStatement() << std::endl;
+        std::cout << "Delete Place Holder SQL: " << std::endl << "\t"
+            << deletePlaceHolderStatement() << std::endl;
     }
 };
 
