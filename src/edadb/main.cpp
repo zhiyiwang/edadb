@@ -34,8 +34,11 @@ int main(void) {
     test_sqlite_lock();
     test_sqlite_stmt();
 #endif
+    test_sqlite_api();
 
+#if 0
     test_cpp_var();
+#endif
 
     return 0;
 }
