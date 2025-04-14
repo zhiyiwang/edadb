@@ -16,8 +16,8 @@
 #include "DbManager.h"
 #include "DbManager4Sqlite.h"
 
-namespace edadb {
 
+namespace edadb {
 
 
 /**
@@ -217,6 +217,7 @@ public: // utility
         return true;
     }
 
+
     /**
      * @brief execute the operation.
      * @param OP The operation type.
@@ -255,6 +256,14 @@ public: // utility
     }
 
 
+    /**
+     * @brief process the vector of objects.
+     * @tparam OP The operation type.
+     * @tparam Func The function to execute, which is a lambda function.
+     * @param errPrefix The error prefix.
+     * @param func The function to execute, which is a lambda function.
+     * @return true if success, false otherwise.
+    */
     template<DbMapOperation OP, typename Func>
     bool processVector(const std::string &errPrefix, Func&& func) {
         if (!prepare2<OP>()) {
@@ -321,7 +330,7 @@ public: // insert API
         dbstmt.bindColumn(bind_idx++, elem);
     }
 
-private: // insert utility
+private: // utility
     /** reset bind_idx to begin to bind */      
     void resetBindIndex() {
         bind_idx = manager.s_bind_column_begin_index;
@@ -339,8 +348,9 @@ private: // insert utility
         auto values = TypeMetaData<T>::getVal(obj);
         boost::fusion::for_each(values, *this);
     }
+    
 
-public:  // Delete API
+public:  // Delete API: using text delete statement
     bool deleteByPrimaryKeys(T* obj) {
         if (op != DbMapOperation::NONE) {
             std::cerr << "DbMap::Deleter::deleteByPrimaryKeys: already prepared" << std::endl;
@@ -357,7 +367,7 @@ public:  // Delete API
         return manager.exec(sql);
     }
 
-public:
+public: // delete API: using place holder delete statement
     bool deleteOne(T* obj) {
         return prepare2<DbMapOperation::DELETE>() && deleteOp(obj) && finalize();
     }
@@ -371,7 +381,7 @@ public:
     } // deleteOne
 
 
-public: // update API
+public: // update API: using text update statement
     bool updateBySqlStmt(T* org_obj, T* new_obj) {
         if (op != DbMapOperation::NONE) {
             std::cerr << "DbMap::Updater::update: already prepared" << std::endl;
@@ -388,6 +398,7 @@ public: // update API
         return manager.exec(sql);
     }
 
+public: // update API: using place holder update statement
     bool updateOne(T* org_obj, T* new_obj) {
         return prepare2<DbMapOperation::UPDATE>() && update(org_obj, new_obj) && finalize();
     }

@@ -133,6 +133,7 @@ int testDbMap() {
         std::cout << "IdbSite :  ";
         got.print();
     } 
+    assert(rd == nullptr);
 
 
     // update 
