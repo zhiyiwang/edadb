@@ -1,8 +1,9 @@
-# add executable program
-# all cpp files in this directory will be compiled to the executable
+# all cpp files in this directory will be compiled to library
 file(GLOB SOURCES "*.cpp")
 
-add_executable(edadb main.cpp ${SOURCES})
+# complile all cpp files to object files
+add_library(edadb ${SOURCES})
+#add_executable(edadb main.cpp ${SOURCES})
 
 # include header files
 target_include_directories(edadb PRIVATE
@@ -14,7 +15,7 @@ target_include_directories(edadb PRIVATE
 )
 
 # link libraries
-target_link_libraries(edadb PRIVATE
+target_link_libraries(edadb PUBLIC
     sqlite3 fmt::fmt)
 
 
