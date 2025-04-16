@@ -143,6 +143,7 @@ _EDADB_DEFINE_TABLE_BY_CLASS_(IdbVia, "via_table", (_name, _coord));
 
 
 
+// utlity functions
 template<typename T>
 int scanTable() {
     edadb::DbMapReader<T> *rd = nullptr;
@@ -158,13 +159,13 @@ int scanTable() {
 
 
 
+// demo test functions 
 int testIdbCoordinate() {
     std::cout << "DBMap<" << typeid(IdbCoordinate).name() << ">" << std::endl;
 
-
     // init database and create table
     std::cout << "[DbMap Init]" << std::endl;
-    if (!edadb::initDatabase<IdbCoordinate>("nested.db foreign_key=1")) {
+    if (!edadb::initDatabase<IdbCoordinate>("full.coord.db foreign_key=1")) {
         std::cerr << "DbMap::init failed" << std::endl;
         return 1;
     }
@@ -228,9 +229,34 @@ int testIdbCoordinate() {
 } // testIdbCoordinate
 
 
+
+int testIdbVia() {
+    std::cout << "DBMap<" << typeid(IdbVia).name() << ">" << std::endl;
+
+    // init database and create table
+    std::cout << "[DbMap Init]" << std::endl;
+    if (!edadb::initDatabase<IdbVia>("full.via.db foreign_key=1")) {
+        std::cerr << "DbMap::init failed" << std::endl;
+        return 1;
+    }
+    std::cout << std::endl << std::endl;
+
+    std::cout << "[DbMap CreateTable]" << std::endl;
+    if (!edadb::createTable<IdbVia>()) {
+        std::cerr << "DbMap::createTable failed" << std::endl;
+        return 1;
+    }
+    std::cout << std::endl << std::endl;
+
+    return 0;
+}
+
+
 int main () {
 
     testIdbCoordinate();
+
+//    testIdbVia();
 
     return 0;
 } // main

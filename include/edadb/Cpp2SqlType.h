@@ -46,7 +46,8 @@ enum class SqlType : std::uint32_t {
     Boolean,    // true or false
 
     // user defined type
-    Composite,
+    Composite,  // inner class object
+    External,   // external class object
 
 
 //////// SQL types are not supported currently ////////////////////

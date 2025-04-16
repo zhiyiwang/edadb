@@ -79,6 +79,7 @@ public:
 
         const std::string sql =
             fmt::format(SqlStatement<T>::createTableStatement(), table_name);
+        std::cout << "DbMap::createTable: " << sql << std::endl;
         return manager.exec(sql);
     }
 

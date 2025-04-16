@@ -54,13 +54,18 @@ protected:  // some utility functions
     /**
      * @brief Appender for column names to the vector.
      */
+    template <typename T>
     struct ColumnNameType {
     private:
         std::vector<std::string>& name;
         std::vector<std::string>& type;
+        std::string prefix;
+        uint32_t index = 0;
 
     public:
-        ColumnNameType(std::vector<std::string>& n, std::vector<std::string>& t) : name(n), type(t) {}
+        ColumnNameType(
+            std::vector<std::string>& n, std::vector<std::string>& t, std::string p = "")
+            : name(n), type(t), prefix(p), index(0) {}
 
         /**
          * @brief Appender for column names to the vector.
@@ -70,15 +75,30 @@ protected:  // some utility functions
          */
         template <typename TuplePair>
         void operator()(TuplePair const& x) {
-            // use the type of the first element to get the SQL type string
+            // use the type of the first element as cppType
             using ElemType = typename TuplePair::first_type;
             using CppType  = typename std::remove_const<typename std::remove_pointer<ElemType>::type>::type;
-            std::string sqlTypeString = edadb::getSqlTypeString<CppType> ();
-            type.push_back(sqlTypeString);
 
-            // use the variable name as the column name
-            name.push_back(x.second);
-        }
+            // use variable's sql type decides the column type
+            const std::vector<std::string>& cnames = TypeMetaData<T>::column_names();
+            std::string column_name = cnames[index++];
+
+            if (edadb::Cpp2SqlType<CppType>::sqlType == edadb::SqlType::Composite) {
+//                const auto vecs = TypeMetaData<CppType>::tuple_type_pair();
+//                const std::string next_pref = prefix + "_" + column_name + "_";
+//                boost::fusion::for_each(vecs,
+//                    ColumnNameType<CppType>(name, type, next_pre));
+            } else {
+                std::string sqlTypeString = edadb::getSqlTypeString<CppType> ();
+                type.push_back(sqlTypeString);
+
+//                // use the variable name as the column name
+//                name.push_back(x.second);
+
+                // use the user defined column name
+                name.push_back(prefix + column_name);
+            }
+       }
     };
 
     /**
@@ -126,16 +146,16 @@ public:
              */
             std::vector<std::string> name, type;
             const auto vecs = TypeMetaData<T>::tuple_type_pair();
-            boost::fusion::for_each(vecs, ColumnNameType(name, type));
+            boost::fusion::for_each(vecs, ColumnNameType<T>(name, type));
 
-            // get and check column names
-            const std::vector<std::string>& col_name = TypeMetaData<T>::column_names();
-            assert(name.size() == col_name.size());
+//            // get column names
+//            //   expand the SqlType::Composite members to type and name 
+//            const std::vector<std::string>& col_name = TypeMetaData<T>::column_names();
 
             sql = "CREATE TABLE IF NOT EXISTS \"{}\" (";
-            for (int i = 0; i < col_name.size(); ++i) {
-                sql += (i == 0) ? (col_name[i] + " " + type[i] + " PRIMARY KEY") :
-                    (", " + col_name[i] + " " + type[i]);
+            for (int i = 0; i < name.size(); ++i) {
+                sql += (i == 0) ? (name[i] + " " + type[i] + " PRIMARY KEY") :
+                    (", " + name[i] + " " + type[i]);
             }
             sql += ")";
         }
