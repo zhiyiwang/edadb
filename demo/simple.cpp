@@ -8,7 +8,7 @@ public:
     int width;
     double height;
     int not_saved;
-    
+   
     IdbSite() : name("Default"), width(123), height(456), not_saved(789) {}
   
     IdbSite(std::string n, int w = 123, int h = 456, int t = 789) : name(n), width(w), height(h), not_saved(t){}
@@ -49,7 +49,7 @@ int testDbMap() {
 //        std::cerr << "DbMap::init failed" << std::endl;
 //        return 1;
 //    }
-    if (!edadb::initDatabase<IdbSite>("sqlite.db")) {
+    if (!edadb::initDatabase<IdbSite>("simple.db")) {
         std::cerr << "DbMap::init failed" << std::endl;
         return 1;
     }
