@@ -131,9 +131,9 @@ protected:  // some utility functions
  * @brief This struct is the implementation of SqlStatementBase.
  * @details This struct is the implementation of SqlStatementBase for different database backends, which is assigned by DbBackendType.
 */
-template <DbBackendType dbType, typename T>
+template <DbBackendType DBType, typename T>
 struct SqlStatementImpl : public SqlStatementBase {
-    static_assert(dbType != dbType, "DbBackendType is not supported");
+    static_assert(DBType != DBType, "DbBackendType is not supported");
 };
 
 

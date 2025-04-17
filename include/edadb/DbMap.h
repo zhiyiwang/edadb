@@ -60,11 +60,8 @@ public:
 
 public:
     bool init(const std::string& c) {
-        if (mgr_inited) {
-            std::cerr << "DbMap::init: already inited" << std::endl;
-            return false;
-        }
-        
+        // no need to check inited, singleton manager is inited
+
         mgr_inited = manager.connect(c);
         if (!mgr_inited) 
             std::cerr << "DbMap::init: connect failed" << std::endl;

@@ -69,8 +69,8 @@ public: // database operation
      */
     bool connect(const std::string &c = "edadb.sqlite3.db") {
         if (!connect_param.empty()) {
-            std::cerr << "Sqlite3 Error: already connected: " << connect_param << std::endl;
-            return false;
+            // already connected
+            return true;
         }
 
         connect_param = c;
