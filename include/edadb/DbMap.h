@@ -11,6 +11,7 @@
 
 #include "DbBackendType.h"
 #include "SqlStatement.h"
+#include "SqlStatement4Sqlite.h"
 #include "DbStatement.h"
 #include "DbStatement4Sqlite.h"
 #include "DbManager.h"
@@ -171,14 +172,14 @@ protected:
     inline static DbMap     &dbmap = DbMap<T>::i();
     inline static DbManager &manager = dbmap.getManager();
 
-    // inline thread_local:
+    // The writer needs to insert the objects into different tables,
+    // otherwise maybe use inline static thread_local variables:
     //   inline: no need to declare static
     //   static thread_local: var is shared by all instances of the thread
-    inline static thread_local DbStatement dbstmt; 
-    inline static thread_local uint32_t bind_idx = 0;
+    DbStatement dbstmt; 
+    uint32_t bind_idx = 0;
 
-    inline static thread_local DbMapOperation op = DbMapOperation::NONE;
-
+    DbMapOperation op = DbMapOperation::NONE;
 
 public:
     Writer () { resetBindIndex(); }

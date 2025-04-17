@@ -254,9 +254,9 @@ int testIdbVia() {
 
 int main () {
 
-    testIdbCoordinate();
+//    testIdbCoordinate();
 
-//    testIdbVia();
+    testIdbVia();
 
     return 0;
 } // main

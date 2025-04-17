@@ -16,6 +16,7 @@
 #include "Config.h"
 #include "Singleton.h"
 #include "Cpp2SqlType.h"
+#include "DbBackendType.h"
 #include "DbStatement.h"
 #include "DbStatement4Sqlite.h"
 

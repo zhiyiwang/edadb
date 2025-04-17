@@ -12,6 +12,7 @@
 #include <stdint.h>
 #include <sqlite3.h>
 
+#include "Config.h"
 #include "Singleton.h"
 #include "Cpp2SqlType.h"
 
