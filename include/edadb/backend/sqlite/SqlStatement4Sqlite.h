@@ -37,18 +37,14 @@ public:
         static std::string sql;
         if (sql.empty()) {
             /*
-             * get column names and types from TypeMetaData<T>::tuple_type_pair()
+             * get column name and type from TypeMetaData<T>::tuple_type_pair()
              * NOTE:
-             * 1. name is the name of the member variable, we use user defined column name instead
-             * 2. type is the SQL type name string, such as "INTEGER", "TEXT", etc.
+             * 1. column name: use user defined name
+             * 2. type: is the SQL type name string, such as "INTEGER", "TEXT", etc.
              */
             std::vector<std::string> name, type;
             const auto vecs = TypeMetaData<T>::tuple_type_pair();
             boost::fusion::for_each(vecs, ColumnNameType<T>(name, type));
-
-//            // get column names
-//            //   expand the SqlType::Composite members to type and name 
-//            const std::vector<std::string>& col_name = TypeMetaData<T>::column_names();
 
             sql = "CREATE TABLE IF NOT EXISTS \"{}\" (";
             for (int i = 0; i < name.size(); ++i) {
@@ -64,10 +60,14 @@ public:
     std::string insertStatement(T* obj) {
         std::stringstream ss;
         ss << "INSERT INTO \"{}\" (";
-        auto names = TypeMetaData<T>::column_names();
-        for (int i = 0; i < names.size(); ++i) {
-            ss << (i > 0 ? ", " : "") << names[i];
+
+        std::vector<std::string> name, type;
+        const auto vecs = TypeMetaData<T>::tuple_type_pair();
+        boost::fusion::for_each(vecs, ColumnNameType<T>(name, type));
+        for (int i = 0; i < name.size(); ++i) {
+            ss << (i > 0 ? ", " : "") << name[i];
         }
+
         ss << ") VALUES (";
         std::vector<std::string> values;
         boost::fusion::for_each(TypeMetaData<T>::getVal(obj), ColumnValues(values));
@@ -85,9 +85,11 @@ public:
         static std::string sql;
         if (sql.empty()) {
             std::stringstream ss;
-            auto names = TypeMetaData<T>::column_names();
-            for (int i = 0; i < names.size(); ++i) {
-                ss << (i > 0 ? ", " : "") << names[i];
+            std::vector<std::string> name, type;
+            const auto vecs = TypeMetaData<T>::tuple_type_pair();
+            boost::fusion::for_each(vecs, ColumnNameType<T>(name, type));
+            for (int i = 0; i < name.size(); ++i) {
+                ss << (i > 0 ? ", " : "") << name[i];
             }
             sql = "SELECT " + ss.str() + " FROM \"{}\";";
         }
@@ -99,13 +101,15 @@ public:
         static std::string sql;
         if (sql.empty()) {
             std::stringstream ss;
-            auto names = TypeMetaData<T>::column_names();
-            for (int i = 0; i < names.size(); ++i) {
-                ss << (i > 0 ? ", " : "") << names[i];
+            std::vector<std::string> name, type;
+            const auto vecs = TypeMetaData<T>::tuple_type_pair();
+            boost::fusion::for_each(vecs, ColumnNameType<T>(name, type));
+            for (int i = 0; i < name.size(); ++i) {
+                ss << (i > 0 ? ", " : "") << name[i];
             }
             sql = "SELECT " + ss.str() + " FROM \"{}\" WHERE ";
 
-            auto pk_name = names[0]; // primary key is the first element
+            auto pk_name = name[0]; // primary key is the first element
             sql += pk_name + " = ";
         }
 
@@ -135,24 +139,24 @@ public:
     static std::string const updateStatement(T* org_obj, T* new_obj) {
         std::string sql = "UPDATE \"{}\" SET ";
 
-        // get names and values
-        std::vector<std::string> names;
-        names = TypeMetaData<T>::column_names();
+        // get name and values
+        std::vector<std::string> name, type;
+        const auto vecs = TypeMetaData<T>::tuple_type_pair();
+        boost::fusion::for_each(vecs, ColumnNameType<T>(name, type));
 
         std::vector<std::string> values;
-        const auto vecs = TypeMetaData<T>::tuple_type_pair();
         boost::fusion::for_each(TypeMetaData<T>::getVal(new_obj), ColumnValues(values));
 
         // generate sql
-        const uint32_t num = names.size();
+        const uint32_t num = name.size();
         for (uint32_t i = 0; i < num; ++i) {
-            sql += names[i] + " = " + values[i] + (i + 1 < num ? ", " : "");
+            sql += name[i] + " = " + values[i] + (i + 1 < num ? ", " : "");
         }
 
         // get primary key name and value
         auto pk_val_ptr = boost::fusion::at_c<0>(TypeMetaData<T>::getVal(org_obj));
         auto pk_val_str = binary2String(*pk_val_ptr);
-        sql += " WHERE " + names[0] + " = " + pk_val_str + ";";
+        sql += " WHERE " + name[0] + " = " + pk_val_str + ";";
         return sql;
     }
 
@@ -168,12 +172,17 @@ public:
         if (sql.empty()) {
             std::stringstream ss;
             ss << "INSERT INTO \"{}\" (";
-            auto names = TypeMetaData<T>::column_names();
-            for (int i = 0; i < names.size(); ++i) {
-                ss << (i > 0 ? ", " : "") << names[i];
+
+            // get column and nested name
+            std::vector<std::string> name, type;
+            const auto vecs = TypeMetaData<T>::tuple_type_pair();
+            boost::fusion::for_each(vecs, ColumnNameType<T>(name, type));
+            for (int i = 0; i < name.size(); ++i) {
+                ss << (i > 0 ? ", " : "") << name[i];
             }
             ss << ") VALUES (";
-            for (int i = 0; i < names.size(); ++i) {
+            // foreach name, append place holder for each column
+            for (int i = 0; i < name.size(); ++i) {
                 ss << (i > 0 ? ", " : "") << "?";
             }
             ss << ");";
@@ -190,11 +199,14 @@ public:
         static std::string sql;
         if (sql.empty()) {
             sql = "UPDATE \"{}\" SET ";
-            auto names = TypeMetaData<T>::column_names();
-            for (int i = 0; i < names.size(); ++i) {
-                sql += (i > 0 ? ", " : "") + names[i] + " = ?";
+
+            std::vector<std::string> name, type;
+            const auto vecs = TypeMetaData<T>::tuple_type_pair();
+            boost::fusion::for_each(vecs, ColumnNameType<T>(name, type));
+            for (int i = 0; i < name.size(); ++i) {
+                sql += (i > 0 ? ", " : "") + name[i] + " = ?";
             }
-            sql += " WHERE " + names[0] + " = ?;";
+            sql += " WHERE " + name[0] + " = ?;";
         }
         return sql;
     }
@@ -207,8 +219,8 @@ public:
         static std::string sql;
         if (sql.empty()) {
             sql = "DELETE FROM \"{}\" WHERE ";
-            auto names = TypeMetaData<T>::column_names();
-            sql += names[0] + " = ?;";
+            auto name = TypeMetaData<T>::column_names();
+            sql += name[0] + " = ?;";
         }
         return sql;
     }

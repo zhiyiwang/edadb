@@ -159,7 +159,7 @@ int scanTable() {
 
 
 
-// demo test functions 
+// demo test for IdbCoordinate, a simple class
 int testIdbCoordinate(const std::string& conn_param) {
     std::cout << "DBMap<" << typeid(IdbCoordinate).name() << ">" << std::endl;
 
@@ -233,7 +233,7 @@ int testIdbCoordinate(const std::string& conn_param) {
 } // testIdbCoordinate
 
 
-
+// demo test for IdbVia, a complex class 
 int testIdbVia(const std::string& conn_param) {
     std::cout << "DBMap<" << typeid(IdbVia).name() << ">" << std::endl;
 
@@ -241,6 +241,10 @@ int testIdbVia(const std::string& conn_param) {
     std::cout << "[DbMap Init]" << std::endl;
     if (!edadb::initDatabase<IdbVia>(conn_param)) {
         std::cerr << "DbMap::init failed" << std::endl;
+        return 1;
+    }
+    if (edadb::executeSql<IdbVia>("PRAGMA foreign_keys = ON;") == false) {
+        std::cerr << "DbMap::executeSql failed" << std::endl;
         return 1;
     }
     std::cout << std::endl << std::endl;
@@ -252,14 +256,31 @@ int testIdbVia(const std::string& conn_param) {
     }
     std::cout << std::endl << std::endl;
 
+
+    // insert objects
+    std::cout << "[DbMap Insert]" << std::endl;
+    IdbVia v1("via1", 10, 11), v2("via2", 20, 21), v3("via3", 30, 31), v4("via4", 40, 41);
+    edadb::SqlStatement<IdbVia> sql_stmt;
+    sql_stmt.print(&v1, &v2);
+
+
+//    std::vector<IdbVia*> via_vec;
+//    via_vec.push_back(&v1); v1.print();
+//    via_vec.push_back(&v2); v2.print();
+//    via_vec.push_back(&v3); v3.print();
+//    via_vec.push_back(&v4); v4.print();
+//    if (!edadb::insertVector<IdbVia>(via_vec)) {
+//        std::cerr << "DbMap::insert failed" << std::endl;
+//        return 1;
+//    }
+
     return 0;
 }
 
 
 int main () {
     const std::string conn_param = "full.db";
-
-    testIdbCoordinate(conn_param);
+//    testIdbCoordinate(conn_param);
     testIdbVia(conn_param);
 
     return 0;

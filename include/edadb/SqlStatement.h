@@ -85,6 +85,9 @@ protected:  // some utility functions
             std::string column_name = cnames[index++];
 
             if constexpr (edadb::Cpp2SqlType<CppType>::sqlType == edadb::SqlType::Composite) {
+                // the first element should not be a composite type
+                assert (index > 0);
+
                 const auto vecs = TypeMetaData<CppType>::tuple_type_pair();
                 const std::string next_pref = prefix + "_" + column_name + "_";
                 boost::fusion::for_each(vecs,
@@ -117,7 +120,18 @@ protected:  // some utility functions
          */
         template <typename ValueType>
         void operator()(ValueType& v) {
-            values.push_back(binary2String(*v));
+            // extract the CppType from the ValueType pointer
+            using CppType = typename std::remove_const<typename std::remove_pointer<ValueType>::type>::type;
+
+            if constexpr (edadb::Cpp2SqlType<CppType>::sqlType == edadb::SqlType::Composite) {
+                // transform the object of composite type to string:
+                //   expand the composite type's member variables to the vector
+                boost::fusion::for_each(TypeMetaData<CppType>::getVal(v), ColumnValues(values));
+            } else {
+                // transform the value of basic type to string:
+                //   append the value to the vector
+                values.push_back(binary2String(*v));
+            }
         }
     };
 }; // SqlStatementBase
