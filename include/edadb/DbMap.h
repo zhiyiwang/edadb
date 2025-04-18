@@ -17,9 +17,7 @@
 #include "DbManager.h"
 #include "DbManager4Sqlite.h"
 
-
 namespace edadb {
-
 
 /**
  * @brief DbMap class maps objects to relations.
@@ -59,8 +57,13 @@ public:
     bool               inited      () { return mgr_inited; }
 
 public:
+    /**
+     * @brief Initialize the backend database connection.
+     * @param c The database connection string.
+     * @return true if success; otherwise, false.
+     */
     bool init(const std::string& c) {
-        // no need to check inited, singleton manager is inited
+        // no need to check inited, singleton manager will check it
 
         mgr_inited = manager.connect(c);
         if (!mgr_inited) 
@@ -69,6 +72,10 @@ public:
     }
 
 public:
+    /**
+     * @brief Create the table for the class.
+     * @return true if success; otherwise, false. 
+     */
     bool createTable() {
         if (!mgr_inited) {
             std::cerr << "DbMap::createTable: not inited" << std::endl;
@@ -77,10 +84,13 @@ public:
 
         const std::string sql =
             fmt::format(SqlStatement<T>::createTableStatement(), table_name);
-        std::cout << "DbMap::createTable: " << sql << std::endl;
         return manager.exec(sql);
     }
 
+    /**
+     * @brief Drop the table for the class.
+     * @return true if success; otherwise, false.
+     */
     bool dropTable() {
         if (!mgr_inited) {
             std::cerr << "DbMap::dropTable: not inited" << std::endl;
@@ -92,15 +102,6 @@ public:
     }
 
 public:
-    bool beginTransaction() {
-        return manager.exec("BEGIN TRANSACTION;");
-    }
-
-    bool commitTransaction() {
-        return manager.exec("COMMIT;");
-    }
-
-public:
     /**
      * @brief Execute the SQL statement directly.
      * @param sql The SQL statement.
@@ -108,6 +109,23 @@ public:
      */
     bool executeSql(const std::string& sql) {
         return manager.exec(sql);
+    }
+
+public:
+    /**
+     * @brief Begin a transaction.
+     * @return true if success; otherwise, false.
+     */
+    bool beginTransaction() {
+        return manager.exec("BEGIN TRANSACTION;");
+    }
+
+    /**
+     * @brief Commit a transaction.
+     * @return true if success; otherwise, false.
+     */
+    bool commitTransaction() {
+        return manager.exec("COMMIT;");
     }
 }; // class DbMap
 
@@ -129,7 +147,6 @@ template<typename T, DbMapOperation OP>
 struct OpTraits {
     static_assert(OP != OP, "DbMapOperation is not implemented for this operation.");
 };
-
 
 template<typename T>
 struct OpTraits<T, DbMapOperation::INSERT> {
@@ -166,7 +183,6 @@ struct OpTraits<T, DbMapOperation::DELETE> {
 
 
 
-
 // DbMap Writer: write database, include insert, update, delete
 template<typename T>
 class DbMap<T>::Writer {
@@ -183,7 +199,7 @@ protected:
     //   inline: no need to declare static
     //   static thread_local: var is shared by all instances of the thread
     DbStatement dbstmt; 
-    uint32_t bind_idx = 0;
+    uint32_t bind_idx = 0;  
 
     DbMapOperation op = DbMapOperation::NONE;
 
@@ -335,7 +351,32 @@ public: // insert API
      */
     template <typename ElemType>
     void operator()(const ElemType &elem) {
-        dbstmt.bindColumn(bind_idx++, elem);
+        // extract the CppType from the ElemType pointer
+        using CppType = typename std::remove_const<typename std::remove_pointer<ElemType>::type>::type;
+
+        if constexpr (edadb::Cpp2SqlType<CppType>::sqlType == edadb::SqlType::Composite) {
+            assert((bind_idx > 0) &&
+                "DbMap<T>::Writer::operator(): composite type should not be the first element");
+
+            auto values = TypeMetaData<CppType>::getVal(elem);
+            boost::fusion::for_each(
+                /** param 1: Fusion Sequence, a tuple of values */ 
+                values, 
+
+                /**
+                 * param 2: Lambda function (closure) to bind the element
+                 *   [this](auto const& elem): use the current class instance and the element
+                 *   this->operator()(elem): call the operator() function of the current instance
+                 *   hence, the operator() function is called recursively and 
+                 *       always use this->bind_idx to bind the element
+                 */
+                [this](auto const& elem){ this->operator()(elem); }
+            ); 
+        } else {
+            // bind the element to the database
+            // only base type needs to be bound
+            dbstmt.bindColumn(bind_idx++, elem);
+        }
     }
 
 private: // utility
@@ -353,8 +394,11 @@ private: // utility
         resetBindIndex();
 
         // iterate through the values and bind them
+        // @see DbMap<T>::Writer::operator() for the recursive calling
         auto values = TypeMetaData<T>::getVal(obj);
-        boost::fusion::for_each(values, *this);
+        boost::fusion::for_each(values,
+            [this](auto const& elem){ this->operator()(elem); }
+        ); 
     }
     
 
@@ -525,6 +569,7 @@ public:
     }
 
 
+public:
     bool read(T* obj) {
         if (!dbmap.inited()) {
             std::cerr << "DbMap<" << typeid(T).name() << ">::Reader::"
@@ -565,8 +610,11 @@ private:
         resetReadIndex();
 
         // iterate through the values and read them
+        // @see DbMap<T>::Writer::operator() for the recursive calling
         auto values = TypeMetaData<T>::getVal(obj);
-        boost::fusion::for_each(values, *this);
+        boost::fusion::for_each(values,
+            [this](auto const& elem){ this->operator()(elem); }
+        );  
     }
 
 public:
@@ -577,11 +625,25 @@ public:
      */
     template <typename ElemType>
     void operator()(ElemType &elem) {
-        dbstmt.fetchColumn(read_idx++, elem);
+        // extract the CppType from the ElemType pointer
+        using CppType = typename std::remove_const<typename std::remove_pointer<ElemType>::type>::type;
+
+        if constexpr (edadb::Cpp2SqlType<CppType>::sqlType == edadb::SqlType::Composite) {
+            assert((read_idx > 0) &&
+                "DbMap<T>::Reader::operator(): composite type should not be the first element");
+
+            // @see DbMap<T>::Writer::operator() for the recursive calling
+            auto values = TypeMetaData<CppType>::getVal(elem);
+            boost::fusion::for_each(values,
+                [this](auto const& elem){ this->operator()(elem); }
+            );
+        } else {
+            // read the element from the database
+            // only base type needs to be read
+            dbstmt.fetchColumn(read_idx++, elem);
+        }
     }
 };
-
-
 
 
 } // namespace edadb

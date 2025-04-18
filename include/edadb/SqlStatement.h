@@ -85,8 +85,8 @@ protected:  // some utility functions
             std::string column_name = cnames[index++];
 
             if constexpr (edadb::Cpp2SqlType<CppType>::sqlType == edadb::SqlType::Composite) {
-                // the first element should not be a composite type
-                assert (index > 0);
+                assert ((index > 0) &&
+                    "SqlStatementBase::ColumnNameType::operator(): composite type should not be the first element");
 
                 const auto vecs = TypeMetaData<CppType>::tuple_type_pair();
                 const std::string next_pref = prefix + "_" + column_name + "_";
