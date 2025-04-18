@@ -100,6 +100,15 @@ public:
         return manager.exec("COMMIT;");
     }
 
+public:
+    /**
+     * @brief Execute the SQL statement directly.
+     * @param sql The SQL statement.
+     * @return true if executed; otherwise, false.
+     */
+    bool executeSql(const std::string& sql) {
+        return manager.exec(sql);
+    }
 }; // class DbMap
 
 

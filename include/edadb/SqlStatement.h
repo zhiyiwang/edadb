@@ -93,8 +93,6 @@ protected:  // some utility functions
                 std::string sqlTypeString = edadb::getSqlTypeString<CppType> ();
                 type.push_back(sqlTypeString);
 
-
-
                 // use the user defined column name
                 name.push_back(prefix + column_name);
 //                name.push_back(x.second); // x.second is the name of the member variable

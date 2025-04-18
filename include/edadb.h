@@ -60,6 +60,11 @@ bool initDatabase(const std::string& dbName) {
 }
 
 template<typename T>
+bool executeSql(const std::string& sql) {
+    return DbMap<T>::i().executeSql(sql);
+}
+
+template<typename T>
 bool createTable() {
     return DbMap<T>::i().createTable();
 }

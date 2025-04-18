@@ -160,13 +160,17 @@ int scanTable() {
 
 
 // demo test functions 
-int testIdbCoordinate() {
+int testIdbCoordinate(const std::string& conn_param) {
     std::cout << "DBMap<" << typeid(IdbCoordinate).name() << ">" << std::endl;
 
     // init database and create table
     std::cout << "[DbMap Init]" << std::endl;
-    if (!edadb::initDatabase<IdbCoordinate>("full.coord.db foreign_key=1")) {
+    if (!edadb::initDatabase<IdbCoordinate>(conn_param)) {
         std::cerr << "DbMap::init failed" << std::endl;
+        return 1;
+    }
+    if (edadb::executeSql<IdbCoordinate>("PRAGMA foreign_keys = ON;") == false) {
+        std::cerr << "DbMap::executeSql failed" << std::endl;
         return 1;
     }
     std::cout << std::endl << std::endl;
@@ -230,12 +234,12 @@ int testIdbCoordinate() {
 
 
 
-int testIdbVia() {
+int testIdbVia(const std::string& conn_param) {
     std::cout << "DBMap<" << typeid(IdbVia).name() << ">" << std::endl;
 
     // init database and create table
     std::cout << "[DbMap Init]" << std::endl;
-    if (!edadb::initDatabase<IdbVia>("full.via.db foreign_key=1")) {
+    if (!edadb::initDatabase<IdbVia>(conn_param)) {
         std::cerr << "DbMap::init failed" << std::endl;
         return 1;
     }
@@ -253,10 +257,10 @@ int testIdbVia() {
 
 
 int main () {
+    const std::string conn_param = "full.db";
 
-    testIdbCoordinate();
-
-    testIdbVia();
+    testIdbCoordinate(conn_param);
+    testIdbVia(conn_param);
 
     return 0;
 } // main
