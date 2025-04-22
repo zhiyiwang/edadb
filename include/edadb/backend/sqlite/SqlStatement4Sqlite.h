@@ -53,6 +53,7 @@ public:
             }
             sql += ")";
         }
+//        std::cout << "create table: " << sql << std::endl;
         return sql;
     }
 

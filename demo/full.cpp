@@ -6,22 +6,64 @@
 #include "edadb.h"
 
 /**
+ * @brief ExtClass: an example class to demonstrate the use of Shadow.
+ */
+class ExtClass {
+private:
+    int ext_x;
+    int ext_y;
+public:
+    ExtClass (int x = 0, int y = 0) : ext_x(x), ext_y(y) {}
+    ExtClass (const ExtClass& obj) : ext_x(obj.ext_x), ext_y(obj.ext_y) {}
+    ~ExtClass() = default;
+
+    int getX() const { return ext_x; }
+    int getY() const { return ext_y; }
+    void setX(int x) { ext_x = x; }
+    void setY(int y) { ext_y = y; }
+    void print(const std::string& pref = "") const {
+        std::cout << pref
+            << "ExtClass(ext_x=" << ext_x << ", ext_y=" << ext_y << ")" << std::endl;
+    }
+};  
+
+/**
+ * @brief Shadow class for ExtClass.
+ * @details This class is used to define a shadow class for the private member of ExtClass.
+ */
+template<>
+class edadb::Shadow<ExtClass> {
+public:
+    int sha_x; 
+    int sha_y;
+public:
+    void fromShadow(ExtClass* obj) { obj->setX(sha_x), obj->setY(sha_y); }
+    void toShadow  (ExtClass* obj) { sha_x = obj->getX(), sha_y = obj->getY(); }
+};
+
+
+/**
  * @brief IdbCoordinate: This is a class to represent a coordinate.
  * @details The class contains two integer coordinates x and y.
  */
 struct IdbCoordinate {
 public:
-    int32_t _x;
-    int32_t _y;
+    int32_t _x; // public member for x coordinate 
+    int32_t _y; // public member for y coordinate
+
+    ExtClass _ec; // public member for ExtClass, containing private members
 
 public:
-    IdbCoordinate (int32_t x = 0, int32_t y = 0) : _x(x), _y(y) {}
-    IdbCoordinate (const IdbCoordinate& coord) : _x(coord._x), _y(coord._y) {}
+    IdbCoordinate (int32_t x = 0, int32_t y = 0) : _x(x), _y(y), _ec(x, y) {}
+    IdbCoordinate (const IdbCoordinate& coord) : _x(coord._x), _y(coord._y), _ec(coord._ec) {}
     ~IdbCoordinate() = default;
 
 public:
     void print(const std::string& pref = "") const {
-        std::cout << pref << "Coordinate(_x=" << _x << ", _y=" << _y << ")" << std::endl;
+        std::cout << pref << "Coordinate(_x=" << _x << ", _y=" << _y 
+            << ", _ec=" << std::endl;
+        _ec.print(pref + "  ");
+        std::cout << pref << ")" << std::endl;
     }
 };
 
@@ -136,8 +178,11 @@ public:
 
 
 
+// Define a shadow class for ExtClass
+_EDADB_DEFINE_TABLE_4_EXTERNAL_CLASS_(ExtClass, (sha_x, sha_y)); 
+
 // define table 4 class, alias of edadb::Table4Class
-_EDADB_DEFINE_TABLE_BY_CLASS_(IdbCoordinate, "coordinate_table", (_x, _y));
+_EDADB_DEFINE_TABLE_BY_CLASS_(IdbCoordinate, "coordinate_table", (_x, _y, _ec));
 _EDADB_DEFINE_TABLE_BY_CLASS_(IdbLayerShape, "layer_shape_table", (_name, _layer));
 _EDADB_DEFINE_TABLE_BY_CLASS_(IdbVia, "via_table", (_name, _coord));
 

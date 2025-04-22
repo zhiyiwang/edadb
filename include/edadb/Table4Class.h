@@ -76,25 +76,25 @@ struct IsComposite : boost::mpl::bool_<false> {
 
 // macro example:
 //   TABLE4CLASS_COLNAME(IdbSite, "table_name", (name, width, height), ("iname","iwidth","iheight"))
-#define TABLE4CLASS_COLNAME(myclass, tablename, CLASS_ELEMS_TUP, COLNAME_TUP) \
-BOOST_FUSION_ADAPT_STRUCT( myclass, BOOST_PP_TUPLE_REM_CTOR(CLASS_ELEMS_TUP) ) \
+#define TABLE4CLASS_COLNAME(classname, tablename, CLASS_ELEMS_TUP, COLNAME_TUP) \
+BOOST_FUSION_ADAPT_STRUCT(classname, BOOST_PP_TUPLE_REM_CTOR(CLASS_ELEMS_TUP) ) \
 namespace edadb{\
 template<>\
-struct Cpp2SqlType<myclass>{\
+struct Cpp2SqlType<classname>{\
     static constexpr SqlType sqlType = SqlType::Composite; \
 };\
-template<> struct IsComposite<myclass> : boost::mpl::bool_<true> {};\
-template<> struct TypeMetaData<myclass>{\
-    using TupType = boost::fusion::vector<GENERATE_TupType(BOOST_PP_TUPLE_PUSH_FRONT(CLASS_ELEMS_TUP, myclass))>;\
-    using TupTypePairType = boost::fusion::vector<GENERATE_TupTypePair(BOOST_PP_TUPLE_PUSH_FRONT(CLASS_ELEMS_TUP, myclass))>;\
-    using T = myclass;\
+template<> struct IsComposite<classname> : boost::mpl::bool_<true> {};\
+template<> struct TypeMetaData<classname>{\
+    using TupType = boost::fusion::vector<GENERATE_TupType(BOOST_PP_TUPLE_PUSH_FRONT(CLASS_ELEMS_TUP, classname))>;\
+    using TupTypePairType = boost::fusion::vector<GENERATE_TupTypePair(BOOST_PP_TUPLE_PUSH_FRONT(CLASS_ELEMS_TUP, classname))>;\
+    using T = classname;\
     \
     inline static auto tuple_type_pair()->TupTypePairType const&{\
-        static const TupTypePairType t{GENERATE_TupTypePairObj(BOOST_PP_TUPLE_PUSH_FRONT(CLASS_ELEMS_TUP, myclass))};\
+        static const TupTypePairType t{GENERATE_TupTypePairObj(BOOST_PP_TUPLE_PUSH_FRONT(CLASS_ELEMS_TUP, classname))};\
         return t;\
     }\
     inline static std::string const& class_name(){\
-        static std::string const class_name = BOOST_STRINGIZE(myclass);\
+        static std::string const class_name = BOOST_STRINGIZE(classname);\
         return class_name;\
     }\
     inline static std::string const& table_name(){\
@@ -109,13 +109,41 @@ template<> struct TypeMetaData<myclass>{\
         static const std::vector<std::string> names = {BOOST_PP_TUPLE_REM_CTOR(COLNAME_TUP)};\
         return names;\
     }\
-    inline static TupType getVal(myclass * obj){\
-        return TupType(GENERATE_ObjVal(BOOST_PP_TUPLE_PUSH_FRONT(CLASS_ELEMS_TUP, myclass)));\
+    inline static TupType getVal(classname * obj){\
+        return TupType(GENERATE_ObjVal(BOOST_PP_TUPLE_PUSH_FRONT(CLASS_ELEMS_TUP, classname)));\
     }\
 };\
 }
 
 // macro example:
 //   TABLE4CLASS(IdbSite, "table_name", (name, width, height))
-#define TABLE4CLASS(myclass, tablename, CLASS_ELEMS_TUP) \
-TABLE4CLASS_COLNAME(myclass, tablename, CLASS_ELEMS_TUP, (EXPAND_member_names(CLASS_ELEMS_TUP)))
+/**
+ * @fn TABLE4CLASS
+ * @brief TABLE4CLASS is a macro to define a table for a class.
+ * @param classname The name of the class.
+ * @param tablename The name of the table.
+ * @param CLASS_ELEMS_TUP The tuple of class elements.
+*/
+#define TABLE4CLASS(CLASSNAME, TABLENAME, CLASS_ELEMS_TUP) \
+TABLE4CLASS_COLNAME(CLASSNAME, TABLENAME, CLASS_ELEMS_TUP, (EXPAND_member_names(CLASS_ELEMS_TUP)))
+
+/**
+ * @fn Table4ExternalClass
+ * @brief Table4ExternalClass is a macro to define a private table for a class.
+ *      the private table is a expanded table of the class, which is similar to the composite table.
+ *      Hence, the private table is not a real table in the database.
+ * @param CLASSNAME The name of the class. 
+ * @param CLASS_ELEMS_TUP The tuple of class elements.
+ */
+#define Table4ExternalClass(CLASSNAME, CLASS_ELEMS_TUP) \
+namespace edadb{\
+template<>\
+struct Cpp2SqlType<CLASSNAME>{\
+    static constexpr SqlType sqlType = SqlType::External; \
+};\
+}\
+TABLE4CLASS(edadb::Shadow<CLASSNAME>, "#shadow_table_for_external_class", CLASS_ELEMS_TUP) 
+
+
+
+

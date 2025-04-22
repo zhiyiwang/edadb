@@ -370,8 +370,21 @@ public: // insert API
                  *   hence, the operator() function is called recursively and 
                  *       always use this->bind_idx to bind the element
                  */
-                [this](auto const& elem){ this->operator()(elem); }
+                [this](auto const& ne){ this->operator()(ne); }
             ); 
+        } else if constexpr (edadb::Cpp2SqlType<CppType>::sqlType == edadb::SqlType::External) {
+            assert((bind_idx > 0) &&
+                "DbMap<T>::Writer::operator(): external type should not be the first element");
+
+            Shadow<CppType> shadow;
+            // transform the object of external type to Shadow
+            shadow.toShadow(elem); 
+
+            auto values = TypeMetaData<edadb::Shadow<CppType>>::getVal(&shadow);
+            boost::fusion::for_each(
+                values, 
+                [this](auto const& ne){ this->operator()(ne); }
+            );
         } else {
             // bind the element to the database
             // only base type needs to be bound
@@ -397,7 +410,7 @@ private: // utility
         // @see DbMap<T>::Writer::operator() for the recursive calling
         auto values = TypeMetaData<T>::getVal(obj);
         boost::fusion::for_each(values,
-            [this](auto const& elem){ this->operator()(elem); }
+            [this](auto const& ne){ this->operator()(ne); }
         ); 
     }
     
@@ -613,7 +626,7 @@ private:
         // @see DbMap<T>::Writer::operator() for the recursive calling
         auto values = TypeMetaData<T>::getVal(obj);
         boost::fusion::for_each(values,
-            [this](auto const& elem){ this->operator()(elem); }
+            [this](auto const& ne){ this->operator()(ne); }
         );  
     }
 
@@ -635,8 +648,20 @@ public:
             // @see DbMap<T>::Writer::operator() for the recursive calling
             auto values = TypeMetaData<CppType>::getVal(elem);
             boost::fusion::for_each(values,
-                [this](auto const& elem){ this->operator()(elem); }
+                [this](auto const& ne){ this->operator()(ne); }
             );
+        } else if constexpr (edadb::Cpp2SqlType<CppType>::sqlType == edadb::SqlType::External) {
+            assert((read_idx > 0) &&
+                "DbMap<T>::Reader::operator(): external type should not be the first element");
+
+            Shadow<CppType> shadow;
+            auto values = TypeMetaData<edadb::Shadow<CppType>>::getVal(&shadow);
+            boost::fusion::for_each(values,
+                [this](auto const& ne){ this->operator()(ne); }
+            );
+
+            // transform the object of Shadow type to original type
+            shadow.fromShadow(elem);
         } else {
             // read the element from the database
             // only base type needs to be read

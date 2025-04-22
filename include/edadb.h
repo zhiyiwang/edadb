@@ -27,6 +27,7 @@
 #include <boost/preprocessor/tuple/rem.hpp>
 #include <boost/iterator/iterator_facade.hpp>
 
+#include "Shadow.h"
 #include "Cpp2SqlType.h"
 #include "TypeMetaData.h"
 #include "Table4Class.h"
@@ -45,6 +46,11 @@
 
 #define _EDADB_DEFINE_TABLE_BY_COLUMN_(CLASS_NAME, TABLE_NAME, CLASS_ELEMS_TUP, COLNAME_TUP) \
     TABLE4CLASS_COLNAME(CLASS_NAME, TABLE_NAME, CLASS_ELEMS_TUP, COLNAME_TUP)
+
+#define _EDADB_DEFINE_TABLE_4_EXTERNAL_CLASS_(CLASS_NAME, CLASS_ELEMS_TUP) \
+    Table4ExternalClass(CLASS_NAME, CLASS_ELEMS_TUP)
+
+
 
 namespace edadb {
 
