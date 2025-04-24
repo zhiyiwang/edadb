@@ -124,6 +124,17 @@ public:
     } // print
 };
 
+/**
+ * @brief GlobalEnum: This is a global enum class: MyNormalEnum
+*/
+enum class GlobalEnum {
+    gInvalid = 0,
+    gEnum1 = 1,
+    gEnum2 = 2, 
+    gEnum3 = 3,
+    gMax
+};
+
 
 /**
  * @brief IdbVia: This is a class to represent a via.
@@ -131,12 +142,31 @@ public:
  */
 class IdbVia {
 public:
+    /**
+     * @brief InnerEnum: This is an inner enum class: ViaType
+     */
+    enum class InnerEnum {
+        iInvalid = 0,
+        iEnum1 = 1,
+        iEnum2 = 2,
+        iEnum3 = 3,
+        iMax
+    };
+
+public:
     std::string _name;
     IdbCoordinate _coord;
 
+    GlobalEnum _global_enum; 
+    InnerEnum _inner_enum;
+
+
+
 public:
     IdbVia() = default;
-    IdbVia(std::string n, int32_t x, int32_t y) : _name(n), _coord(x, y) {}
+    IdbVia(std::string n, int32_t x, int32_t y, GlobalEnum g = GlobalEnum::gEnum1, 
+           InnerEnum i = InnerEnum::iEnum1)
+        : _name(n), _coord(x, y), _global_enum(g), _inner_enum(i) {}
 
 public:
     void print(const std::string& pref = "") {
@@ -145,6 +175,10 @@ public:
         std::cout << next_pref << "_name=" << _name << std::endl;
         std::cout << next_pref << "_coord:" << std::endl;
         _coord.print(next_pref);
+        std::cout << next_pref
+                  << "_global_enum=" << static_cast<int>(_global_enum) << std::endl;
+        std::cout << next_pref
+                  << "_inner_enum=" << static_cast<int>(_inner_enum) << std::endl;
     }
 };
 
@@ -184,7 +218,7 @@ _EDADB_DEFINE_TABLE_4_EXTERNAL_CLASS_(ExtClass, (sha_x, sha_y));
 // define table 4 class, alias of edadb::Table4Class
 _EDADB_DEFINE_TABLE_BY_CLASS_(IdbCoordinate, "coordinate_table", (_x, _y, _ec));
 _EDADB_DEFINE_TABLE_BY_CLASS_(IdbLayerShape, "layer_shape_table", (_name, _layer));
-_EDADB_DEFINE_TABLE_BY_CLASS_(IdbVia, "via_table", (_name, _coord));
+_EDADB_DEFINE_TABLE_BY_CLASS_(IdbVia, "via_table", (_name, _coord, _global_enum, _inner_enum));
 
 
 

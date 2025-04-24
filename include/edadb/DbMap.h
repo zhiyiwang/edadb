@@ -385,6 +385,13 @@ public: // insert API
                 values, 
                 [this](auto const& ne){ this->operator()(ne); }
             );
+        
+        } else if constexpr (std::is_enum_v<CppType>) {
+            // bind the enum member to underlying type:
+            //   Default underlying type is int, also can be user defined
+            using U = std::underlying_type_t<CppType>;
+            U tmp = static_cast<U>(*elem); // type safe cast during compile time
+            dbstmt.bindColumn(bind_idx++, &tmp);
         } else {
             // bind the element to the database
             // only base type needs to be bound
@@ -662,6 +669,11 @@ public:
 
             // transform the object of Shadow type to original type
             shadow.fromShadow(elem);
+        } else if constexpr (std::is_enum_v<CppType>) {
+            using U = std::underlying_type_t<CppType>; // underlying type of enum
+            U tmp;
+            dbstmt.fetchColumn(read_idx++, &tmp);
+            *elem = static_cast<CppType>(tmp);
         } else {
             // read the element from the database
             // only base type needs to be read
