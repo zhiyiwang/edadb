@@ -346,17 +346,26 @@ public: // insert API
     }
 
     /**
-     * @brief Operator to bind each element in obj 
+     * @brief Use operator() to bind each element in obj 
      * @param elem The element pointer to bind, which is defined as a cpp type pointer.
      */
     template <typename ElemType>
     void operator()(const ElemType &elem) {
+        bindToColumn(elem);
+    }
+
+    /**
+     * @brief bind the element to the database.
+     * @param elem The element pointer to bind, which is defined as a cpp type pointer.
+     */
+    template <typename ElemType>
+    void bindToColumn(const ElemType &elem) {
         // extract the CppType from the ElemType pointer
         using CppType = typename std::remove_const<typename std::remove_pointer<ElemType>::type>::type;
 
         if constexpr (edadb::Cpp2SqlType<CppType>::sqlType == edadb::SqlType::Composite) {
             assert((bind_idx > 0) &&
-                "DbMap<T>::Writer::operator(): composite type should not be the first element");
+                "DbMap<T>::Writer::bindToColumn: composite type should not be the first element");
 
             auto values = TypeMetaData<CppType>::getVal(elem);
             boost::fusion::for_each(
@@ -366,15 +375,15 @@ public: // insert API
                 /**
                  * param 2: Lambda function (closure) to bind the element
                  *   [this](auto const& elem): use the current class instance and the element
-                 *   this->operator()(elem): call the operator() function of the current instance
-                 *   hence, the operator() function is called recursively and 
+                 *   this->bindToColumn(elem): call bindToColumn func using current instance
+                 *   hence, the bindToColumn function will be called recursively and
                  *       always use this->bind_idx to bind the element
                  */
-                [this](auto const& ne){ this->operator()(ne); }
+                [this](auto const& ne){ this->bindToColumn(ne); }
             ); 
         } else if constexpr (edadb::Cpp2SqlType<CppType>::sqlType == edadb::SqlType::External) {
             assert((bind_idx > 0) &&
-                "DbMap<T>::Writer::operator(): external type should not be the first element");
+                "DbMap<T>::Writer::bindToColumn: external type should not be the first element");
 
             Shadow<CppType> shadow;
             // transform the object of external type to Shadow
@@ -383,7 +392,7 @@ public: // insert API
             auto values = TypeMetaData<edadb::Shadow<CppType>>::getVal(&shadow);
             boost::fusion::for_each(
                 values, 
-                [this](auto const& ne){ this->operator()(ne); }
+                [this](auto const& ne){ this->bindToColumn(ne); }
             );
         
         } else if constexpr (std::is_enum_v<CppType>) {
@@ -414,10 +423,10 @@ private: // utility
         resetBindIndex();
 
         // iterate through the values and bind them
-        // @see DbMap<T>::Writer::operator() for the recursive calling
+        // @see DbMap<T>::Writer::bindToColumn for the recursive calling
         auto values = TypeMetaData<T>::getVal(obj);
         boost::fusion::for_each(values,
-            [this](auto const& ne){ this->operator()(ne); }
+            [this](auto const& ne){ this->bindToColumn(ne); }
         ); 
     }
     
@@ -630,41 +639,50 @@ private:
         resetReadIndex();
 
         // iterate through the values and read them
-        // @see DbMap<T>::Writer::operator() for the recursive calling
+        // @see DbMap<T>::Writer::fetchFromColumn for the recursive calling
         auto values = TypeMetaData<T>::getVal(obj);
         boost::fusion::for_each(values,
-            [this](auto const& ne){ this->operator()(ne); }
+            [this](auto const& ne){ this->fetchFromColumn(ne); }
         );  
     }
 
 public:
     /**
-     * @brief Operator to read each element in obj
+     * @brief Using operator() to read each element in obj
      *   invoked by boost::fusion::for_each @ readObject
      * @param elem The element to read from column in db row.
      */
     template <typename ElemType>
     void operator()(ElemType &elem) {
+        fetchFromColumn(elem);
+    }
+
+    /**
+     * @brief read the element from the database.
+     * @param elem The element pointer to read, which is defined as a cpp type pointer.
+    */
+    template <typename ElemType>
+    void fetchFromColumn(ElemType &elem) {
         // extract the CppType from the ElemType pointer
         using CppType = typename std::remove_const<typename std::remove_pointer<ElemType>::type>::type;
 
         if constexpr (edadb::Cpp2SqlType<CppType>::sqlType == edadb::SqlType::Composite) {
             assert((read_idx > 0) &&
-                "DbMap<T>::Reader::operator(): composite type should not be the first element");
+                "DbMap<T>::Reader::fetchFromColumn: composite type should not be the first element");
 
-            // @see DbMap<T>::Writer::operator() for the recursive calling
+            // @see DbMap<T>::Writer::fetchFromColumn for the recursive calling
             auto values = TypeMetaData<CppType>::getVal(elem);
             boost::fusion::for_each(values,
-                [this](auto const& ne){ this->operator()(ne); }
+                [this](auto const& ne){ this->fetchFromColumn(ne); }
             );
         } else if constexpr (edadb::Cpp2SqlType<CppType>::sqlType == edadb::SqlType::External) {
             assert((read_idx > 0) &&
-                "DbMap<T>::Reader::operator(): external type should not be the first element");
+                "DbMap<T>::Reader::fetchFromColumn: external type should not be the first element");
 
             Shadow<CppType> shadow;
             auto values = TypeMetaData<edadb::Shadow<CppType>>::getVal(&shadow);
             boost::fusion::for_each(values,
-                [this](auto const& ne){ this->operator()(ne); }
+                [this](auto const& ne){ this->fetchFromColumn(ne); }
             );
 
             // transform the object of Shadow type to original type

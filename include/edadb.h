@@ -62,7 +62,19 @@ namespace edadb {
  */
 template<typename T>
 bool initDatabase(const std::string& dbName) {
-    return DbMap<T>::i().init(dbName);
+    bool res = false;
+    if ((res = DbMap<T>::i().init(dbName)) == false) {
+        std::cerr << "DbMap::init failed" << std::endl;
+        return res;
+    }
+
+    // Connection Setting: enable foreign key constraint
+    if ((res = DbManager::i().exec("PRAGMA foreign_keys = ON;")) == false) {
+        std::cerr << "DbMap::executeSql failed" << std::endl;
+        return res;
+    }
+
+    return res;
 }
 
 template<typename T>

@@ -322,11 +322,7 @@ int testIdbVia(const std::string& conn_param) {
         std::cerr << "DbMap::init failed" << std::endl;
         return 1;
     }
-    if (edadb::executeSql<IdbVia>("PRAGMA foreign_keys = ON;") == false) {
-        std::cerr << "DbMap::executeSql failed" << std::endl;
-        return 1;
-    }
-    std::cout << std::endl << std::endl;
+   std::cout << std::endl << std::endl;
 
     std::cout << "[DbMap CreateTable]" << std::endl;
     if (!edadb::createTable<IdbVia>()) {
