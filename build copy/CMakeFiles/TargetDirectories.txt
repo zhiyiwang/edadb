@@ -1,3 +1,0 @@
-/home/ran/Codes/edadb/build/CMakeFiles/edadb.dir
-/home/ran/Codes/edadb/build/CMakeFiles/edit_cache.dir
-/home/ran/Codes/edadb/build/CMakeFiles/rebuild_cache.dir

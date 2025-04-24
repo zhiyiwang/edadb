@@ -1,0 +1,15 @@
+1589c1589
+< DbMap< \
+---
+> DbMapT2T< \
+1651,1652c1651
+< 
+< #define TABLE_DBMAP(myclass, ARRAY_FIELD_TUP) \ //每个宏后都要有这个，只能调用一次 宏定义放在最前 函数实现放在后面
+---
+> #define TABLE2TABLE_1_N_VEC(myclass, ARRAY_FIELD_TUP) \
+1655c1654
+<     class DbMap{\ 
+---
+>     class DbMapAll{\ 
+1657a1657
+>             DbMap<myclass> db_map;\

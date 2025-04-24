@@ -1,53 +1,94 @@
 /usr/bin/cmake -S/home/ran/Codes/edadb -B/home/ran/Codes/edadb/build --check-build-system CMakeFiles/Makefile.cmake 0
--- Found Boost: /usr/lib/x86_64-linux-gnu/cmake/Boost-1.74.0/BoostConfig.cmake (found version "1.74.0")  
--- Found Boost: /usr/lib/x86_64-linux-gnu/cmake/Boost-1.74.0/BoostConfig.cmake (found suitable version "1.74.0", minimum required is "1.65") found components: system filesystem program_options 
--- Configuring done
--- Generating done
--- Build files have been written to: /home/ran/Codes/edadb/build
 /usr/bin/cmake -E cmake_progress_start /home/ran/Codes/edadb/build/CMakeFiles /home/ran/Codes/edadb/build//CMakeFiles/progress.marks
 make  -f CMakeFiles/Makefile2 all
 make[1]: Entering directory '/home/ran/Codes/edadb/build'
 make  -f CMakeFiles/edadb.dir/build.make CMakeFiles/edadb.dir/depend
 make[2]: Entering directory '/home/ran/Codes/edadb/build'
 cd /home/ran/Codes/edadb/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/ran/Codes/edadb /home/ran/Codes/edadb /home/ran/Codes/edadb/build /home/ran/Codes/edadb/build /home/ran/Codes/edadb/build/CMakeFiles/edadb.dir/DependInfo.cmake --color=
+Consolidate compiler generated dependencies of target edadb
 make[2]: Leaving directory '/home/ran/Codes/edadb/build'
 make  -f CMakeFiles/edadb.dir/build.make CMakeFiles/edadb.dir/build
 make[2]: Entering directory '/home/ran/Codes/edadb/build'
-[ 33%] Building CXX object CMakeFiles/edadb.dir/src/edadbTest18.cpp.o
-/usr/bin/c++ -DBUN_SQLITE -DFMT_HEADER_ONLY -I/home/ran/Codes/edadb/include -I/home/ran/Codes/edadb/include/third_party -I/home/ran/Codes/edadb/include/third_party/hdr -I/home/ran/Codes/edadb/include/third_party/json -I/home/ran/Codes/edadb/include/third_party/msgpack -I/home/ran/Codes/edadb/include/third_party/rapidjson -I/home/ran/Codes/edadb/include/third_party/spdlog -I/home/ran/Codes/edadb/include/third_party/sqlite -I/home/ran/Codes/edadb/include/third_party/unqlite -Wall -Wno-unused-variable -Wno-pessimizing-move -Wno-reorder -std=c++20 -g -O0 -g -std=c++20 -MD -MT CMakeFiles/edadb.dir/src/edadbTest18.cpp.o -MF CMakeFiles/edadb.dir/src/edadbTest18.cpp.o.d -o CMakeFiles/edadb.dir/src/edadbTest18.cpp.o -c /home/ran/Codes/edadb/src/edadbTest18.cpp
-In file included from /home/ran/Codes/edadb/src/edadbTest18.cpp:2:
-/home/ran/Codes/edadb/include/lib/edadb/edadbTest18.hpp:1604:18: warning: backslash and newline separated by space
- 1604 |     class DbMapV{\
-      |                   
-/home/ran/Codes/edadb/include/lib/edadb/edadbTest18.hpp:1605:17: warning: backslash and newline separated by space
- 1605 |         private:\
-      |                  
-/home/ran/Codes/edadb/include/lib/edadb/edadbTest18.hpp:1661:80: warning: backslash-newline at end of file
- 1661 | #define TABLE4CLASSWVEC(myclass, tablename, CLASS_ELEMS_TUP,  ARRAY_FIELD_TUP) \
-      |                                                                                 
-In file included from /home/ran/Codes/edadb/src/edadbTest18.cpp:2:
-/home/ran/Codes/edadb/include/lib/edadb/edadbTest18.hpp: In static member function ‘static const string& edadb::SqlStringT2T<T, Q>::createTableStr()’:
-/home/ran/Codes/edadb/include/lib/edadb/edadbTest18.hpp:734:23: warning: typedef ‘using FirstType_Q = std::decay_t<decltype (at_c<0>(typename edadb::TypeMetaData<Q>::TupType()))>’ locally defined but not used [-Wunused-local-typedefs]
-  734 |                 using FirstType_Q = std::decay_t<decltype(boost::fusion::at_c<0>(typename TypeMetaData<Q>::TupType()))>;
+[ 33%] Building CXX object CMakeFiles/edadb.dir/src/edadbTest19.cpp.o
+/usr/bin/c++ -DBUN_SQLITE -DFMT_HEADER_ONLY -I/home/ran/Codes/edadb/include -I/home/ran/Codes/edadb/include/third_party -I/home/ran/Codes/edadb/include/third_party/hdr -I/home/ran/Codes/edadb/include/third_party/json -I/home/ran/Codes/edadb/include/third_party/msgpack -I/home/ran/Codes/edadb/include/third_party/rapidjson -I/home/ran/Codes/edadb/include/third_party/spdlog -I/home/ran/Codes/edadb/include/third_party/sqlite -I/home/ran/Codes/edadb/include/third_party/unqlite -Wall -Wno-unused-variable -Wno-pessimizing-move -Wno-reorder -std=c++20 -g -O0 -g -std=c++20 -MD -MT CMakeFiles/edadb.dir/src/edadbTest19.cpp.o -MF CMakeFiles/edadb.dir/src/edadbTest19.cpp.o.d -o CMakeFiles/edadb.dir/src/edadbTest19.cpp.o -c /home/ran/Codes/edadb/src/edadbTest19.cpp
+In file included from /home/ran/Codes/edadb/src/edadbTest19.cpp:2:
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest19.hpp: In static member function ‘static const string& edadb::SqlStringT2T<T, Q>::createTableStr()’:
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest19.hpp:842:23: warning: typedef ‘using FirstType_Q = std::decay_t<decltype (at_c<0>(typename edadb::TypeMetaData<Q>::TupType()))>’ locally defined but not used [-Wunused-local-typedefs]
+  842 |                 using FirstType_Q = std::decay_t<decltype(boost::fusion::at_c<0>(typename TypeMetaData<Q>::TupType()))>;
       |                       ^~~~~~~~~~~
-/home/ran/Codes/edadb/include/lib/edadb/edadbTest18.hpp:749:23: warning: typedef ‘using FirstType_Q = std::decay_t<decltype (at_c<0>(typename edadb::TypeMetaData<edadb::Shadow<Q> >::TupType()))>’ locally defined but not used [-Wunused-local-typedefs]
-  749 |                 using FirstType_Q = std::decay_t<decltype(boost::fusion::at_c<0>(typename TypeMetaData<Shadow<Q>>::TupType()))>;
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest19.hpp:857:23: warning: typedef ‘using FirstType_Q = std::decay_t<decltype (at_c<0>(typename edadb::TypeMetaData<edadb::Shadow<Q> >::TupType()))>’ locally defined but not used [-Wunused-local-typedefs]
+  857 |                 using FirstType_Q = std::decay_t<decltype(boost::fusion::at_c<0>(typename TypeMetaData<Shadow<Q>>::TupType()))>;
       |                       ^~~~~~~~~~~
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest19.hpp: In member function ‘bool edadb::DbMap<T>::selectFromDb(std::vector<CharType>*, std::string, std::string, std::string)’:
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest19.hpp:1396:21: error: ‘member_names_with_vec’ was not declared in this scope
+ 1396 |                     member_names_with_vec.push_back(parent_tab_name + "_" +fk_col);
+      |                     ^~~~~~~~~~~~~~~~~~~~~
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest19.hpp:1398:37: error: ‘vals’ was not declared in this scope
+ 1398 |             boost::fusion::for_each(vals,GetAllObjects<T>(row, member_names_with_vec, count));
+      |                                     ^~~~
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest19.hpp:1398:59: error: ‘row’ was not declared in this scope; did you mean ‘soci::row’?
+ 1398 |             boost::fusion::for_each(vals,GetAllObjects<T>(row, member_names_with_vec, count));
+      |                                                           ^~~
+      |                                                           soci::row
+In file included from /usr/local/include/soci/statement.h:18,
+                 from /usr/local/include/soci/values.h:11,
+                 from /usr/local/include/soci/column-info.h:13,
+                 from /usr/local/include/soci/soci.h:16,
+                 from /home/ran/Codes/edadb/include/lib/edadb/edadbTest19.hpp:39,
+                 from /home/ran/Codes/edadb/src/edadbTest19.cpp:2:
+/usr/local/include/soci/row.h:48:17: note: ‘soci::row’ declared here
+   48 | class SOCI_DECL row
+      |                 ^~~
+In file included from /home/ran/Codes/edadb/src/edadbTest19.cpp:2:
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest19.hpp:1398:64: error: ‘member_names_with_vec’ was not declared in this scope
+ 1398 |             boost::fusion::for_each(vals,GetAllObjects<T>(row, member_names_with_vec, count));
+      |                                                                ^~~~~~~~~~~~~~~~~~~~~
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest19.hpp:1398:87: error: ‘count’ was not declared in this scope
+ 1398 |             boost::fusion::for_each(vals,GetAllObjects<T>(row, member_names_with_vec, count));
+      |                                                                                       ^~~~~
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest19.hpp:1398:87: note: suggested alternatives:
+In file included from /usr/include/c++/11/algorithm:74,
+                 from /home/ran/Codes/edadb/include/third_party/json/json.hpp:38,
+                 from /home/ran/Codes/edadb/include/lib/edadb/edadbTest19.hpp:14,
+                 from /home/ran/Codes/edadb/src/edadbTest19.cpp:2:
+/usr/include/c++/11/pstl/glue_algorithm_defs.h:101:1: note:   ‘std::count’
+  101 | count(_ExecutionPolicy&& __exec, _ForwardIterator __first, _ForwardIterator __last, const _Tp& __value);
+      | ^~~~~
+In file included from /usr/include/c++/11/algorithm:64,
+                 from /home/ran/Codes/edadb/include/third_party/json/json.hpp:38,
+                 from /home/ran/Codes/edadb/include/lib/edadb/edadbTest19.hpp:14,
+                 from /home/ran/Codes/edadb/src/edadbTest19.cpp:2:
+/usr/include/c++/11/bits/ranges_algo.h:308:31: note:   ‘std::ranges::count’
+  308 |   inline constexpr __count_fn count{};
+      |                               ^~~~~
+In file included from /usr/include/boost/fusion/algorithm/query.hpp:13,
+                 from /usr/include/boost/fusion/algorithm.hpp:12,
+                 from /usr/include/boost/fusion/include/algorithm.hpp:11,
+                 from /home/ran/Codes/edadb/include/lib/edadb/edadbTest19.hpp:26,
+                 from /home/ran/Codes/edadb/src/edadbTest19.cpp:2:
+/usr/include/boost/fusion/algorithm/query/count.hpp:35:5: note:   ‘boost::fusion::count’
+   35 |     count(Sequence const& seq, T const& x)
+      |     ^~~~~
+/usr/include/boost/fusion/algorithm/query/count.hpp:22:16: note:   ‘boost::fusion::result_of::count’
+   22 |         struct count
+      |                ^~~~~
+In file included from /home/ran/Codes/edadb/src/edadbTest19.cpp:2:
+/home/ran/Codes/edadb/include/lib/edadb/edadbTest19.hpp:1399:42: error: ‘a’ was not declared in this scope
+ 1399 |             vec->emplace_back(std::move(*a));
+      |                                          ^
 In file included from /usr/include/boost/math/tools/cxx03_warn.hpp:9,
                  from /usr/include/boost/math/constants/constants.hpp:11,
                  from /usr/include/boost/geometry/util/math.hpp:29,
                  from /usr/include/boost/geometry/core/radian_access.hpp:33,
                  from /usr/include/boost/geometry/geometry.hpp:51,
                  from /usr/include/boost/geometry.hpp:17,
-                 from /home/ran/Codes/edadb/src/edadbTest18.cpp:3:
+                 from /home/ran/Codes/edadb/src/edadbTest19.cpp:3:
 /usr/include/boost/detail/no_exceptions_support.hpp: At global scope:
 /usr/include/boost/detail/no_exceptions_support.hpp:17:1: note: ‘#pragma message: This header is deprecated. Use <boost/core/no_exceptions_support.hpp> instead.’
    17 | BOOST_HEADER_DEPRECATED("<boost/core/no_exceptions_support.hpp>")
       | ^~~~~~~~~~~~~~~~~~~~~~~
-[ 66%] Linking CXX executable edadb
-/usr/bin/cmake -E cmake_link_script CMakeFiles/edadb.dir/link.txt --verbose=1
-/usr/bin/c++  -Wall -Wno-unused-variable -Wno-pessimizing-move -Wno-reorder -std=c++20 -g -O0 -g -std=c++20 CMakeFiles/edadb.dir/src/sqlite/sqlite3.c.o CMakeFiles/edadb.dir/src/edadbTest18.cpp.o -o edadb  -Wl,-Bstatic -lsoci_sqlite3 -lsoci_core -Wl,-Bdynamic -ldl -lpthread 
+make[2]: *** [CMakeFiles/edadb.dir/build.make:93: CMakeFiles/edadb.dir/src/edadbTest19.cpp.o] Error 1
 make[2]: Leaving directory '/home/ran/Codes/edadb/build'
-[100%] Built target edadb
+make[1]: *** [CMakeFiles/Makefile2:86: CMakeFiles/edadb.dir/all] Error 2
 make[1]: Leaving directory '/home/ran/Codes/edadb/build'
-/usr/bin/cmake -E cmake_progress_start /home/ran/Codes/edadb/build/CMakeFiles 0
+make: *** [Makefile:94: all] Error 2

@@ -25,7 +25,8 @@ namespace blib {
             kReal,
             kNumeric,
             kText,
-			kComposite
+			kComposite,
+            kCompositeVector
         };
 
         /// @class CppTypeToDbType

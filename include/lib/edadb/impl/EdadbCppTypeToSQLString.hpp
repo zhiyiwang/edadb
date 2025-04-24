@@ -26,7 +26,8 @@ namespace edadb {
         kNumeric,
         kText,
         kComposite,
-        kExternal
+        kExternal,
+        kCompositeVector
     };
 
     /// @class CppTypeToDbType
