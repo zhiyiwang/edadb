@@ -79,9 +79,12 @@ struct IsComposite : boost::mpl::bool_<false> {
 /// Helper Macros End
 ///////////////////////////////////////////////////////////////////////////////
 
-// macro example:
+// Example:
 //   GENERATE_CLASS_TYPEMETADATA(IdbSite, "table_name",
 //      (name, width, height), ("iname","iwidth","iheight"))
+// Explain:
+//   Create TypeMetaData class for IdbSite for the member varibles (name, width, height),
+//   use ("iname","iwidth","iheight")) as name instead
 #define GENERATE_CLASS_TYPEMETADATA(CLASSNAME, TABLENAME, CLASS_ELEMS_TUP, COLNAME_TUP, SQLTYPE) \
 BOOST_FUSION_ADAPT_STRUCT(CLASSNAME, BOOST_PP_TUPLE_REM_CTOR(CLASS_ELEMS_TUP) ) \
 namespace edadb{\
