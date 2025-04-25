@@ -221,6 +221,10 @@ _EDADB_DEFINE_TABLE_BY_CLASS_(IdbLayerShape, "layer_shape_table", (_name, _layer
 _EDADB_DEFINE_TABLE_BY_CLASS_(IdbVia, "via_table", (_name, _coord, _global_enum, _inner_enum));
 
 
+//// TODO:
+//TABLE4CLASSWVEC(IdbPort, "port_table", (_name), (_layer_shapes, _vias));
+
+
 
 // utlity functions
 template<typename T>

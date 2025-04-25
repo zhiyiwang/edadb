@@ -34,7 +34,12 @@ struct IsComposite : boost::mpl::bool_<false> {
 /// Helper Macros Start
 ///////////////////////////////////////////////////////////////////////////////
 
-// macro example: (IdbSite, name, width, height)
+// macro example: 
+//   class IdbSite {
+//       std::string name;
+//       int width;
+//       int height;
+//   };
 
 // macro expansion result:
 //   boost::fusion::vector<std::string*, int*, int*>
@@ -126,6 +131,7 @@ template<> struct TypeMetaData<classname>{\
 */
 #define TABLE4CLASS(CLASSNAME, TABLENAME, CLASS_ELEMS_TUP) \
 TABLE4CLASS_COLNAME(CLASSNAME, TABLENAME, CLASS_ELEMS_TUP, (EXPAND_member_names(CLASS_ELEMS_TUP)))
+
 
 /**
  * @fn Table4ExternalClass
