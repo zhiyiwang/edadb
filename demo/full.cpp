@@ -114,11 +114,11 @@ public:
     void print(const std::string& pref = "") {
         std::cout << pref << "LayerShape" << std::endl;
         std::string next_perf = pref + "  ";
-        std::cout << next_perf << "name=" << _name << std::endl;
-        std::cout << next_perf << "layer=" << _layer << std::endl;
-        std::cout << next_perf << "rects.size=" << _rects.size() << std::endl;
+        std::cout << next_perf << "_name=" << _name << std::endl;
+        std::cout << next_perf << "_layer=" << _layer << std::endl;
+        std::cout << next_perf << "_rects.size=" << _rects.size() << std::endl;
         for (auto& r : _rects) {
-            std::cout << next_perf << "rect" << std::endl;
+            std::cout << next_perf << "_rects" << std::endl;
             r.print(next_perf);
         }
     } // print
@@ -159,7 +159,6 @@ public:
 
     GlobalEnum _global_enum; 
     InnerEnum _inner_enum;
-
 
 
 public:
@@ -216,12 +215,15 @@ public:
 _EDADB_DEFINE_TABLE_4_EXTERNAL_CLASS_(ExtClass, (sha_x, sha_y)); 
 
 // define table 4 class, alias of edadb::Table4Class
+// the class only contain primitive types and subclass
 _EDADB_DEFINE_TABLE_BY_CLASS_(IdbCoordinate, "coordinate_table", (_x, _y, _ec));
-_EDADB_DEFINE_TABLE_BY_CLASS_(IdbLayerShape, "layer_shape_table", (_name, _layer));
 _EDADB_DEFINE_TABLE_BY_CLASS_(IdbVia, "via_table", (_name, _coord, _global_enum, _inner_enum));
 
+// // define table 4 class with vector of subclass 
+// // the class contain subclass and vector of subclass
+// _EDADB_DEFINE_TABLE_BY_CLASS_WITH_VECTOR_(IdbLayerShape, "layer_shape_table", (_name, _layer), (_rects));
+// 
 
-//// TODO:
 //TABLE4CLASSWVEC(IdbPort, "port_table", (_name), (_layer_shapes, _vias));
 
 

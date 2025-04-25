@@ -80,30 +80,31 @@ struct IsComposite : boost::mpl::bool_<false> {
 ///////////////////////////////////////////////////////////////////////////////
 
 // macro example:
-//   TABLE4CLASS_COLNAME(IdbSite, "table_name", (name, width, height), ("iname","iwidth","iheight"))
-#define TABLE4CLASS_COLNAME(classname, tablename, CLASS_ELEMS_TUP, COLNAME_TUP) \
-BOOST_FUSION_ADAPT_STRUCT(classname, BOOST_PP_TUPLE_REM_CTOR(CLASS_ELEMS_TUP) ) \
+//   GENERATE_CLASS_TYPEMETADATA(IdbSite, "table_name",
+//      (name, width, height), ("iname","iwidth","iheight"))
+#define GENERATE_CLASS_TYPEMETADATA(CLASSNAME, TABLENAME, CLASS_ELEMS_TUP, COLNAME_TUP, SQLTYPE) \
+BOOST_FUSION_ADAPT_STRUCT(CLASSNAME, BOOST_PP_TUPLE_REM_CTOR(CLASS_ELEMS_TUP) ) \
 namespace edadb{\
 template<>\
-struct Cpp2SqlType<classname>{\
-    static constexpr SqlType sqlType = SqlType::Composite; \
+struct Cpp2SqlType<CLASSNAME>{\
+    static constexpr SqlType sqlType = SQLTYPE; \
 };\
-template<> struct IsComposite<classname> : boost::mpl::bool_<true> {};\
-template<> struct TypeMetaData<classname>{\
-    using TupType = boost::fusion::vector<GENERATE_TupType(BOOST_PP_TUPLE_PUSH_FRONT(CLASS_ELEMS_TUP, classname))>;\
-    using TupTypePairType = boost::fusion::vector<GENERATE_TupTypePair(BOOST_PP_TUPLE_PUSH_FRONT(CLASS_ELEMS_TUP, classname))>;\
-    using T = classname;\
+template<> struct IsComposite<CLASSNAME> : boost::mpl::bool_<true> {};\
+template<> struct TypeMetaData<CLASSNAME>{\
+    using TupType = boost::fusion::vector<GENERATE_TupType(BOOST_PP_TUPLE_PUSH_FRONT(CLASS_ELEMS_TUP, CLASSNAME))>;\
+    using TupTypePairType = boost::fusion::vector<GENERATE_TupTypePair(BOOST_PP_TUPLE_PUSH_FRONT(CLASS_ELEMS_TUP, CLASSNAME))>;\
+    using T = CLASSNAME;\
     \
     inline static auto tuple_type_pair()->TupTypePairType const&{\
-        static const TupTypePairType t{GENERATE_TupTypePairObj(BOOST_PP_TUPLE_PUSH_FRONT(CLASS_ELEMS_TUP, classname))};\
+        static const TupTypePairType t{GENERATE_TupTypePairObj(BOOST_PP_TUPLE_PUSH_FRONT(CLASS_ELEMS_TUP, CLASSNAME))};\
         return t;\
     }\
     inline static std::string const& class_name(){\
-        static std::string const class_name = BOOST_STRINGIZE(classname);\
+        static std::string const class_name = BOOST_STRINGIZE(CLASSNAME);\
         return class_name;\
     }\
     inline static std::string const& table_name(){\
-        static std::string const table_name = tablename;\
+        static std::string const table_name = TABLENAME;\
         return table_name;\
     }\
     inline static const std::vector<std::string>& member_names(){\
@@ -114,24 +115,35 @@ template<> struct TypeMetaData<classname>{\
         static const std::vector<std::string> names = {BOOST_PP_TUPLE_REM_CTOR(COLNAME_TUP)};\
         return names;\
     }\
-    inline static TupType getVal(classname * obj){\
-        return TupType(GENERATE_ObjVal(BOOST_PP_TUPLE_PUSH_FRONT(CLASS_ELEMS_TUP, classname)));\
+    inline static TupType getVal(CLASSNAME * obj){\
+        return TupType(GENERATE_ObjVal(BOOST_PP_TUPLE_PUSH_FRONT(CLASS_ELEMS_TUP, CLASSNAME)));\
     }\
 };\
 }
 
 // macro example:
 //   TABLE4CLASS(IdbSite, "table_name", (name, width, height))
+
+/**
+ * @fn TABLE4CLASS_COLNAME
+ * @brief TABLE4CLASS_COLNAME is a macro to define a table for a class with column names.
+ * @param CLASSNAME The name of the class.
+ * @param TABLENAME The name of the table.
+ * @param CLASS_ELEMS_TUP The tuple of class elements.
+ * @param COLNAME_TUP The tuple of column names.
+ */
+#define TABLE4CLASS_COLNAME(CLASSNAME, TABLENAME, CLASS_ELEMS_TUP, COLNAME_TUP) \
+GENERATE_CLASS_TYPEMETADATA(CLASSNAME, TABLENAME, CLASS_ELEMS_TUP, COLNAME_TUP, SqlType::Composite) 
+
 /**
  * @fn TABLE4CLASS
  * @brief TABLE4CLASS is a macro to define a table for a class.
- * @param classname The name of the class.
- * @param tablename The name of the table.
+ * @param CLASSNAME The name of the class.
+ * @param TABLENAME The name of the table.
  * @param CLASS_ELEMS_TUP The tuple of class elements.
-*/
+ */
 #define TABLE4CLASS(CLASSNAME, TABLENAME, CLASS_ELEMS_TUP) \
-TABLE4CLASS_COLNAME(CLASSNAME, TABLENAME, CLASS_ELEMS_TUP, (EXPAND_member_names(CLASS_ELEMS_TUP)))
-
+GENERATE_CLASS_TYPEMETADATA(CLASSNAME, TABLENAME, CLASS_ELEMS_TUP, (EXPAND_member_names(CLASS_ELEMS_TUP)), SqlType::Composite)
 
 /**
  * @fn Table4ExternalClass
@@ -151,5 +163,34 @@ struct Cpp2SqlType<CLASSNAME>{\
 TABLE4CLASS(edadb::Shadow<CLASSNAME>, "#shadow_table_for_external_class", CLASS_ELEMS_TUP) 
 
 
+
+
+
+//#define TABLE4CLASSWVEC_COLNAME(CLASSNAME, TABLENAME, CLASS_ELEMS_TUP, COLNAME_TUP, VECTOR_ELEMS_TUP) \
+//TABLE4CLASS_COLNAME_INNER(CLASSNAME, TABLENAME, CLASS_ELEMS_TUP, COLNAME_TUP, DbTypes::kCompositeVector); \
+//namespace edadb{\
+//    /*template<> struct IsWithVec<CLASSNAME> : boost::mpl::bool_<true> {};*/\
+//    template<> struct VecMetaData<CLASSNAME>{\
+//        using TupTypePairType = boost::fusion::vector<GENERATE_TupTypePair(BOOST_PP_TUPLE_PUSH_FRONT(VECTOR_ELEMS_TUP, CLASSNAME))>;\
+//        inline static auto tuple_type_pair()->TupTypePairType const&{\
+//            static const TupTypePairType t{GENERATE_TupTypePairObj(BOOST_PP_TUPLE_PUSH_FRONT(VECTOR_ELEMS_TUP, CLASSNAME))};\
+//            return t;\
+//        }\
+//        using VecTupType = boost::fusion::vector<GENERATE_TupType(BOOST_PP_TUPLE_PUSH_FRONT(VECTOR_ELEMS_TUP, CLASSNAME))>;\
+//        inline static VecTupType getVecVal(CLASSNAME * obj){\
+//            return VecTupType(GENERATE_ObjVal(BOOST_PP_TUPLE_PUSH_FRONT(VECTOR_ELEMS_TUP, CLASSNAME)));\
+//        }\
+//        inline static const std::vector<std::string>& vec_field_names(){\
+//            static const std::vector<std::string> names = {EXPAND_member_names(VECTOR_ELEMS_TUP)};\
+//            return names;\
+//        }\
+//        static const int num = BOOST_PP_TUPLE_SIZE(VECTOR_ELEMS_TUP);\
+//        enum VecId{BOOST_PP_TUPLE_REM_CTOR(VECTOR_ELEMS_TUP)};\
+//    };\
+//}
+//
+//
+//#define TABLE4CLASSWVEC(CLASS_NAME, TABLE_NAME, CLASS_ELEMS_TUP, VECTOR_ELEMS_TUP) \
+//TABLE4CLASSWVEC_COLNAME(CLASS_NAME, TABLE_NAME, CLASS_ELEMS_TUP, (EXPAND_member_names(CLASS_ELEMS_TUP)), VECTOR_ELEMS_TUP)
 
 
