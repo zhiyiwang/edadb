@@ -48,7 +48,7 @@ enum class SqlType : std::uint32_t {
     // user defined type
     Composite,  // inner class object
     External,   // external class object
-
+    CompositeVector, // vector of inner class object
 
 //////// SQL types are not supported currently ////////////////////
 //

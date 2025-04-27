@@ -69,7 +69,7 @@ struct IsComposite : boost::mpl::bool_<false> {
 #define GET_first_member(ELEMS_TUP) BOOST_PP_TUPLE_ELEM(0,ELEMS_TUP)
 
 // macro expansion result:
-//   obj->name, obj->width, obj->height
+//   &(obj->name), &(obj->width), &(obj->height)
 #define GENERATE_ObjVal_I(z, n, CLASS_ELEMS_TUP) BOOST_PP_IF(n, BOOST_PP_COMMA, BOOST_PP_EMPTY)() &obj->BOOST_PP_TUPLE_ELEM(BOOST_PP_ADD(1, n), CLASS_ELEMS_TUP)
 #define GENERATE_ObjVal(CLASS_ELEMS_TUP) BOOST_PP_REPEAT(BOOST_PP_SUB(BOOST_PP_TUPLE_SIZE(CLASS_ELEMS_TUP), 1), GENERATE_ObjVal_I, CLASS_ELEMS_TUP)
 
@@ -124,8 +124,7 @@ template<> struct TypeMetaData<CLASSNAME>{\
 };\
 }
 
-// macro example:
-//   TABLE4CLASS(IdbSite, "table_name", (name, width, height))
+
 
 /**
  * @fn TABLE4CLASS_COLNAME
@@ -167,33 +166,54 @@ TABLE4CLASS(edadb::Shadow<CLASSNAME>, "#shadow_table_for_external_class", CLASS_
 
 
 
+#if 0 
+
+/**
+ * @fn TABLE4CLASS_WVEC_COLNAME
+ * @brief TABLE4CLASS_WVEC_COLNAME is a macro to define a table for a class with vector and column names.
+ * @param CLASSNAME The name of the class.
+ * @param TABLENAME The name of the table.
+ * @param CLASS_ELEMS_TUP The tuple of class elements.
+ * @param COLNAME_TUP The tuple of column names.
+ * @param VECTOR_ELEMS_TUP The tuple of vector elements.
+ */
+#define TABLE4CLASS_WVEC_COLNAME(CLASSNAME, TABLENAME, CLASS_ELEMS_TUP, COLNAME_TUP, VECTOR_ELEMS_TUP) \
+GENERATE_CLASS_TYPEMETADATA(CLASSNAME, TABLENAME, CLASS_ELEMS_TUP, COLNAME_TUP, SqlType::CompositeVector); \
+namespace edadb{\
+    template<> struct VecMetaData<CLASSNAME>{\
+        using VecElem = boost::fusion::vector<GENERATE_TupType(BOOST_PP_TUPLE_PUSH_FRONT(VECTOR_ELEMS_TUP, CLASSNAME))>;\
+        using TupTypePairType = boost::fusion::vector<GENERATE_TupTypePair(BOOST_PP_TUPLE_PUSH_FRONT(VECTOR_ELEMS_TUP, CLASSNAME))>;\
+        \
+        inline static auto tuple_type_pair()->TupTypePairType const&{\
+            static const TupTypePairType t{GENERATE_TupTypePairObj(BOOST_PP_TUPLE_PUSH_FRONT(VECTOR_ELEMS_TUP, CLASSNAME))};\
+            return t;\
+        }\
+       inline static VecElem getVecElem(CLASSNAME * obj){\
+            return VecElem(GENERATE_ObjVal(BOOST_PP_TUPLE_PUSH_FRONT(VECTOR_ELEMS_TUP, CLASSNAME)));\
+        }\
+        inline static const std::vector<std::string>& vec_field_names(){\
+            static const std::vector<std::string> names = {EXPAND_member_names(VECTOR_ELEMS_TUP)};\
+            return names;\
+        }\
+        enum VecId{ \
+            BOOST_PP_IF(BOOST_PP_TUPLE_SIZE(VECTOR_ELEMS_TUP), BOOST_PP_TUPLE_REM_CTOR(VECTOR_ELEMS_TUP), ) \
+            MAX = BOOST_PP_IF(BOOST_PP_TUPLE_SIZE(VECTOR_ELEMS_TUP), BOOST_PP_TUPLE_SIZE(VECTOR_ELEMS_TUP), 0)  \
+        };\
+    };\
+}
 
 
-//#define TABLE4CLASSWVEC_COLNAME(CLASSNAME, TABLENAME, CLASS_ELEMS_TUP, COLNAME_TUP, VECTOR_ELEMS_TUP) \
-//TABLE4CLASS_COLNAME_INNER(CLASSNAME, TABLENAME, CLASS_ELEMS_TUP, COLNAME_TUP, DbTypes::kCompositeVector); \
-//namespace edadb{\
-//    /*template<> struct IsWithVec<CLASSNAME> : boost::mpl::bool_<true> {};*/\
-//    template<> struct VecMetaData<CLASSNAME>{\
-//        using TupTypePairType = boost::fusion::vector<GENERATE_TupTypePair(BOOST_PP_TUPLE_PUSH_FRONT(VECTOR_ELEMS_TUP, CLASSNAME))>;\
-//        inline static auto tuple_type_pair()->TupTypePairType const&{\
-//            static const TupTypePairType t{GENERATE_TupTypePairObj(BOOST_PP_TUPLE_PUSH_FRONT(VECTOR_ELEMS_TUP, CLASSNAME))};\
-//            return t;\
-//        }\
-//        using VecTupType = boost::fusion::vector<GENERATE_TupType(BOOST_PP_TUPLE_PUSH_FRONT(VECTOR_ELEMS_TUP, CLASSNAME))>;\
-//        inline static VecTupType getVecVal(CLASSNAME * obj){\
-//            return VecTupType(GENERATE_ObjVal(BOOST_PP_TUPLE_PUSH_FRONT(VECTOR_ELEMS_TUP, CLASSNAME)));\
-//        }\
-//        inline static const std::vector<std::string>& vec_field_names(){\
-//            static const std::vector<std::string> names = {EXPAND_member_names(VECTOR_ELEMS_TUP)};\
-//            return names;\
-//        }\
-//        static const int num = BOOST_PP_TUPLE_SIZE(VECTOR_ELEMS_TUP);\
-//        enum VecId{BOOST_PP_TUPLE_REM_CTOR(VECTOR_ELEMS_TUP)};\
-//    };\
-//}
-//
-//
-//#define TABLE4CLASSWVEC(CLASS_NAME, TABLE_NAME, CLASS_ELEMS_TUP, VECTOR_ELEMS_TUP) \
-//TABLE4CLASSWVEC_COLNAME(CLASS_NAME, TABLE_NAME, CLASS_ELEMS_TUP, (EXPAND_member_names(CLASS_ELEMS_TUP)), VECTOR_ELEMS_TUP)
+/**
+ * @fn TABLE4CLASS_WVEC
+ * @brief TABLE4CLASS_WVEC is a macro to define a table for a class with vector.
+ * @param CLASSNAME The name of the class.  
+ * @param TABLENAME The name of the table.
+ * @param CLASS_ELEMS_TUP The tuple of class elements.
+ * @param VECTOR_ELEMS_TUP The tuple of vector elements.
+ */
+#define TABLE4CLASS_WVEC(CLASS_NAME, TABLE_NAME, CLASS_ELEMS_TUP, VECTOR_ELEMS_TUP) \
+TABLE4CLASS_WVEC_COLNAME(CLASS_NAME, TABLE_NAME, CLASS_ELEMS_TUP, (EXPAND_member_names(CLASS_ELEMS_TUP)), VECTOR_ELEMS_TUP)
+
+#endif
 
 
