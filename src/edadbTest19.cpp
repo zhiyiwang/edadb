@@ -13,6 +13,10 @@ struct IdbRect {
   IdbRect(int _x){
     x = _x;
   }
+  void print() const {
+    std::cout << "IdbRect(x=" << x 
+              << ")\n";
+  }
 };
 
 struct IdbRect2 {
@@ -20,6 +24,10 @@ struct IdbRect2 {
   IdbRect2(){}
   IdbRect2(int _y){
     y = _y;
+  }
+  void print() const {
+    std::cout << "IdbRect2(y=" << y 
+              << ")\n";
   }
 };
 
@@ -40,6 +48,8 @@ class IdbLayerShape {
                   << ", layer=" << _layer 
                   // << ", rects.size =" << _rects.size() 
                   << ")\n";
+        for(auto r : _rects)r.print();
+        for(auto r2 : _rect2s)r2.print();
     }
 };
 

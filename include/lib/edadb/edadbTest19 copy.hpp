@@ -53,19 +53,51 @@
 #define GENERATE_TupType_I(z, n, CLASS_ELEMS_TUP) BOOST_PP_IF(n, BOOST_PP_COMMA, BOOST_PP_EMPTY)() std::add_pointer<std::remove_reference<std::remove_cv<decltype(BOOST_PP_TUPLE_ELEM(0, CLASS_ELEMS_TUP) :: BOOST_PP_TUPLE_ELEM(BOOST_PP_ADD(1, n), CLASS_ELEMS_TUP))>::type>::type>::type
 #define GENERATE_TupType(CLASS_ELEMS_TUP) BOOST_PP_REPEAT(BOOST_PP_SUB(BOOST_PP_TUPLE_SIZE(CLASS_ELEMS_TUP), 1), GENERATE_TupType_I, CLASS_ELEMS_TUP)
 
+#define GENERATE_TupTypeNoPtr_I(z, n, CLASS_ELEMS_TUP) \
+BOOST_PP_IF(n, BOOST_PP_COMMA, BOOST_PP_EMPTY)() \
+std::remove_pointer< \
+    std::remove_reference<decltype( \
+        BOOST_PP_TUPLE_ELEM(0, CLASS_ELEMS_TUP):: \
+        BOOST_PP_TUPLE_ELEM(BOOST_PP_ADD(1, n), CLASS_ELEMS_TUP) \
+    )>::type \
+>::type
+#define GENERATE_TupTypeNoPtr(CLASS_ELEMS_TUP) BOOST_PP_REPEAT(BOOST_PP_SUB(BOOST_PP_TUPLE_SIZE(CLASS_ELEMS_TUP), 1), GENERATE_TupTypeNoPtr_I, CLASS_ELEMS_TUP)
+
 #define GENERATE_TupTypePair_I(z, n, CLASS_ELEMS_TUP) BOOST_PP_IF(n, BOOST_PP_COMMA, BOOST_PP_EMPTY)() boost::fusion::pair<edadb::StripQualifiersAndMakePointer<decltype(BOOST_PP_TUPLE_ELEM(0, CLASS_ELEMS_TUP) :: BOOST_PP_TUPLE_ELEM(BOOST_PP_ADD(1, n), CLASS_ELEMS_TUP))>::type, std::string>
 #define GENERATE_TupTypePair(CLASS_ELEMS_TUP) BOOST_PP_REPEAT(BOOST_PP_SUB(BOOST_PP_TUPLE_SIZE(CLASS_ELEMS_TUP), 1), GENERATE_TupTypePair_I, CLASS_ELEMS_TUP)
 
+#define GENERATE_TupTypePairNoPtr_I(z, n, CLASS_ELEMS_TUP) \
+BOOST_PP_IF(n, BOOST_PP_COMMA, BOOST_PP_EMPTY)() \
+boost::fusion::pair< \
+    std::remove_cv_t<std::remove_reference_t< \
+        decltype(BOOST_PP_TUPLE_ELEM(0, CLASS_ELEMS_TUP)::BOOST_PP_TUPLE_ELEM(BOOST_PP_ADD(1, n), CLASS_ELEMS_TUP)) \
+    >>, \
+    std::string \
+>
+#define GENERATE_TupTypePairNoPtr(CLASS_ELEMS_TUP) BOOST_PP_REPEAT(BOOST_PP_SUB(BOOST_PP_TUPLE_SIZE(CLASS_ELEMS_TUP), 1), GENERATE_TupTypePairNoPtr_I, CLASS_ELEMS_TUP)
+
 #define GENERATE_TupTypePairObj_I(z, n, CLASS_ELEMS_TUP) BOOST_PP_IF(n, BOOST_PP_COMMA, BOOST_PP_EMPTY)() boost::fusion::make_pair<edadb::StripQualifiersAndMakePointer<decltype(BOOST_PP_TUPLE_ELEM(0, CLASS_ELEMS_TUP) :: BOOST_PP_TUPLE_ELEM(BOOST_PP_ADD(1, n), CLASS_ELEMS_TUP))>::type>(BOOST_STRINGIZE(BOOST_PP_TUPLE_ELEM(BOOST_PP_ADD(1, n), CLASS_ELEMS_TUP)))
 #define GENERATE_TupTypePairObj(CLASS_ELEMS_TUP) BOOST_PP_REPEAT(BOOST_PP_SUB(BOOST_PP_TUPLE_SIZE(CLASS_ELEMS_TUP), 1), GENERATE_TupTypePairObj_I, CLASS_ELEMS_TUP)
+
+#define GENERATE_TupTypePairObjNoPtr_I(z, n, CLASS_ELEMS_TUP) \
+BOOST_PP_IF(n, BOOST_PP_COMMA, BOOST_PP_EMPTY)() \
+boost::fusion::make_pair< \
+    std::remove_cv_t<std::remove_reference_t< \
+        decltype(BOOST_PP_TUPLE_ELEM(0, CLASS_ELEMS_TUP)::BOOST_PP_TUPLE_ELEM(BOOST_PP_ADD(1, n), CLASS_ELEMS_TUP)) \
+    >> \
+>(BOOST_STRINGIZE(BOOST_PP_TUPLE_ELEM(BOOST_PP_ADD(1, n), CLASS_ELEMS_TUP)))
+#define GENERATE_TupTypePairObjNoPtr(CLASS_ELEMS_TUP) BOOST_PP_REPEAT(BOOST_PP_SUB(BOOST_PP_TUPLE_SIZE(CLASS_ELEMS_TUP), 1), GENERATE_TupTypePairObjNoPtr_I, CLASS_ELEMS_TUP)
 
 #define EXPAND_member_names_I(z, n, ELEMS_TUP) BOOST_PP_IF(n, BOOST_PP_COMMA, BOOST_PP_EMPTY)() BOOST_STRINGIZE(BOOST_PP_TUPLE_ELEM(n, ELEMS_TUP))
 #define EXPAND_member_names(ELEMS_TUP) BOOST_PP_REPEAT(BOOST_PP_TUPLE_SIZE(ELEMS_TUP), EXPAND_member_names_I, ELEMS_TUP)
 
 #define GET_first_member(ELEMS_TUP) BOOST_PP_TUPLE_ELEM(0,ELEMS_TUP )
 
-#define GENERATE_ObjVal_I(z, n, CLASS_ELEMS_TUP) BOOST_PP_IF(n, BOOST_PP_COMMA, BOOST_PP_EMPTY)() &obj->BOOST_PP_TUPLE_ELEM(BOOST_PP_ADD(1, n), CLASS_ELEMS_TUP)
+#define GENERATE_ObjVal_I(z, n, CLASS_ELEMS_TUP) BOOST_PP_IF(n, BOOST_PP_COMMA, BOOST_PP_EMPTY)() obj->BOOST_PP_TUPLE_ELEM(BOOST_PP_ADD(1, n), CLASS_ELEMS_TUP)
 #define GENERATE_ObjVal(CLASS_ELEMS_TUP) BOOST_PP_REPEAT(BOOST_PP_SUB(BOOST_PP_TUPLE_SIZE(CLASS_ELEMS_TUP), 1), GENERATE_ObjVal_I, CLASS_ELEMS_TUP)
+
+#define GENERATE_ObjValPtr_I(z, n, CLASS_ELEMS_TUP) BOOST_PP_IF(n, BOOST_PP_COMMA, BOOST_PP_EMPTY)() &obj->BOOST_PP_TUPLE_ELEM(BOOST_PP_ADD(1, n), CLASS_ELEMS_TUP)
+#define GENERATE_ObjValPtr(CLASS_ELEMS_TUP) BOOST_PP_REPEAT(BOOST_PP_SUB(BOOST_PP_TUPLE_SIZE(CLASS_ELEMS_TUP), 1), GENERATE_ObjValPtr_I, CLASS_ELEMS_TUP)
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -113,7 +145,7 @@ template<> struct TypeMetaData<myclass>{\
         return names;\
     }\
     inline static TupType getVal(myclass * obj){\
-        return TupType(GENERATE_ObjVal(BOOST_PP_TUPLE_PUSH_FRONT(CLASS_ELEMS_TUP, myclass)));\
+        return TupType(GENERATE_ObjValPtr(BOOST_PP_TUPLE_PUSH_FRONT(CLASS_ELEMS_TUP, myclass)));\
     }\
 };\
 }
@@ -151,15 +183,22 @@ namespace edadb{\
             static const TupTypePairType t{GENERATE_TupTypePairObj(BOOST_PP_TUPLE_PUSH_FRONT(ARRAY_FIELD_TUP, myclass))};\
             return t;\
         }\
-        using VecTupType = boost::fusion::vector<GENERATE_TupType(BOOST_PP_TUPLE_PUSH_FRONT(ARRAY_FIELD_TUP, myclass))>;\
-        inline static VecTupType getVecVal(myclass * obj){\
-            return VecTupType(GENERATE_ObjVal(BOOST_PP_TUPLE_PUSH_FRONT(ARRAY_FIELD_TUP, myclass)));\
+        using TupTypePairTypeNoPtr = boost::fusion::vector<GENERATE_TupTypePairNoPtr(BOOST_PP_TUPLE_PUSH_FRONT(ARRAY_FIELD_TUP, myclass))>;\
+        inline static auto tuple_type_pair_no_ptr()->TupTypePairTypeNoPtr const&{\
+            static const TupTypePairTypeNoPtr t{GENERATE_TupTypePairObjNoPtr(BOOST_PP_TUPLE_PUSH_FRONT(ARRAY_FIELD_TUP, myclass))};\
+            return t;\
         }\
-        inline static auto getVecAndVal(myclass *obj){\
-            auto type_pair = boost::fusion::as_vector(tuple_type_pair());\
-            auto vec_val = boost::fusion::as_vector(getVecVal(obj));\
-            auto zipped = boost::fusion::zip(type_pair, vec_val);\
-            return boost::fusion::as_vector(zipped);\
+        using VecTupType = boost::fusion::vector<GENERATE_TupType(BOOST_PP_TUPLE_PUSH_FRONT(ARRAY_FIELD_TUP, myclass))>;\
+        using VecTupTypeNoPtr = boost::fusion::vector<GENERATE_TupTypeNoPtr(BOOST_PP_TUPLE_PUSH_FRONT(ARRAY_FIELD_TUP, myclass))>;\
+        inline static VecTupType getVecVal(myclass * obj){\
+            return VecTupType(GENERATE_ObjValPtr(BOOST_PP_TUPLE_PUSH_FRONT(ARRAY_FIELD_TUP, myclass)));\
+        }\
+        inline static VecTupType getVecValNoPtr(myclass * obj){\
+            return VecTupTypeNoPtr(GENERATE_ObjVal(BOOST_PP_TUPLE_PUSH_FRONT(ARRAY_FIELD_TUP, myclass)));\
+        }\
+        using VecAndValType = decltype(boost::fusion::zip(std::declval<TupTypePairTypeNoPtr>(),std::declval<VecTupTypeNoPtr>()));\
+        inline static VecAndValType getVecAndVal(myclass *obj){\
+            return boost::fusion::zip(tuple_type_pair_no_ptr(),getVecValNoPtr(obj));\
         }\
         inline static const std::vector<std::string>& vec_field_names(){\
             static const std::vector<std::string> names = {EXPAND_member_names(ARRAY_FIELD_TUP)};\
