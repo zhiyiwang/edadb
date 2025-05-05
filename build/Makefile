@@ -132,29 +132,29 @@ edadb/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/edadb.dir/build.make CMakeFiles/edadb.dir/build
 .PHONY : edadb/fast
 
-src/edadbTest19.o: src/edadbTest19.cpp.o
-.PHONY : src/edadbTest19.o
+src/edadbTest20.o: src/edadbTest20.cpp.o
+.PHONY : src/edadbTest20.o
 
 # target to build an object file
-src/edadbTest19.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/edadb.dir/build.make CMakeFiles/edadb.dir/src/edadbTest19.cpp.o
-.PHONY : src/edadbTest19.cpp.o
+src/edadbTest20.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/edadb.dir/build.make CMakeFiles/edadb.dir/src/edadbTest20.cpp.o
+.PHONY : src/edadbTest20.cpp.o
 
-src/edadbTest19.i: src/edadbTest19.cpp.i
-.PHONY : src/edadbTest19.i
+src/edadbTest20.i: src/edadbTest20.cpp.i
+.PHONY : src/edadbTest20.i
 
 # target to preprocess a source file
-src/edadbTest19.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/edadb.dir/build.make CMakeFiles/edadb.dir/src/edadbTest19.cpp.i
-.PHONY : src/edadbTest19.cpp.i
+src/edadbTest20.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/edadb.dir/build.make CMakeFiles/edadb.dir/src/edadbTest20.cpp.i
+.PHONY : src/edadbTest20.cpp.i
 
-src/edadbTest19.s: src/edadbTest19.cpp.s
-.PHONY : src/edadbTest19.s
+src/edadbTest20.s: src/edadbTest20.cpp.s
+.PHONY : src/edadbTest20.s
 
 # target to generate assembly for a file
-src/edadbTest19.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/edadb.dir/build.make CMakeFiles/edadb.dir/src/edadbTest19.cpp.s
-.PHONY : src/edadbTest19.cpp.s
+src/edadbTest20.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/edadb.dir/build.make CMakeFiles/edadb.dir/src/edadbTest20.cpp.s
+.PHONY : src/edadbTest20.cpp.s
 
 src/sqlite/sqlite3.o: src/sqlite/sqlite3.c.o
 .PHONY : src/sqlite/sqlite3.o
@@ -189,9 +189,9 @@ help:
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
 	@echo "... edadb"
-	@echo "... src/edadbTest19.o"
-	@echo "... src/edadbTest19.i"
-	@echo "... src/edadbTest19.s"
+	@echo "... src/edadbTest20.o"
+	@echo "... src/edadbTest20.i"
+	@echo "... src/edadbTest20.s"
 	@echo "... src/sqlite/sqlite3.o"
 	@echo "... src/sqlite/sqlite3.i"
 	@echo "... src/sqlite/sqlite3.s"

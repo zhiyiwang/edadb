@@ -143,4 +143,15 @@ namespace edadb {
     inline std::string const &cppTypeToDbTypeString() {
         return cppTypeEnumToDbTypeString<CppTypeToDbType<T>::ret>();
     }
+
+    enum class VecTypes : std::uint32_t {
+        kNull = 0,
+        kVector,
+        kNormal
+    };
+
+    template<typename T, typename = void>
+    struct CppTypeToVecType {
+        static const VecTypes ret = VecTypes::kNull;
+    };
 }

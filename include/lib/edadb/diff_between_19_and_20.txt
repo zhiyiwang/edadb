@@ -1,0 +1,69 @@
+408c408,416
+<                 using ObjType = typename std::remove_const<typename std::remove_pointer<typename O::first_type>::type>::type;
+---
+>                 using FirstType = typename O::first_type;
+>                 using NakedType = std::remove_const_t<std::remove_pointer_t<FirstType>>;
+>                 constexpr bool is_ptr = std::is_pointer_v<NakedType>;
+>                 std::cout<<"RawType = "<<typeid(NakedType).name()<<"\n";
+>                 using ObjType = std::conditional_t<is_ptr, 
+>                     std::remove_pointer_t<NakedType>,
+>                     NakedType
+>                 >;
+>                 std::cout<<"ObjType = "<<typeid(ObjType).name()<<"\n";
+410a419
+>                     
+416a426
+>                     std::cout<<"cnt!=1 ObjType = "<<typeid(ObjType).name()<<"\n";
+418c428
+<                     if (ret == DbTypes::kComposite) // 尽量减少字符串比较
+---
+>                     if (ret == DbTypes::kComposite || ret == DbTypes::kCompositeVector) // 尽量减少字符串比较
+426,427c436,437
+<                         // SqlString<T>::member_names.push_back(x.second);
+<                         // sql += ", " + x.second + " BLOB";
+---
+>                         // SqlString<T>::member_names.push_back(x_second);
+>                         // sql += ", " + x_second + " BLOB";
+433a444
+>                         std::cout<<"?\n";
+455c466,473
+<                 using ObjType = typename std::remove_const<typename std::remove_pointer<typename O::first_type>::type>::type;
+---
+>                 using FirstType = typename O::first_type;
+>                 using NakedType = std::remove_const_t<std::remove_pointer_t<FirstType>>;
+>                 constexpr bool is_ptr = std::is_pointer_v<NakedType>;
+>             
+>                 using ObjType = std::conditional_t<is_ptr,
+>                     std::remove_pointer_t<NakedType>,
+>                     NakedType
+>                 >;
+456a475,481
+> 
+>                 // std::string x_second = "";
+>                 // if constexpr(is_ptr)
+>                     // x_second = *(x.second);
+>                 // else
+>                     // x_second = x.second;
+> 
+462d486
+<                     
+464c488
+<                     if (ret == DbTypes::kComposite || ret == DbTypes::kExternal)
+---
+>                     if (ret == DbTypes::kComposite || ret == DbTypes::kExternal /*|| ret == DbTypes::kCompositeVector*/)
+1006c1030
+<             if constexpr (dbType == DbTypes::kComposite){
+---
+>             if constexpr (dbType == DbTypes::kComposite || dbType == DbTypes::kCompositeVector){
+1188c1212
+< void dbgPrint(){std::cout<<"Edadb Test 15 starting \n";}
+---
+> void dbgPrint(){std::cout<<"Edadb Test 20 starting \n";}
+1274c1298
+<                 auto &first_pair = boost::fusion::at_c<0>(TypeMetaData<T>::tuple_type_pair());
+---
+>                 auto &first_pair = boost::fusion::at_c<0>(TypeMetaData<T>::tuple_type_pair()); // 按理说TypeMetaData<T>::tuple_type_pair没有定义
+1656c1680
+<                 std::cout<<"sub_dbmap->table_name = "<<sub_dbmap->table_name<<"\n";
+---
+>                 // std::cout<<"sub_dbmap->table_name = "<<sub_dbmap->table_name<<"\n";

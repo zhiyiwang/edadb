@@ -1,0 +1,4 @@
+# ninja log v5
+0	3908	1746413981384874276	CMakeFiles/edadb.dir/src/sqlite/sqlite3.c.o	2b94eb4600d32b2d
+13	8580	1746414039561045432	CMakeFiles/edadb.dir/src/edadbTest20.cpp.o	4ba26098c7cadb20
+8580	8954	1746414039939033555	edadb	ee812454ab9d4d34
