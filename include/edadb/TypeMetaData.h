@@ -12,13 +12,11 @@ namespace edadb {
 
 /**
  * @brief TypeMetaData provides a way to get the meta data of a class.
+ *      Here we only declare the template class, and the specialization will be defined in Table4Class.h.
  * @tparam T The class type.
  */
 template<typename T>
-struct TypeMetaData {
-    static std::string const& class_name();
-    boost::fusion::vector<boost::fusion::pair<void, std::string>> const& tuple_type_pair();
-};
+struct TypeMetaData;
 
 
 

@@ -51,6 +51,7 @@
         "numbers": "cpp",
         "numeric": "cpp",
         "span": "cpp",
-        "cinttypes": "cpp"
+        "cinttypes": "cpp",
+        "*.ipp": "cpp"
     }
 }
