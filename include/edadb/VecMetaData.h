@@ -34,14 +34,18 @@ public:
 public:
     void printStatic() {
         std::cout << "VecMetaDataPrinter::printStatic():" << std::endl;
+
+        // print each vector elem (vector<T> *)
         std::cout << "VecMetaData<T>::VecElem" << std::endl;
         print_type<typename VecMetaData<T>::VecElem>();
         std::cout << std::endl;
 
+        // print vector elem type
         std::cout << "VecMetaData<T>::TupTypePairType" << std::endl;
         print_type<typename VecMetaData<T>::TupTypePairType>();
         std::cout << std::endl;
 
+        // print each vector elem (boost::fusion::pair<std::vector<IdbRect>*, string) 
         std::cout << "VecMetaData<T>::tuple_type_pair()" << std::endl;
         auto ttp = VecMetaData<T>::tuple_type_pair();
         boost::fusion::for_each(ttp,
@@ -54,12 +58,19 @@ public:
         );
         std::cout << std::endl;
 
+
+        // print each vector elem pointer (std::vector<IdbRect> *)
         std::cout << "VecMetaData<T>::getVecElem()" << std::endl;
         T obj;
         auto vec_elem = VecMetaData<T>::getVecElem(&obj);
-        boost::fusion::for_each(vec_elem, [](auto p){ std::cout << "  " << p << std::endl; });
+        boost::fusion::for_each(vec_elem,
+            [](auto p){
+                std::cout << "  " << p << std::endl;
+            }
+        );
         std::cout << std::endl;
 
+        // print field names
         std::cout << "VecMetaData<T>::vec_field_names()" << std::endl;
         auto vec_field_names = VecMetaData<T>::vec_field_names();
         for(auto n : vec_field_names)

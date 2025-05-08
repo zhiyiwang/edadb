@@ -8,6 +8,7 @@
 #include <fmt/format.h>
 #include <string>
 #include <stdint.h>
+#include <string>
 
 #include "DbBackendType.h"
 #include "SqlStatement.h"
@@ -20,41 +21,26 @@
 namespace edadb {
 
 /**
- * @brief DbMap class maps objects to relations.
- * @tparam T The class type.
+ * @brief DbMapBase class is the base class for all DbMap classes and manages the database connection.
+ * 
  */
-template<typename T>
-class DbMap : public Singleton< DbMap<T> > {
+class DbMapBase : public Singleton< DbMapBase > {
 private:
     /**
      * @brief friend class for Singleton pattern.
      */
-    friend class Singleton< DbMap<T> >;
-
-public:
-    class Writer;  // write object to database
-    class Reader;  // read object from database
+    friend class Singleton< DbMapBase >;
 
 protected:
-    const std::string table_name; // defined in TypeMetaData<T> by TABLE4CLASS macro
-    DbManager&        manager; // Singleton DbManager ins to connect to database
-    bool   mgr_inited = false; // DbManager is inited
+    // Singleton DbManager ins to connect to database
+    inline static DbManager& manager = DbManager::i(); 
 
-protected:
-    /**
-     * @brief protected ctor to avoid direct instantiation, use Singleton instead.
-     */
-    DbMap () : table_name(TypeMetaData<T>::table_name()), manager(DbManager::i()) {}
+protected: // protected ctor and dtor 
+    DbMapBase() = default;
+    ~DbMapBase() = default;
 
-    /**
-     * @brief protected dtor to avoid direct instantiation, use Singleton instead.
-     */
-    ~DbMap() = default;
-
-public:
-    const std::string& getTableName() { return table_name; }
-    DbManager&         getManager  () { return manager   ; }
-    bool               inited      () { return mgr_inited; }
+public://
+    DbManager& getManager() { return manager; }
 
 public:
     /**
@@ -64,44 +50,9 @@ public:
      */
     bool init(const std::string& c) {
         // no need to check inited, singleton manager will check it
-
-        mgr_inited = manager.connect(c);
-        if (!mgr_inited) 
-            std::cerr << "DbMap::init: connect failed" << std::endl;
-        return mgr_inited;
+        return manager.connect(c);
     }
 
-public:
-    /**
-     * @brief Create the table for the class.
-     * @return true if success; otherwise, false. 
-     */
-    bool createTable() {
-        if (!mgr_inited) {
-            std::cerr << "DbMap::createTable: not inited" << std::endl;
-            return false;
-        }
-
-        const std::string sql =
-            fmt::format(SqlStatement<T>::createTableStatement(), table_name);
-        return manager.exec(sql);
-    }
-
-    /**
-     * @brief Drop the table for the class.
-     * @return true if success; otherwise, false.
-     */
-    bool dropTable() {
-        if (!mgr_inited) {
-            std::cerr << "DbMap::dropTable: not inited" << std::endl;
-            return false;
-        }
-
-        const std::string sql = fmt::format("DROP TABLE IF EXISTS \"{}\";", table_name);
-        return manager.exec(sql);
-    }
-
-public:
     /**
      * @brief Execute the SQL statement directly.
      * @param sql The SQL statement.
@@ -111,7 +62,6 @@ public:
         return manager.exec(sql);
     }
 
-public:
     /**
      * @brief Begin a transaction.
      * @return true if success; otherwise, false.
@@ -126,6 +76,59 @@ public:
      */
     bool commitTransaction() {
         return manager.exec("COMMIT;");
+    }
+}; // DbMapBase
+
+
+
+/**
+ * @brief DbMap class maps objects to relations.
+ * @tparam T The class type.
+ */
+template<typename T>
+class DbMap : public DbMapBase {
+public:
+    class Writer;  // write object to database
+    class Reader;  // read object from database
+
+protected:
+    const std::string table_name; // defined in TypeMetaData<T> by TABLE4CLASS macro
+
+public:
+    DbMap (const std::string &n = TypeMetaData<T>::table_name()) : table_name(n) {}
+    ~DbMap() = default;
+
+public:
+    const std::string& getTableName() { return table_name; }
+
+public:
+    /**
+     * @brief Create the table for the class.
+     * @return true if success; otherwise, false. 
+     */
+    bool createTable() {
+        if (!manager.isConnected()) {
+            std::cerr << "DbMap::createTable: not inited" << std::endl;
+            return false;
+        }
+
+        const std::string sql =
+            fmt::format(SqlStatement<T>::createTableStatement(), table_name);
+        return manager.exec(sql);
+    }
+
+    /**
+     * @brief Drop the table for the class.
+     * @return true if success; otherwise, false.
+     */
+    bool dropTable() {
+        if (!manager.isConnected()) {
+            std::cerr << "DbMap::dropTable: not inited" << std::endl;
+            return false;
+        }
+
+        const std::string sql = fmt::format("DROP TABLE IF EXISTS \"{}\";", table_name);
+        return manager.exec(sql);
     }
 }; // class DbMap
 
@@ -187,25 +190,32 @@ struct OpTraits<T, DbMapOperation::DELETE> {
 template<typename T>
 class DbMap<T>::Writer {
 protected:
-    // reference is const pointer to DbMap
-    // inline static:
-    //   inline: no need to declare static
-    //   static: var is shared by all instances of the class
-    inline static DbMap     &dbmap = DbMap<T>::i();
-    inline static DbManager &manager = dbmap.getManager();
+    /** 
+     * Writer related DbMap and DbManager to access the database:
+     * DbMap contains the table name and DbManager contains the database connection.
+     */
+    DbMap     &dbmap;
+    DbManager &manager;
 
-    // The writer needs to insert the objects into different tables,
-    // otherwise maybe use inline static thread_local variables:
-    //   inline: no need to declare static
-    //   static thread_local: var is shared by all instances of the thread
+    /**
+     * The writer needs to insert the objects into different tables,
+     * otherwise maybe use inline static thread_local variables:
+     *   inline: no need to declare static
+     *   static thread_local: var is shared by all instances of the thread
+     */
     DbStatement dbstmt; 
     uint32_t bind_idx = 0;  
 
     DbMapOperation op = DbMapOperation::NONE;
 
 public:
-    Writer () { resetBindIndex(); }
     ~Writer() = default;
+    Writer (DbMap &m): dbmap(m), manager(m.getManager()) {
+        if (!manager.isConnected()) {
+            std::cerr << "DbMap::Writer: not inited" << std::endl;
+            return;
+        }
+    }
 
 public: // utility
     /**
@@ -220,7 +230,7 @@ public: // utility
             return false;
         }
 
-        if (!dbmap.inited()) {
+        if (!manager.isConnected()) {
             std::cerr << "DbMap::Writer::prepare2: not inited" << std::endl;
             return false;
         }
@@ -239,7 +249,7 @@ public: // utility
 
         op = OpTraits<T, OP>::op();
         return true;
-    }
+    } // prepare2
 
 
     /**
@@ -260,7 +270,7 @@ public: // utility
             return false;
         }
         
-        if (!dbmap.inited()) {
+        if (!manager.isConnected()) {
             std::cerr << "DbMap::" << OpTraits<T, OP>::name() << "::executeOp: not inited" << std::endl;
             return false;
         }
@@ -277,7 +287,7 @@ public: // utility
         }
         
         return true;
-    }
+    } // executeOp
 
 
     /**
@@ -300,21 +310,21 @@ public: // utility
             return false;
         
         return finalize();
-    }
+    } // processVector
 
 
     /**
      * @brief finalize dbstmt and reset the bind_idx
      */
     bool finalize() {
-        if (!dbmap.inited()) {
+        if (!manager.isConnected()) {
             std::cerr << "DbMap::insertFinalize: not inited" << std::endl;
             return false;
         }
 
         op = DbMapOperation::NONE;
         return dbstmt.finalize();
-    }
+    } // finalize
 
 
 public: // insert API
@@ -337,13 +347,13 @@ public: // insert API
             }
             return true;
         });
-    } 
+    } // insertVector 
 
     bool insert(T* obj) {
         return executeOp<DbMapOperation::INSERT>([&]() {
             bindObject(obj);
         });
-    }
+    } // insert
 
     /**
      * @brief Use operator() to bind each element in obj 
@@ -406,7 +416,7 @@ public: // insert API
             // only base type needs to be bound
             dbstmt.bindColumn(bind_idx++, elem);
         }
-    }
+    } // bindToColumn
 
 private: // utility
     /** reset bind_idx to begin to bind */      
@@ -428,7 +438,7 @@ private: // utility
         boost::fusion::for_each(values,
             [this](auto const& ne){ this->bindToColumn(ne); }
         ); 
-    }
+    } // bindObject
     
 
 public:  // Delete API: using text delete statement
@@ -438,7 +448,7 @@ public:  // Delete API: using text delete statement
             return false;
         }
 
-        if (!dbmap.inited()) {
+        if (!manager.isConnected()) {
             std::cerr << "DbMap::Deleter::deleteOne: not inited" << std::endl;
             return false;
         }
@@ -446,7 +456,7 @@ public:  // Delete API: using text delete statement
         const std::string sql =
             fmt::format(SqlStatement<T>::deleteStatement(obj), dbmap.getTableName());
         return manager.exec(sql);
-    }
+    } // deleteByPrimaryKeys
 
 public: // delete API: using place holder delete statement
     bool deleteOne(T* obj) {
@@ -469,7 +479,7 @@ public: // update API: using text update statement
             return false;
         }
 
-        if (!dbmap.inited()) {
+        if (!manager.isConnected()) {
             std::cerr << "DbMap::Updater::update: not inited" << std::endl;
             return false;
         }
@@ -477,7 +487,7 @@ public: // update API: using text update statement
         const std::string sql =
             fmt::format(SqlStatement<T>::updateStatement(org_obj, new_obj), dbmap.getTableName());
         return manager.exec(sql);
-    }
+    } // updateBySqlStmt
 
 public: // update API: using place holder update statement
     bool updateOne(T* org_obj, T* new_obj) {
@@ -543,7 +553,7 @@ public:
      * @return true if prepared; otherwise, false.
      */
     bool prepareByPredicate(const std::string &pred = "") {
-        if (!dbmap.inited()) {
+        if (!manager.isConnected()) {
             std::cerr << "DbMap<" << typeid(T).name() << ">::Reader::" 
                 << "prepare2Scan: not inited" << std::endl;
             return false;
@@ -574,7 +584,7 @@ public:
      * @return true if prepared; otherwise, false.
      */
     bool prepareByPrimaryKey(T* obj) {
-        if (!dbmap.inited()) {
+        if (!manager.isConnected()) {
             std::cerr << "DbMap<" << typeid(T).name() << ">::Reader::"
                 << "prepare: not inited" << std::endl;
             return false;
@@ -600,7 +610,7 @@ public:
 
 public:
     bool read(T* obj) {
-        if (!dbmap.inited()) {
+        if (!manager.isConnected()) {
             std::cerr << "DbMap<" << typeid(T).name() << ">::Reader::"
                 << "read: not inited" << std::endl;
             return false;
@@ -615,7 +625,7 @@ public:
     }
 
     bool finalize() {
-        if (!dbmap.inited()) {
+        if (!manager.isConnected()) {
             std::cerr << "DbMap::scanFinalize: not inited" << std::endl;
             return false;
         }

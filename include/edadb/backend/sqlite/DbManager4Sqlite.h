@@ -63,13 +63,20 @@ protected:
 
 public: // database operation
     /**
+     * @brief Get the database connection parameter.
+     * @return connected status.
+     */
+    bool isConnected() const {
+        return !connect_param.empty();
+    }
+
+    /**
      * @brief Connect to the database using the connection parameter.
      * @param c The connection parameter.
      * @return true if connected; otherwise, false.
      */
     bool connect(const std::string &c = "edadb.sqlite3.db") {
-        if (!connect_param.empty()) {
-            // already connected
+        if (isConnected()) {
             return true;
         }
 
@@ -104,7 +111,7 @@ public: // database operation
     */
     bool close() {
         // success close if not connected 
-        if (connect_param.empty()) {
+        if (!isConnected()) {
             return true;
         }
 

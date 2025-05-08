@@ -43,92 +43,44 @@ void testSqlStatement() {
     
 
 int testDbMap() {
-    // init database and create table
-//    edadb::DbMap<IdbSite> &dbm = edadb::DbMap<IdbSite>::i();
-//    if (!dbm.init("sqlite.db")) {
-//        std::cerr << "DbMap::init failed" << std::endl;
-//        return 1;
-//    }
+    std::cout << "[DbMap Init Database]" << std::endl;
     if (!edadb::initDatabase<IdbSite>("simple.db")) {
         std::cerr << "DbMap::init failed" << std::endl;
         return 1;
     }
 
-//    std::cout << "[DbMap CreateTable]" << std::endl;
-//    dbm.createTable();
-//    std::cout << std::endl << std::endl;
-    if (!edadb::createTable<IdbSite>()) {
+    // Define DbMap instance to operate the database table
+    edadb::DbMap<IdbSite> dbm;
+
+    std::cout << "[DbMap CreateTable]" << std::endl;
+    if (!edadb::createTable<IdbSite>(dbm)) {
         std::cerr << "DbMap::createTable failed" << std::endl;
         return 1;
     }
 
-
-     // insert
-     std::cout << "[DbMap Insert]" << std::endl;
-     IdbSite p1("Site1",100,110), p2("Site2",200,210), p3("Site3",300,310), p4("Site4",400,410), p5("Site5",500,510);
-     std::vector<IdbSite*> vec;
-     vec.push_back(&p2);
-     vec.push_back(&p3);
-     vec.push_back(&p4);
-     vec.push_back(&p5);
- 
-//    // insert records
-//    edadb::DbMap<IdbSite>::Writer writer;
-//    if (writer.insert(&p1) == false) {
-//        std::cerr << "DbMap::Writer::insert failed" << std::endl;
-//        return 1;
-//    }
-//    if (writer.insert(&p2) == false) {
-//        std::cerr << "DbMap::Writer::insert failed" << std::endl;
-//        return 1;
-//    }  
-//    if (writer.insert(&p3) == false) {
-//        std::cerr << "DbMap::Writer::insert failed" << std::endl;
-//        return 1;
-//    }
-//    if (writer.insert(&p4) == false) {
-//        std::cerr << "DbMap::Writer::insert failed" << std::endl;
-//        return 1;
-//    }
-//    if (writer.insert(&p5) == false) {
-//        std::cerr << "DbMap::Writer::insert failed" << std::endl;
-//        return 1;
-//    }
-//    writer.finalize(); 
-
-    if (!edadb::insertObject<IdbSite>(&p1)) {
+    std::cout << "[DbMap Insert]" << std::endl;
+    IdbSite p1("Site1",100,110), p2("Site2",200,210), p3("Site3",300,310), p4("Site4",400,410), p5("Site5",500,510);
+    std::vector<IdbSite*> vec;
+    vec.push_back(&p2);
+    vec.push_back(&p3);
+    vec.push_back(&p4);
+    vec.push_back(&p5);
+    if (!edadb::insertObject<IdbSite>(dbm, &p1)) {
         std::cerr << "DbMap::Writer::insert failed" << std::endl;
         return 1;
     }
-
-    if (!edadb::insertVector<IdbSite>(vec)) {
+    if (!edadb::insertVector<IdbSite>(dbm, vec)) {
         std::cerr << "DbMap::Writer::insert failed" << std::endl;
         return 1;
     }
-
     std::cout << std::endl << std::endl;
 
 
-    // scan
     std::cout << "[DbMap Scan]" << std::endl;
-//    edadb::DbMap<IdbSite>::Reader reader(dbm);
-//    reader.prepareByPredicate();
-//
-//    IdbSite got; 
-//    bool got_flag = false;
-//    uint32_t cnt = 0;
-//    while (got_flag = reader.read(&got)) {
-//        std::cout << "IdbSite [" << cnt++ << "] :  ";
-//        got.print();
-//    }
-//
-//    reader.finalize();
-//    std::cout << std::endl << std::endl;
-
     edadb::DbMapReader<IdbSite> *rd = nullptr;
     IdbSite got;
     std::string pred = "";
-    while (edadb::readByPredicate<IdbSite>(rd, &got, pred) > 0) {
+    while (edadb::readByPredicate<IdbSite>(rd, dbm, &got, pred) > 0) {
         std::cout << "IdbSite :  ";
         got.print();
     } 
@@ -140,7 +92,7 @@ int testDbMap() {
     IdbSite p1_new("Site1_new",1000,1100), p2_new("Site2_new",2000,2100), p3_new("Site3_new",3000,3100);
 //    writer.updateBySqlStmt(&p1, &p1_new);
 //    writer.updateBySqlStmt(&p2, &p2_new);
-    if (!edadb::updateObject<IdbSite>(&p1, &p1_new)) {
+    if (!edadb::updateObject<IdbSite>(dbm, &p1, &p1_new)) {
         std::cerr << "DbMap::Writer::update failed" << std::endl;
         return 1;
     }
@@ -150,22 +102,14 @@ int testDbMap() {
     new_vec.push_back(&p2_new);
     new_vec.push_back(&p3_new);
 
-    if (!edadb::updateVector<IdbSite>(org_vec, new_vec)) {
+    if (!edadb::updateVector<IdbSite>(dbm, org_vec, new_vec)) {
         std::cerr << "DbMap::Writer::update failed" << std::endl;
         return 1;
     }
 
 
     // scan
-//    reader.prepareByPredicate();
-//    cnt = 0;
-//    while (got_flag = reader.read(&got)) {
-//        std::cout << "IdbSite [" << cnt++ << "] :  ";
-//        got.print();
-//    }
-//    reader.finalize();
-//    std::cout << std::endl << std::endl;
-    while (edadb::readByPredicate<IdbSite>(rd, &got, pred) > 0) {
+    while (edadb::readByPredicate<IdbSite>(rd, dbm, &got, pred) > 0) {
         std::cout << "IdbSite :  ";
         got.print();
     }
@@ -176,26 +120,18 @@ int testDbMap() {
     std::cout << "[DbMap Delete]" << std::endl;
 //    writer.deleteByPrimaryKeys(&p1_new);
 //    writer.deleteByPrimaryKeys(&p2_new);
-    if (!edadb::deleteObject<IdbSite>(&p1_new)) {
+    if (!edadb::deleteObject<IdbSite>(dbm, &p1_new)) {
         std::cerr << "DbMap::Writer::delete failed" << std::endl;
         return 1;
     }
-    if (!edadb::deleteObject<IdbSite>(&p2_new)) {
+    if (!edadb::deleteObject<IdbSite>(dbm, &p2_new)) {
         std::cerr << "DbMap::Writer::delete failed" << std::endl;
         return 1;
     }
     std::cout << std::endl << std::endl;
 
     // scan
-//    reader.prepareByPredicate();
-//    cnt = 0;
-//    while (got_flag = reader.read(&got)) {
-//        std::cout << "IdbSite [" << cnt++ << "] :  ";
-//        got.print();
-//    }
-//    reader.finalize();
-//    std::cout << std::endl << std::endl;
-    while (edadb::readByPredicate<IdbSite>(rd, &got, pred) > 0) {
+    while (edadb::readByPredicate<IdbSite>(rd, dbm, &got, pred) > 0) {
         std::cout << "IdbSite :  ";
         got.print();
     }
@@ -205,22 +141,12 @@ int testDbMap() {
     // lookup
     std::cout << "[DbMap Lookup]" << std::endl;
     IdbSite lookup_idsite("Site4",0,0);
-//    reader.prepareByPrimaryKey(&lookup_idsite);
-//    got_flag = reader.read(&got);
-//    if (got_flag) {
-//        std::cout << "IdbSite :  ";
-//        got.print();
-//    } else {
-//        std::cout << "IdbSite not found" << std::endl;
-//    }
-//    reader.finalize();
-    if (edadb::readByPrimaryKey<IdbSite>(&lookup_idsite) > 0) {
+    if (edadb::readByPrimaryKey<IdbSite>(dbm, &lookup_idsite) > 0) {
         std::cout << "IdbSite :  ";
         lookup_idsite.print();
     } else {
         std::cout << "IdbSite not found" << std::endl;
     }
-
 
     return 0;
 }
@@ -228,7 +154,7 @@ int testDbMap() {
 
 int main() {
 //    testTypeMetaDataPrinter();
-    testSqlStatement();
+//    testSqlStatement();
     testDbMap();
 
     return 0;

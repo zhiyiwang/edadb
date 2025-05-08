@@ -65,7 +65,7 @@ namespace edadb {
 template<typename T>
 bool initDatabase(const std::string& dbName) {
     bool res = false;
-    if ((res = DbMap<T>::i().init(dbName)) == false) {
+    if ((res = DbMapBase::i().init(dbName)) == false) {
         std::cerr << "DbMap::init failed" << std::endl;
         return res;
     }
@@ -81,12 +81,13 @@ bool initDatabase(const std::string& dbName) {
 
 template<typename T>
 bool executeSql(const std::string& sql) {
-    return DbMap<T>::i().executeSql(sql);
+    return DbMapBase::i().executeSql(sql);
 }
 
+
 template<typename T>
-bool createTable() {
-    return DbMap<T>::i().createTable();
+bool createTable(DbMap<T> &dbmap) {
+    return dbmap.createTable();
 }
 
 template<typename T>
@@ -110,8 +111,8 @@ bool commitTransaction() {
  * @return use decltype to return the type of the insert function, which is bool.
  */
 template <typename T>
-bool insertObject(T* obj) {
-    typename DbMap<T>::Writer writer;
+bool insertObject(DbMap<T> &dbmap, T* obj) {
+    typename DbMap<T>::Writer writer(dbmap);
     return writer.insertOne(obj);
 }
 
@@ -121,8 +122,8 @@ bool insertObject(T* obj) {
  * @return use decltype to return the type of the insert function, which is bool.
  */
 template <typename T>
-bool insertVector(std::vector<T*>& obj_ptr_vec) {
-    typename DbMap<T>::Writer writer; 
+bool insertVector(DbMap<T> &dbmap, std::vector<T*>& obj_ptr_vec) {
+    typename DbMap<T>::Writer writer(dbmap); 
     return writer.insertVector(obj_ptr_vec);
 }
 
@@ -133,8 +134,8 @@ bool insertVector(std::vector<T*>& obj_ptr_vec) {
  * @return use decltype to return the type of the update function, which is bool.
  */
 template <typename T>
-bool updateObjectBySqlStmt(T* obj_ptr_org, T* obj_ptr_new) {
-    typename DbMap<T>::Writer writer;
+bool updateObjectBySqlStmt(DbMap<T> &dbmap, T* obj_ptr_org, T* obj_ptr_new) {
+    typename DbMap<T>::Writer writer(dbmap);
     return writer.updateBySqlStmt(obj_ptr_org, obj_ptr_new);
 }
 
@@ -147,14 +148,15 @@ using DbMapWriter = typename edadb::DbMap<T>::Writer;
 
 
 template <typename T>
-int updateObject(T* org_obj_ptr, T* new_obj_ptr) {
-    typename DbMap<T>::Writer writer;
+int updateObject(DbMap<T> &dbmap, T* org_obj_ptr, T* new_obj_ptr) {
+    typename DbMap<T>::Writer writer(dbmap);
     return writer.updateOne(org_obj_ptr, new_obj_ptr);
 }
 
 template <typename T>
-bool updateVector(std::vector<T*>& org_vec_ptr, std::vector<T*>& new_vec_ptr) {
-    typename DbMap<T>::Writer writer;
+bool updateVector(DbMap<T> &dbmap,
+        std::vector<T*>& org_vec_ptr, std::vector<T*>& new_vec_ptr) {
+    typename DbMap<T>::Writer writer(dbmap);
     return writer.updateVector(org_vec_ptr, new_vec_ptr);
 }
 
@@ -165,8 +167,8 @@ bool updateVector(std::vector<T*>& org_vec_ptr, std::vector<T*>& new_vec_ptr) {
  * @return use decltype to return the type of the delete function, which is bool.
  */
 template <typename T>
-bool deleteObject(T* obj_ptr) {
-    typename DbMap<T>::Writer writer;
+bool deleteObject(DbMap<T> &dbmap, T* obj_ptr) {
+    typename DbMap<T>::Writer writer(dbmap);
 //    return writer.deleteByPrimaryKeys(obj_ptr);
     return writer.deleteOne(obj_ptr);
 }
@@ -188,9 +190,10 @@ using DbMapReader = typename edadb::DbMap<T>::Reader;
  * @return int Returns 1 if read successfully, 0 if no more row, -1 if error.
  */    
 template <typename T>
-int readByPredicate(typename edadb::DbMap<T>::Reader*& reader, T* obj, const std::string& predicate) {
+int readByPredicate(typename edadb::DbMap<T>::Reader*& reader,
+        DbMap<T> &dbmap, T* obj, const std::string& predicate) {
     if (reader == nullptr) {
-        reader = new typename edadb::DbMap<T>::Reader(edadb::DbMap<T>::i());
+        reader = new typename edadb::DbMap<T>::Reader(dbmap);
         if (reader->prepareByPredicate(predicate) == false) {
             std::cerr << "DbMap::Reader::prepareByPredicate: prepare failed" << std::endl;
             delete reader;
@@ -216,9 +219,9 @@ int readByPredicate(typename edadb::DbMap<T>::Reader*& reader, T* obj, const std
  * @return int Returns 1 if read successfully, -1 if error.
  */
 template <typename T>
-int readByPrimaryKey(T* obj) {
+int readByPrimaryKey(DbMap<T> &dbmap, T* obj) {
     // primary key read is one time only
-    typename edadb::DbMap<T>::Reader reader(edadb::DbMap<T>::i());
+    typename edadb::DbMap<T>::Reader reader(dbmap);
     bool got = false;
     if (!(got = reader.prepareByPrimaryKey(obj))) {
         std::cerr << "DbMap::Reader::prepareByPrimaryKey: prepare failed" << std::endl;
