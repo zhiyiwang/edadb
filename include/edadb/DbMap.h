@@ -204,13 +204,15 @@ protected:
      *   static thread_local: var is shared by all instances of the thread
      */
     DbStatement dbstmt; 
-    uint32_t bind_idx = 0;  
+    uint32_t bind_idx; 
 
     DbMapOperation op = DbMapOperation::NONE;
 
 public:
     ~Writer() = default;
-    Writer (DbMap &m): dbmap(m), manager(m.getManager()) {
+    Writer (DbMap &m): dbmap(m), manager(m.getManager()),
+            bind_idx(manager.s_bind_column_begin_index)
+    {
         if (!manager.isConnected()) {
             std::cerr << "DbMap::Writer: not inited" << std::endl;
             return;
@@ -242,6 +244,7 @@ public: // utility
 
         const std::string sql =
             fmt::format(OpTraits<T, OP>::getSQL(dbmap), dbmap.getTableName());
+//        std::cout << "## [Debug] prepare2 sql: " << sql << std::endl;
         if (!dbstmt.prepare(sql)) {
             std::cerr << "DbMap::Writer::prepare2: prepare statement failed" << std::endl;
             return false;

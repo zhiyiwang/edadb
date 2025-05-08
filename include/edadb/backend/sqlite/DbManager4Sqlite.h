@@ -136,6 +136,12 @@ public: // sqlite3 statement operation
         dbstmt.db = db;
         dbstmt.stmt = nullptr;
         dbstmt.zErrMsg = nullptr;
+
+        #if _DEADB_DEBUG_TRACE_SQL_STMT_
+            // register the trace callback to output the SQL statement
+            dbstmt.registerTrace();
+        #endif
+
         return true;
     }
 

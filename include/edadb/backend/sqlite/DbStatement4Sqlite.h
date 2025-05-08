@@ -169,6 +169,14 @@ public: // insert column
             zErrMsg = sqlite3_errmsg(db);
             std::cerr << "Sqlite3 Error: " << zErrMsg << std::endl;
         }
+
+        #if _DEADB_DEBUG_TRACE_SQL_STMT_
+            // use sqlite3_changes to check the number of rows changed
+            int changes = sqlite3_changes(db);
+            std::cout << "## [Debug EDADB] DbStatement::bindStep sqlite3_changes: "
+                    << changes << std::endl;
+        #endif
+
         return stepped;
     }
 
@@ -201,7 +209,7 @@ public: // schema info
     }
 
 
-public: // fetch 
+public: // fetch column
     /**
      * call sqlite3_step to get the next row.
      * Since return may not be SQLITE_ROW, we need to check the return value.
@@ -215,7 +223,6 @@ public: // fetch
         return (sqlite3_step(stmt) == SQLITE_ROW);
     }
 
-public: // fetch column
     /**
      * @brief fetch from 32B integer type
      *   the size of T should be less than or equal to int: enable_if
@@ -283,7 +290,42 @@ public: // fetch column
         *value = (const wchar_t*)sqlite3_column_text16(stmt, index);
         return true;
     }
-};
+
+
+public: // sqlite3 trace API
+    void registerTrace() {
+        // only register once per db handle; you can guard with a flag if you like
+        sqlite3_trace_v2(
+            db,
+            SQLITE_TRACE_STMT,
+            &DbStatementImpl::traceCallback,
+            nullptr
+        );
+    }
+
+private: // sqlite3 trace
+    static int traceCallback(
+        unsigned   type,
+        void*      /*ctx*/,
+        void*      pStmt,
+        void*      /*unused*/
+    ) {
+        if(type != SQLITE_TRACE_STMT) 
+            return 0;
+
+        auto *stmt = reinterpret_cast<sqlite3_stmt*>(pStmt);
+        std::cerr << "[TRACE] raw SQL: <<< " << sqlite3_sql(stmt) << " >>>\n";
+
+        #if SQLITE_VERSION_NUMBER >= 3014000
+            if(char *exp = sqlite3_expanded_sql(stmt)) {
+              std::cerr << "[TRACE] expanded SQL: <<< " << exp << " >>>\n";
+              sqlite3_free(exp);
+            }
+        #endif
+
+        return 0;
+    }
+}; // DbStatementImpl
 
 
 

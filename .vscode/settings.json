@@ -52,6 +52,7 @@
         "numeric": "cpp",
         "span": "cpp",
         "cinttypes": "cpp",
-        "*.ipp": "cpp"
+        "*.ipp": "cpp",
+        "bitset": "cpp"
     }
 }

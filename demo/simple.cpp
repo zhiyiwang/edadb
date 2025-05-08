@@ -114,6 +114,7 @@ int testDbMap() {
         got.print();
     }
     std::cout << std::endl << std::endl;
+    assert(rd == nullptr);
 
 
     // delete
@@ -136,6 +137,7 @@ int testDbMap() {
         got.print();
     }
     std::cout << std::endl << std::endl;
+    assert(rd == nullptr);
 
 
     // lookup
