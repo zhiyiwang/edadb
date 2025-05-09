@@ -213,6 +213,8 @@ public:
     Writer (DbMap &m): dbmap(m), manager(m.getManager()),
             bind_idx(manager.s_bind_column_begin_index)
     {
+        resetBindIndex();
+
         if (!manager.isConnected()) {
             std::cerr << "DbMap::Writer: not inited" << std::endl;
             return;
