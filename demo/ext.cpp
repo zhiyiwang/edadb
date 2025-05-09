@@ -230,11 +230,11 @@ _EDADB_DEFINE_TABLE_BY_CLASS_(IdbVia, "via_table", (_name, _coord, _global_enum,
 
 // utlity functions
 template<typename T>
-int scanTable() {
+int scanTable(edadb::DbMap<T>& dbm) {
     edadb::DbMapReader<T> *rd = nullptr;
     T got;
     std::string pred = "";
-    while (edadb::readByPredicate<T>(rd, &got, pred) > 0) {
+    while (edadb::readByPredicate<T>(rd, dbm, &got, pred) > 0) {
         std::cout << "scanTable<" << typeid(T).name() << "> :  ";
         got.print();
     } 
@@ -254,14 +254,13 @@ int testIdbCoordinate(const std::string& conn_param) {
         std::cerr << "DbMap::init failed" << std::endl;
         return 1;
     }
-    if (edadb::executeSql<IdbCoordinate>("PRAGMA foreign_keys = ON;") == false) {
-        std::cerr << "DbMap::executeSql failed" << std::endl;
-        return 1;
-    }
     std::cout << std::endl << std::endl;
 
+    // Define DbMap instance to operate the database table
+    edadb::DbMap<IdbCoordinate> dbm;
+
     std::cout << "[DbMap CreateTable]" << std::endl;
-    if (!edadb::createTable<IdbCoordinate>()) {
+    if (!edadb::createTable<IdbCoordinate>(dbm)) {
         std::cerr << "DbMap::createTable failed" << std::endl;
         return 1;
     }
@@ -276,7 +275,7 @@ int testIdbCoordinate(const std::string& conn_param) {
     coord_vec.push_back(&c2); c2.print();
     coord_vec.push_back(&c3); c3.print();
     coord_vec.push_back(&c4); c4.print();
-    if (!edadb::insertVector<IdbCoordinate>(coord_vec)) {
+    if (!edadb::insertVector<IdbCoordinate>(dbm, coord_vec)) {
         std::cerr << "DbMap::insert failed" << std::endl;
         return 1;
     }
@@ -284,34 +283,34 @@ int testIdbCoordinate(const std::string& conn_param) {
 
     // read variables
     std::cout << "[DbMap Scan]" << std::endl;
-    scanTable<IdbCoordinate>();
+    scanTable<IdbCoordinate>(dbm);
     std::cout << std::endl << std::endl;
 
 
     // update objects
     std::cout << "[DbMap Update]" << std::endl;
     IdbCoordinate c3_new (30, 30);
-    if (!edadb::updateObject<IdbCoordinate>(&c3, &c3_new)) {
+    if (!edadb::updateObject<IdbCoordinate>(dbm, &c3, &c3_new)) {
         std::cerr << "DbMap::update failed" << std::endl;
         return 1;
     }
     std::cout << std::endl << std::endl;
 
     std::cout << "[DbMap Scan]" << std::endl;
-    scanTable<IdbCoordinate>();
+    scanTable<IdbCoordinate>(dbm);
     std::cout << std::endl << std::endl;
 
 
     // delete objects
     std::cout << "[DbMap Delete]" << std::endl;
-    if (!edadb::deleteObject<IdbCoordinate>(&c4)) {
+    if (!edadb::deleteObject<IdbCoordinate>(dbm, &c4)) {
         std::cerr << "DbMap::delete failed" << std::endl;
         return 1;
     }
     std::cout << std::endl << std::endl;
 
     std::cout << "[DbMap Scan]" << std::endl;
-    scanTable<IdbCoordinate>();
+    scanTable<IdbCoordinate>(dbm);
     std::cout << std::endl << std::endl;
 
     return 1;
@@ -330,8 +329,11 @@ int testIdbVia(const std::string& conn_param) {
     }
    std::cout << std::endl << std::endl;
 
+    // Define DbMap instance to operate the database table
+    edadb::DbMap<IdbVia> dbm;
+
     std::cout << "[DbMap CreateTable]" << std::endl;
-    if (!edadb::createTable<IdbVia>()) {
+    if (!edadb::createTable<IdbVia>(dbm)) {
         std::cerr << "DbMap::createTable failed" << std::endl;
         return 1;
     }
@@ -349,7 +351,7 @@ int testIdbVia(const std::string& conn_param) {
     via_vec.push_back(&v2); // v2.print();
     via_vec.push_back(&v3); // v3.print();
     via_vec.push_back(&v4); // v4.print();
-    if (!edadb::insertVector<IdbVia>(via_vec)) {
+    if (!edadb::insertVector<IdbVia>(dbm, via_vec)) {
         std::cerr << "DbMap::insert failed" << std::endl;
         return 1;
     }
@@ -357,21 +359,21 @@ int testIdbVia(const std::string& conn_param) {
 
     // read variables
     std::cout << "[DbMap Scan]" << std::endl;
-    scanTable<IdbVia>();
+    scanTable<IdbVia>(dbm);
     std::cout << std::endl << std::endl;
 
 
     // update objects
     std::cout << "[DbMap Update]" << std::endl;
     IdbVia v1_new("via1_new", 100, 110), v2_new("via2_new", 200, 210);
-    if (!edadb::updateObject<IdbVia>(&v1, &v1_new)) {
+    if (!edadb::updateObject<IdbVia>(dbm, &v1, &v1_new)) {
         std::cerr << "DbMap::update failed" << std::endl;
         return 1;
     }
     std::vector<IdbVia*> org_vec, new_vec;
     org_vec.push_back(&v2);
     new_vec.push_back(&v2_new);
-    if (!edadb::updateVector<IdbVia>(org_vec, new_vec)) {
+    if (!edadb::updateVector<IdbVia>(dbm, org_vec, new_vec)) {
         std::cerr << "DbMap::update failed" << std::endl;
         return 1;
     }
@@ -379,13 +381,13 @@ int testIdbVia(const std::string& conn_param) {
 
     // read variables
     std::cout << "[DbMap Scan]" << std::endl;
-    scanTable<IdbVia>();
+    scanTable<IdbVia>(dbm);
     std::cout << std::endl << std::endl;
 
 
     // delete objects
     std::cout << "[DbMap Delete]" << std::endl;
-    if (!edadb::deleteObject<IdbVia>(&v1_new)) {
+    if (!edadb::deleteObject<IdbVia>(dbm, &v1_new)) {
         std::cerr << "DbMap::delete failed" << std::endl;
         return 1;
     }
@@ -393,18 +395,16 @@ int testIdbVia(const std::string& conn_param) {
 
     // read variables
     std::cout << "[DbMap Scan]" << std::endl;
-    scanTable<IdbVia>();
+    scanTable<IdbVia>(dbm);
     std::cout << std::endl << std::endl;
 
 
     return 0;
 }
 
-
 int main () {
-    const std::string conn_param = "full.db";
-//    testIdbCoordinate(conn_param);
-    testIdbVia(conn_param);
+    testIdbCoordinate("ext.coord.db");
+    testIdbVia("ext.via.db");
 
     return 0;
 } // main

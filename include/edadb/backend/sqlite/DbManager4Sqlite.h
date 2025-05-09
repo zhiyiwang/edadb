@@ -80,14 +80,22 @@ public: // database operation
             return true;
         }
 
+        // connect to the database
         connect_param = c;
-        bool connected = (sqlite3_open(connect_param.c_str(), &db) == SQLITE_OK);
-        if (!connected) {
+        if (!(sqlite3_open(connect_param.c_str(), &db) == SQLITE_OK)) {
             std::cerr << "Sqlite3 Error: can't open database: " << connect_param << std::endl;
             std::cerr << "Sqlite3 Error: " << sqlite3_errmsg(db) << std::endl;
+            return false;
         }
-        return connected;
-    }
+
+        // enable foreign key constraint
+        if (!exec("PRAGMA foreign_keys = ON;")) {
+            std::cerr << "Sqlite3 Error: can't enable foreign key constraint" << std::endl;
+            return false;
+        }
+
+        return true;
+    } // connect
 
     /**
      * @brief Execute the SQL statement directly.

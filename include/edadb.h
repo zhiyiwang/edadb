@@ -69,13 +69,6 @@ bool initDatabase(const std::string& dbName) {
         std::cerr << "DbMap::init failed" << std::endl;
         return res;
     }
-
-    // Connection Setting: enable foreign key constraint
-    if ((res = DbManager::i().exec("PRAGMA foreign_keys = ON;")) == false) {
-        std::cerr << "DbMap::executeSql failed" << std::endl;
-        return res;
-    }
-
     return res;
 }
 
