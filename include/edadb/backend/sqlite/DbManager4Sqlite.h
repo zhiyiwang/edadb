@@ -111,7 +111,7 @@ public: // database operation
             sqlite3_free(zErrMsg);
         }
         return executed;
-    }
+    } // exec
 
     /**
      * @brief Close the database.
@@ -131,7 +131,7 @@ public: // database operation
         connect_param.clear();
         db = nullptr;
         return closed;
-    }
+    } // close
 
 
 public: // sqlite3 statement operation 
@@ -146,12 +146,13 @@ public: // sqlite3 statement operation
         dbstmt.zErrMsg = nullptr;
 
         #if _DEADB_DEBUG_TRACE_SQL_STMT_
+            std::cout << "################################################";
             // register the trace callback to output the SQL statement
             dbstmt.registerTrace();
         #endif
 
         return true;
-    }
+    } // initStatement
 
     /**
      * @brief check the number of rows changed by the last statement.

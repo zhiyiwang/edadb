@@ -16,7 +16,69 @@ namespace edadb {
  * @tparam T The class type.
  */
 template<typename T>
-struct TypeMetaData;
+struct TypeMetaData {
+    using TupType          = boost::fusion::vector<>;
+    using TupTypePairType  = boost::fusion::vector<>;
+
+    inline static auto tuple_type_pair() -> TupTypePairType const& {
+        /* Dierectly use this class will cause error during linking */
+        static_assert(always_false_v<T>,
+            "TypeMetaData<T> must be specialized by macro _EDADB_DEFINE_TABLE_BY_CLASS_ or _EDADB_DEFINE_TABLE_BY_COLUMN_ "
+        );
+
+        static const TupTypePairType t{};
+        return t;
+    }
+
+    inline static std::string const& class_name() {
+        /* Dierectly use this class will cause error during linking */
+        static_assert(always_false_v<T>,
+            "TypeMetaData<T> must be specialized by macro _EDADB_DEFINE_TABLE_BY_CLASS_ or _EDADB_DEFINE_TABLE_BY_COLUMN_ "
+        );
+
+        static const std::string n;
+        return n;
+    }
+
+    inline static std::string const& table_name() {
+        /* Dierectly use this class will cause error during linking */
+        static_assert(always_false_v<T>,
+            "TypeMetaData<T> must be specialized by macro _EDADB_DEFINE_TABLE_BY_CLASS_ or _EDADB_DEFINE_TABLE_BY_COLUMN_ "
+        );
+
+        static const std::string t;
+        return t;
+    }
+
+    inline static const std::vector<std::string>& member_names() {
+        /* Dierectly use this class will cause error during linking */
+        static_assert(always_false_v<T>,
+            "TypeMetaData<T> must be specialized by macro _EDADB_DEFINE_TABLE_BY_CLASS_ or _EDADB_DEFINE_TABLE_BY_COLUMN_ "
+        );
+
+        static const std::vector<std::string> v;
+        return v;
+    }
+
+    inline static const std::vector<std::string>& column_names() {
+        /* Dierectly use this class will cause error during linking */
+        static_assert(always_false_v<T>,
+            "TypeMetaData<T> must be specialized by macro _EDADB_DEFINE_TABLE_BY_CLASS_ or _EDADB_DEFINE_TABLE_BY_COLUMN_ "
+        );
+
+        static const std::vector<std::string> v;
+        return v;
+    }
+
+    inline static TupType getVal(T* /*obj*/) {
+        /* Dierectly use this class will cause error during linking */
+        static_assert(always_false_v<T>,
+            "TypeMetaData<T> must be specialized by macro _EDADB_DEFINE_TABLE_BY_CLASS_ or _EDADB_DEFINE_TABLE_BY_COLUMN_ "
+        );
+
+        return TupType{};
+    }
+}; // TypeMetaData
 
 
 

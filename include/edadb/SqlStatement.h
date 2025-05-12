@@ -22,6 +22,33 @@
 
 namespace edadb {
 
+//////// Table Relations //////////////////////////////////////////////////////
+/**
+ * @brief Foreign key constraint for the table.
+ */
+struct ForeignKeyConstraint {
+public:
+    std::string table; // referenced table name
+    std::vector<std::string> column; // column name as foreign key
+    std::vector<std::string> type; // column type for each column
+
+public:
+    ForeignKeyConstraint() = default;
+    ForeignKeyConstraint(std::string t, std::vector<std::string> c, std::vector<std::string> ty)
+        : table(t), column(c), type(ty) {}
+    ~ForeignKeyConstraint() = default;
+
+public:
+    void print() const {
+        std::cout << "ForeignKeyConstraint: table=" << table << std::endl;
+        for (size_t i = 0; i < column.size(); ++i) {
+            std::cout << "  column[" << i << "]=" << column[i] << ", type=" << type[i] << std::endl;
+        }
+    }
+}; // ForeignKeyConstraint
+
+
+
 /**
  * @struct SqlStatementBase
  * @brief This struct is the base class for generating SQL statements.
@@ -111,7 +138,7 @@ protected:  // some utility functions
                 name.push_back(prefix + column_name);
 //                name.push_back(x.second); // x.second is the name of the member variable
             }
-       }
+        }
     };
 
     /**

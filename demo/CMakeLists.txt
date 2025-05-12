@@ -9,6 +9,10 @@ foreach(DEMO_SRC ${DEMO_SOURCES})
     # Set the project name using the filename without extension
     get_filename_component(DEMO_NAME ${DEMO_SRC} NAME_WE)
     add_executable(${DEMO_NAME} ${DEMO_SRC})
+
+    target_compile_definitions(${DEMO_NAME} PRIVATE
+        _DEADB_DEBUG_TRACE_SQL_STMT_=1
+    )   
     
     # include header files
     target_include_directories(${DEMO_NAME} PRIVATE

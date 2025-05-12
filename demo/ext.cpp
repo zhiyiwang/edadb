@@ -327,7 +327,7 @@ int testIdbVia(const std::string& conn_param) {
         std::cerr << "DbMap::init failed" << std::endl;
         return 1;
     }
-   std::cout << std::endl << std::endl;
+    std::cout << std::endl << std::endl;
 
     // Define DbMap instance to operate the database table
     edadb::DbMap<IdbVia> dbm;
@@ -403,8 +403,9 @@ int testIdbVia(const std::string& conn_param) {
 }
 
 int main () {
-    testIdbCoordinate("ext.coord.db");
-    testIdbVia("ext.via.db");
+    const std::string conn_param = "ext.db";
+    testIdbCoordinate(conn_param);
+    testIdbVia       (conn_param);
 
     return 0;
 } // main

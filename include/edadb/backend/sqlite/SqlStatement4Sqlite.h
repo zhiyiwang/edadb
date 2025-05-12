@@ -18,6 +18,7 @@
 #include "Config.h"
 #include "Cpp2SqlType.h"
 #include "TypeMetaData.h"
+#include "VecMetaData.h"    
 #include "SqlStatement.h"
 
 namespace edadb {
@@ -30,30 +31,61 @@ namespace edadb {
 template<typename T>
 struct SqlStatementImpl<DbBackendType::SQLITE, T> : public SqlStatementBase {
     
-
 //////// Standard SQL Statements //////////////////////////////////////
 public: 
-    static std::string const& createTableStatement() {
-        static std::string sql;
-        if (sql.empty()) {
-            /*
-             * get column name and type from TypeMetaData<T>::tuple_type_pair()
-             * NOTE:
-             * 1. column name: use user defined name
-             * 2. type: is the SQL type name string, such as "INTEGER", "TEXT", etc.
-             */
-            std::vector<std::string> name, type;
-            const auto vecs = TypeMetaData<T>::tuple_type_pair();
-            boost::fusion::for_each(vecs, ColumnNameType<T>(name, type));
+    std::string createTableStatement(ForeignKeyConstraint* fkc = nullptr) {
+        std::string sql;
 
-            sql = "CREATE TABLE IF NOT EXISTS \"{}\" (";
-            for (int i = 0; i < name.size(); ++i) {
-                sql += (i == 0) ? (name[i] + " " + type[i] + " PRIMARY KEY") :
-                    (", " + name[i] + " " + type[i]);
-            }
-            sql += ")";
+        /*
+         * get column name and type from TypeMetaData<T>::tuple_type_pair()
+         * NOTE:
+         * 1. column name: use user defined name
+         * 2. type: is the SQL type name string, such as "INTEGER", "TEXT", etc.
+         */
+        std::vector<std::string> name, type;
+        const auto vecs = TypeMetaData<T>::tuple_type_pair();
+        boost::fusion::for_each(vecs, ColumnNameType<T>(name, type));
+
+        sql = "CREATE TABLE IF NOT EXISTS \"{}\" (";
+
+        // table columns by object member variables
+        for (int i = 0; i < name.size(); ++i) {
+            sql += (i == 0) ? (name[i] + " " + type[i] + " PRIMARY KEY") :
+                (", " + name[i] + " " + type[i]);
         }
-//        std::cout << "create table: " << sql << std::endl;
+        assert (name.size() == type.size());
+        assert (name.size() > 0);
+
+        // foreign key constraints
+        if (fkc && (fkc->column.size() > 0)) {
+            assert (fkc->column.size() == fkc->type.size());
+
+            const std::string fk_pref = fkc->table + "_";
+            size_t fk_num = fkc->column.size();
+
+            // add foreign key columns to the child table
+            std::vector<std::string> child_column; // referencing column name
+            for (size_t i = 0; i < fk_num; ++i) {
+                child_column.push_back(fk_pref + fkc->column[i]);
+                sql += ", " + child_column.back() + " " + fkc->type[i];
+            } // for
+
+            // add foreign key constraint
+            sql += ", FOREIGN KEY (";
+            for (size_t i = 0; i < fk_num; ++i) {
+                sql += (i > 0 ? ", " : "") + child_column[i];
+            } // for
+            sql += ") REFERENCES " + fkc->table + "(";
+            for (size_t i = 0; i < fk_num; ++i) {
+                sql += (i > 0 ? ", " : "") + fkc->column[i];
+            } // for
+            sql += ") ON DELETE CASCADE ON UPDATE CASCADE";
+        } // if 
+
+        sql += ");";
+
+//        std::cout << "[DEADB DEBUG]::create table sql statement: " << std::endl;
+//        std::cout << "[DEADB DEBUG]::    " << sql << std::endl;
         return sql;
     }
 
@@ -149,8 +181,8 @@ public:
         boost::fusion::for_each(TypeMetaData<T>::getVal(new_obj), ColumnValues(values));
 
         // generate sql
-        const uint32_t num = name.size();
-        for (uint32_t i = 0; i < num; ++i) {
+        const size_t num = name.size();
+        for (size_t i = 0; i < num; ++i) {
             sql += name[i] + " = " + values[i] + (i + 1 < num ? ", " : "");
         }
 

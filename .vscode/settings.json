@@ -53,6 +53,16 @@
         "span": "cpp",
         "cinttypes": "cpp",
         "*.ipp": "cpp",
-        "bitset": "cpp"
+        "bitset": "cpp",
+        "set": "cpp",
+        "strstream": "cpp",
+        "chrono": "cpp",
+        "complex": "cpp",
+        "forward_list": "cpp",
+        "list": "cpp",
+        "fstream": "cpp",
+        "iomanip": "cpp",
+        "typeindex": "cpp",
+        "variant": "cpp"
     }
 }

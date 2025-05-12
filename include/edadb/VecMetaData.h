@@ -9,6 +9,8 @@
 #include <iostream>
 #include <vector>
 
+#include "MacroHelper.h"
+
 namespace edadb {
 
 /**
@@ -16,7 +18,37 @@ namespace edadb {
  * @tparam T The class type.
  */
 template<typename T>
-struct VecMetaData;
+struct VecMetaData {
+    using VecElem = boost::fusion::vector<>;
+    using TupTypePairType = boost::fusion::vector<>;
+  
+    inline static auto tuple_type_pair() -> TupTypePairType const& {
+        /* Dierectly use this class will cause error during link */
+        static_assert(always_false_v<T>,
+            "TypeMetaData<T> must be specialized by macro _EDADB_DEFINE_TABLE_BY_CLASS_WITH_VECTOR_ "
+        );
+    
+        static const TupTypePairType t{};
+        return t;
+    }
+    inline static VecElem getVecElem(T*) {
+        /* Dierectly use this class will cause error during link. */
+        static_assert(always_false_v<T>,
+            "TypeMetaData<T> must be specialized by macro _EDADB_DEFINE_TABLE_BY_CLASS_WITH_VECTOR_ "
+        );
+        return VecElem{};
+    }
+    inline static const std::vector<std::string>& vec_field_names() {
+        /* Dierectly use this class will cause error during link. */
+        static_assert(always_false_v<T>,
+            "TypeMetaData<T> must be specialized by macro _EDADB_DEFINE_TABLE_BY_CLASS_WITH_VECTOR_ "
+        );
+        static const std::vector<std::string> v{};
+        return v;
+    }
+  
+    enum VecId { MAX = 0 };
+};
 
 /**
  * @brief VecMetaDataPrinter provides a way to print the values of a class with vector
@@ -38,22 +70,22 @@ public:
         // print each vector elem (vector<T> *)
         std::cout << "VecMetaData<T>::VecElem" << std::endl;
         print_type<typename VecMetaData<T>::VecElem>();
-        std::cout << std::endl;
+        std::cout << std::endl << std::endl;
 
         // print vector elem type
         std::cout << "VecMetaData<T>::TupTypePairType" << std::endl;
         print_type<typename VecMetaData<T>::TupTypePairType>();
-        std::cout << std::endl;
+        std::cout << std::endl << std::endl;
 
         // print each vector elem (boost::fusion::pair<std::vector<IdbRect>*, string) 
-        std::cout << "VecMetaData<T>::tuple_type_pair()" << std::endl;
+        std::cout << "VecMetaData<T>::tuple_type_pair() return type : ";
+        std::cout << "boost::fusion::pair<std::vector<T>*, string>" << std::endl;
         auto ttp = VecMetaData<T>::tuple_type_pair();
         boost::fusion::for_each(ttp,
-            [](auto p){
-                std::cout << "  ";
-                print_type<typename decltype(p)::first_type>();
-                std::cout << "  " << p.second;
-                std::cout << std::endl;
+            [](auto v){
+                std::cout << "    < " ;
+                print_type<typename decltype(v)::first_type>();
+                std::cout << " , " << v.second << " >" << std::endl;
             }
         );
         std::cout << std::endl;
@@ -64,8 +96,8 @@ public:
         T obj;
         auto vec_elem = VecMetaData<T>::getVecElem(&obj);
         boost::fusion::for_each(vec_elem,
-            [](auto p){
-                std::cout << "  " << p << std::endl;
+            [](auto v){
+                std::cout << "  " << v << std::endl;
             }
         );
         std::cout << std::endl;
@@ -79,20 +111,15 @@ public:
 
 
         // get VecMetaData<T>::VecId MAX Value
+        std::cout << "VecMetaData<T>::VecId MAX Value" << std::endl;
         constexpr auto enum_num = static_cast< std::underlying_type_t<typename VecMetaData<T>::VecId> >
             ( VecMetaData<T>::MAX );
         const auto &names = VecMetaData<T>::vec_field_names();
-
-        // iterate through the VecId enum values
         for(std::underlying_type_t<typename VecMetaData<T>::VecId> i = 0; i < enum_num; ++i) {
             auto id = static_cast<typename VecMetaData<T>::VecId>(i);
-            std::cout 
-              << "id=" << i 
-              << "   name=" << names[i] 
-              << std::endl;
+            std::cout << "id=" << i << "   name=" << names[i] << std::endl;
         }
     } // printStatic
-
 }; // VecMetaDataPrinter
 
 } // namespace edadb 

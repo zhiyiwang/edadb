@@ -72,7 +72,6 @@ template<>\
 struct Cpp2SqlType<CLASSNAME>{\
     static constexpr SqlType sqlType = SQLTYPE; \
 };\
-template<> struct IsComposite<CLASSNAME> : boost::mpl::bool_<true> {};\
 template<> struct TypeMetaData<CLASSNAME>{\
     using TupType = boost::fusion::vector<GENERATE_TupType(BOOST_PP_TUPLE_PUSH_FRONT(CLASS_ELEMS_TUP, CLASSNAME))>;\
     using TupTypePairType = boost::fusion::vector<GENERATE_TupTypePair(BOOST_PP_TUPLE_PUSH_FRONT(CLASS_ELEMS_TUP, CLASSNAME))>;\

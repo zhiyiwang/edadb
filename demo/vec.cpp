@@ -101,26 +101,73 @@ public:
 }; // IdbPort
 
 
+_EDADB_DEFINE_TABLE_BY_CLASS_(IdbRect, "rect_table", (_x))
+_EDADB_DEFINE_TABLE_BY_CLASS_(IdbRect2, "rect2_table", (_y))
+
 _EDADB_DEFINE_TABLE_BY_CLASS_WITH_VECTOR_(IdbLayerShape, "layer_shape_table", (_name, _layer), (_rects, _rect2s))
-//_EDADB_DEFINE_TABLE_BY_CLASS_WITH_VECTOR_(IdbPort, "port_table", (_name), (_layer_shapes, _rects))
+_EDADB_DEFINE_TABLE_BY_CLASS_WITH_VECTOR_(IdbPort, "port_table", (_name), (_layer_shapes, _rects))
 
 
 int main(void) {
-    IdbLayerShape shape1("IdbLayerShape 1", "Type 1"), shape2("IdbLayerShape 2", "Type 2");
-    shape1._rects.emplace_back(11); shape1._rect2s.emplace_back(12);
-    shape2._rects.emplace_back(21); shape2._rect2s.emplace_back(22);
+    IdbLayerShape shape1("IdbLayerShape 1", "Type 1");
+    shape1._rects.emplace_back(11);
+    shape1._rect2s.emplace_back(12);
 
-    IdbPort port1("Port 1"), port2("Port 2");
-    port1._layer_shapes.push_back(shape1); port1._rects.emplace_back(111);
-    port2._layer_shapes.push_back(shape2); port2._rects.emplace_back(222);
+    IdbPort port1("Port 1");
+    port1._layer_shapes.push_back(shape1);
+    port1._rects.emplace_back(111);
 
-    // print objects
-    std::cout << "================ Demo Vector Init ================" << std::endl;
-    port1.print();
-    port2.print();
+    IdbLayerShape shape2("IdbLayerShape 2", "Type 2");
+    shape2._rects.emplace_back(21);
+    shape2._rect2s.emplace_back(22);
 
-    edadb::VecMetaDataPrinter<IdbLayerShape> printer;
-    printer.printStatic();
+    IdbPort port2("Port 2");
+    port2._layer_shapes.push_back(shape2);
+    port2._rects.emplace_back(222);
+
+    if (1) {
+        // print objects
+        std::cout << "================ Demo Vector Init ================" << std::endl;
+        port1.print();
+        port2.print();
+
+        edadb::VecMetaDataPrinter<IdbLayerShape> printer;
+        printer.printStatic();
+    }
+
+
+    std::string conn_param = "vec.db";
+
+
+    std::cout << "DbMap<" << typeid(IdbLayerShape).name() << ">" << std::endl;
+
+    // init database and create table
+    std::cout << "[DbMap Init]" << std::endl;
+    if (!edadb::initDatabase<IdbLayerShape>(conn_param)) {
+        std::cerr << "DbMap::init failed" << std::endl;
+        return 1;
+    }
+    std::cout << std::endl << std::endl;
+
+    // Define DbMap instance to operate the database table
+    edadb::DbMap<IdbLayerShape> dbm_layer_shape;
+
+    std::cout << "[DbMap CreateTable]" << std::endl;
+    if (!edadb::createTable<IdbLayerShape>(dbm_layer_shape)) {
+        std::cerr << "DbMap::createTable failed" << std::endl;
+        return 1;
+    }
+
+
+
+    // Define DbMap instance to operate the database table
+    edadb::DbMap<IdbPort> dbm_port;
+    std::cout << "[DbMap CreateTable]" << std::endl;
+    if (!edadb::createTable<IdbPort>(dbm_port)) {
+        std::cerr << "DbMap::createTable failed" << std::endl;
+        return 1;
+    }
+
 
     // TODO:
     // 1. create table

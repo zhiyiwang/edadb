@@ -7,8 +7,18 @@
 
 #include <iostream> 
 #include <boost/type_index.hpp>
+#include <boost/fusion/include/for_each.hpp>
+#include <boost/fusion/include/vector.hpp>
+#include <boost/fusion/include/pair.hpp>
 
 namespace edadb {
+
+/**
+ * @brief Always false type trait
+ * @tparam T The type to check.
+ */
+template<typename>
+inline constexpr bool always_false_v = false;
 
 /**
  * @brief remove const and reference from a type
@@ -27,13 +37,6 @@ struct StripQualifiersAndMakePointer {
 };
 
 /**
- * @brief Check if a type is a composite type
- */
-template<typename T>
-struct IsComposite : boost::mpl::bool_<false> {
-};
-
-/**
  * @brief Print the type name of a given type
  */
 template<typename T>
@@ -43,7 +46,7 @@ void print_type() {
     //    boost template function to get the type name with Const, Volatile, and Reference
     // .pretty_name()
     //    to get the human-readable name
-    std::cout << boost::typeindex::type_id_with_cvr<T>().pretty_name() << std::endl;
+    std::cout << boost::typeindex::type_id_with_cvr<T>().pretty_name();
 }
 
 } // namespace edadb
