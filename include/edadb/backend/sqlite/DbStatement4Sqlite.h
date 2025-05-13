@@ -290,41 +290,6 @@ public: // fetch column
         *value = (const wchar_t*)sqlite3_column_text16(stmt, index);
         return true;
     }
-
-
-public: // sqlite3 trace API
-    void registerTrace() {
-        // only register once per db handle; you can guard with a flag if you like
-        sqlite3_trace_v2(
-            db,
-            SQLITE_TRACE_STMT,
-            &DbStatementImpl::traceCallback,
-            nullptr
-        );
-    }
-
-private: // sqlite3 trace
-    static int traceCallback(
-        unsigned   type,
-        void*      /*ctx*/,
-        void*      pStmt,
-        void*      /*unused*/
-    ) {
-        if(type != SQLITE_TRACE_STMT) 
-            return 0;
-
-        auto *stmt = reinterpret_cast<sqlite3_stmt*>(pStmt);
-        std::cerr << "[TRACE] raw SQL: <<< " << sqlite3_sql(stmt) << " >>>\n";
-
-        #if SQLITE_VERSION_NUMBER >= 3014000
-            if(char *exp = sqlite3_expanded_sql(stmt)) {
-              std::cerr << "[TRACE] expanded SQL: <<< " << exp << " >>>\n";
-              sqlite3_free(exp);
-            }
-        #endif
-
-        return 0;
-    }
 }; // DbStatementImpl
 
 

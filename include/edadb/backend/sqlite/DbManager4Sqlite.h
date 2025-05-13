@@ -94,6 +94,12 @@ public: // database operation
             return false;
         }
 
+        // enable sqlite trace if needed
+        #if _EDADB_DEBUG_TRACE_SQL_STMT_
+            // register the trace callback to output the SQL statement
+            registerTrace();
+        #endif
+
         return true;
     } // connect
 
@@ -145,12 +151,6 @@ public: // sqlite3 statement operation
         dbstmt.stmt = nullptr;
         dbstmt.zErrMsg = nullptr;
 
-        #if _DEADB_DEBUG_TRACE_SQL_STMT_
-            std::cout << "################################################";
-            // register the trace callback to output the SQL statement
-            dbstmt.registerTrace();
-        #endif
-
         return true;
     } // initStatement
 
@@ -160,6 +160,44 @@ public: // sqlite3 statement operation
      */
     int changes() {
         return sqlite3_changes(db);
+    }
+
+
+private: // sqlite3 trace API
+    void registerTrace() {
+        // only register once per db handle; you can guard with a flag if you like
+        sqlite3_trace_v2(
+            db,
+            SQLITE_TRACE_STMT,
+            &DbManagerImpl::traceCallback,
+            nullptr
+        );
+    }
+
+    static int traceCallback(
+        unsigned   type,
+        void*      /*ctx*/,
+        void*      pStmt,
+        void*      /*unused*/
+    ) {
+        if(type != SQLITE_TRACE_STMT) 
+            return 0;
+
+        // prepared statement, with placeholders 
+        auto *stmt = reinterpret_cast<sqlite3_stmt*>(pStmt);
+        std::cout << "[EDADB DEBUG TRACE] raw SQL: <<< ";
+        std::cout << sqlite3_sql(stmt) << " >>>\n";
+
+        #if SQLITE_VERSION_NUMBER >= 3014000
+            // exepanded SQL, with bound values
+            if(char *exp = sqlite3_expanded_sql(stmt)) {
+              std::cout << "[EDADB DEBUG TRACE] expanded SQL: <<< ";
+              std::cout << exp << " >>>\n";
+              sqlite3_free(exp);
+            }
+        #endif
+
+        return 0;
     }
 };
 
