@@ -47,7 +47,7 @@
     TABLE4CLASS_COLNAME(CLASS_NAME, TABLE_NAME, CLASS_ELEMS_TUP, COLNAME_TUP)
 
 #define _EDADB_DEFINE_TABLE_4_EXTERNAL_CLASS_(CLASS_NAME, CLASS_ELEMS_TUP) \
-    Table4ExternalClass(CLASS_NAME, CLASS_ELEMS_TUP)
+    TABLE4EXTERNALCLASS(CLASS_NAME, CLASS_ELEMS_TUP)
 
 #define _EDADB_DEFINE_TABLE_BY_CLASS_WITH_VECTOR_(CLASS_NAME, TABLE_NAME, CLASS_ELEMS_TUP, VECTOR_ELEMS_TUP) \
     TABLE4CLASS_WVEC(CLASS_NAME, TABLE_NAME, CLASS_ELEMS_TUP, VECTOR_ELEMS_TUP)
@@ -62,7 +62,6 @@ namespace edadb {
  * @param dbName The database name.
  * @return use decltype to return the type of the init function, which is bool.
  */
-template<typename T>
 bool initDatabase(const std::string& dbName) {
     bool res = false;
     if ((res = DbMapBase::i().init(dbName)) == false) {
@@ -80,8 +79,10 @@ bool executeSql(const std::string& sql) {
 
 template<typename T>
 bool createTable(DbMap<T> &dbmap) {
-    return dbmap.createTable();
-}
+    return DbMapBase::i().beginTransaction()
+        && dbmap.createTable()
+        && DbMapBase::i().commitTransaction();
+}// createTable
 
 template<typename T>
 bool dropTable() {

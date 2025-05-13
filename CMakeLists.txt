@@ -10,7 +10,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # make flags
 set(CMAKE_BUILD_TYPE Debug) # debug mode 
-set(CMAKE_VERBOSE_MAKEFILE ON)
+## set(CMAKE_VERBOSE_MAKEFILE ON)
 
 # output directory
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)

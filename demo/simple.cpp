@@ -20,7 +20,7 @@ public:
 
 //TABLE4CLASS_COLNAME( IdbSite, "IdbSite_table", (name, width, height), ("name_col","width_col","height_col") );
 
-_EDADB_DEFINE_TABLE_BY_COLUMN_(IdbSite, "IdbSite_table", (name, width, height), ("name_col","width_col","height_col") );
+TABLE4CLASS_COLNAME(IdbSite, "IdbSite_table", (name, width, height), ("name_col","width_col","height_col") );
 
 
 void testTypeMetaDataPrinter() {
@@ -44,7 +44,7 @@ void testSqlStatement() {
 
 int testDbMap() {
     std::cout << "[DbMap Init Database]" << std::endl;
-    if (!edadb::initDatabase<IdbSite>("simple.db")) {
+    if (!edadb::initDatabase("simple.db")) {
         std::cerr << "DbMap::init failed" << std::endl;
         return 1;
     }
@@ -53,7 +53,7 @@ int testDbMap() {
     edadb::DbMap<IdbSite> dbm;
 
     std::cout << "[DbMap CreateTable]" << std::endl;
-    if (!edadb::createTable<IdbSite>(dbm)) {
+    if (!edadb::createTable(dbm)) {
         std::cerr << "DbMap::createTable failed" << std::endl;
         return 1;
     }

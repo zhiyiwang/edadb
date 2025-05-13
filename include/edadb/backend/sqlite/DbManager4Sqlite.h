@@ -183,11 +183,7 @@ private: // sqlite3 trace API
         if(type != SQLITE_TRACE_STMT) 
             return 0;
 
-        // prepared statement, with placeholders 
         auto *stmt = reinterpret_cast<sqlite3_stmt*>(pStmt);
-        std::cout << "[EDADB DEBUG TRACE] raw SQL: <<< ";
-        std::cout << sqlite3_sql(stmt) << " >>>\n";
-
         #if SQLITE_VERSION_NUMBER >= 3014000
             // exepanded SQL, with bound values
             if(char *exp = sqlite3_expanded_sql(stmt)) {
@@ -195,6 +191,10 @@ private: // sqlite3 trace API
               std::cout << exp << " >>>\n";
               sqlite3_free(exp);
             }
+        #else 
+            // prepared statement, with placeholders 
+            std::cout << "[EDADB DEBUG TRACE] raw SQL: <<< ";
+            std::cout << sqlite3_sql(stmt) << " >>>\n";
         #endif
 
         return 0;

@@ -212,19 +212,19 @@ public:
 
 
 // Define a shadow class for ExtClass
-_EDADB_DEFINE_TABLE_4_EXTERNAL_CLASS_(ExtClass, (sha_x, sha_y)); 
+TABLE4EXTERNALCLASS(ExtClass, (sha_x, sha_y)); 
 
 // define table 4 class, alias of edadb::Table4Class
 // the class only contain primitive types and subclass
-_EDADB_DEFINE_TABLE_BY_CLASS_(IdbCoordinate, "coordinate_table", (_x, _y, _ec));
-_EDADB_DEFINE_TABLE_BY_CLASS_(IdbVia, "via_table", (_name, _coord, _global_enum, _inner_enum));
+TABLE4CLASS(IdbCoordinate, "coordinate_table", (_x, _y, _ec));
+TABLE4CLASS(IdbVia, "via_table", (_name, _coord, _global_enum, _inner_enum));
 
 // // define table 4 class with vector of subclass 
 // // the class contain subclass and vector of subclass
-// _EDADB_DEFINE_TABLE_BY_CLASS_WITH_VECTOR_(IdbLayerShape, "layer_shape_table", (_name, _layer), (_rects));
+// TABLE4CLASS_WVEC(IdbLayerShape, "layer_shape_table", (_name, _layer), (_rects));
 // 
 
-//TABLE4CLASSWVEC(IdbPort, "port_table", (_name), (_layer_shapes, _vias));
+//TABLE4CLASS_WVEC(IdbPort, "port_table", (_name), (_layer_shapes, _vias));
 
 
 
@@ -250,7 +250,7 @@ int testIdbCoordinate(const std::string& conn_param) {
 
     // init database and create table
     std::cout << "[DbMap Init]" << std::endl;
-    if (!edadb::initDatabase<IdbCoordinate>(conn_param)) {
+    if (!edadb::initDatabase(conn_param)) {
         std::cerr << "DbMap::init failed" << std::endl;
         return 1;
     }
@@ -260,7 +260,7 @@ int testIdbCoordinate(const std::string& conn_param) {
     edadb::DbMap<IdbCoordinate> dbm;
 
     std::cout << "[DbMap CreateTable]" << std::endl;
-    if (!edadb::createTable<IdbCoordinate>(dbm)) {
+    if (!edadb::createTable(dbm)) {
         std::cerr << "DbMap::createTable failed" << std::endl;
         return 1;
     }
@@ -323,7 +323,7 @@ int testIdbVia(const std::string& conn_param) {
 
     // init database and create table
     std::cout << "[DbMap Init]" << std::endl;
-    if (!edadb::initDatabase<IdbVia>(conn_param)) {
+    if (!edadb::initDatabase(conn_param)) {
         std::cerr << "DbMap::init failed" << std::endl;
         return 1;
     }
@@ -333,7 +333,7 @@ int testIdbVia(const std::string& conn_param) {
     edadb::DbMap<IdbVia> dbm;
 
     std::cout << "[DbMap CreateTable]" << std::endl;
-    if (!edadb::createTable<IdbVia>(dbm)) {
+    if (!edadb::createTable(dbm)) {
         std::cerr << "DbMap::createTable failed" << std::endl;
         return 1;
     }

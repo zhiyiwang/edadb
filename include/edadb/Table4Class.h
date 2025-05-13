@@ -134,7 +134,7 @@ GENERATE_CLASS_TYPEMETADATA(CLASSNAME, TABLENAME, CLASS_ELEMS_TUP, (EXPAND_membe
  * @param CLASSNAME The name of the class. 
  * @param CLASS_ELEMS_TUP The tuple of class elements.
  */
-#define Table4ExternalClass(CLASSNAME, CLASS_ELEMS_TUP) \
+#define TABLE4EXTERNALCLASS(CLASSNAME, CLASS_ELEMS_TUP) \
 namespace edadb{\
 template<>\
 struct Cpp2SqlType<CLASSNAME>{\

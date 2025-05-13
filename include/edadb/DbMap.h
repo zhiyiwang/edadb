@@ -82,8 +82,6 @@ namespace edadb {
         bool commitTransaction() {
             return manager.exec("COMMIT;");
         }
-
-    //protected:
     }; // DbMapBase
 
 
@@ -124,7 +122,7 @@ namespace edadb {
                 return false;
             }
 
-            // always create table for SqlStatement<T>
+            // create table by SqlStatement<T> using this table_name
             const std::string sql = fmt::format(SqlStatement<T>().createTableStatement(fkc), table_name);
             if (!manager.exec(sql)) {
                 std::cerr << "DbMap::createTable: create table failed" << std::endl;
@@ -132,32 +130,20 @@ namespace edadb {
             }
 
             // create table for composite vector
+            bool crt_tab = true;
             if (Cpp2SqlType<T>::sqlType == SqlType::CompositeVector) {
+                // VecMetaData elements: vector<ElemT>* 
                 using VecElem = typename VecMetaData<T>::VecElem;
-                // the number of elements in the vector
-                constexpr auto N = boost::fusion::result_of::size<VecElem>::value;
+                VecElem seq{}; // only need type, discard value
+                boost::fusion::for_each(seq, [&](auto ptr){ // lambda function
+                  using PtrT = decltype(ptr);
+                  using VecT  = std::remove_const_t<std::remove_pointer_t<PtrT>>;
+                  using ElemT = typename VecT::value_type;
+                  crt_tab = (crt_tab && createChildTable<ElemT>());
+                });
+            } // if 
 
-                /**
-                 * Use std::index_sequence to create template parameter pack for each elem
-                 *
-                 */
-                auto got = createAllChildTable(std::make_index_sequence<N>{});
-                static_assert(std::tuple_size_v<decltype(got)> == N,
-                              "DbMap::createTable: create child table failed");
-
-                // use std::apply to call callback func for the tuple
-                bool all_ok = std::apply(
-                    // lambda function
-                    [](auto... vals) { 
-                        // use fold expression to call each element
-                        return (vals && ...);
-                    // tuple to call each element
-                    }, got);
-                if (!all_ok)
-                    return false;
-            }
-
-            return true;
+            return crt_tab;
         } // createTable
 
         /**
@@ -175,20 +161,8 @@ namespace edadb {
         }
 
     private:
-        template<std::size_t... I>
-        auto createAllChildTable(std::index_sequence<I...>) {
-            using VecElem = typename VecMetaData<T>::VecElem;
-            return std::make_tuple(createChildTable<VecElem, I>()...);
-        }
-
-        template <typename VecElem, std::size_t I>
-        bool createChildTable(void)
-        {
-            // get the I-th element vector pointer type
-            using PtrT = typename boost::fusion::result_of::value_at_c<VecElem, I>::type;
-            using VecT = std::remove_const_t<std::remove_pointer_t<PtrT>>;
-            using ElemT = typename VecT::value_type;
-
+        template <typename ElemT>
+        bool createChildTable(void) {
             // create child DbMap for each element
             std::string child_table_name =
                 table_name + "_" + TypeMetaData<ElemT>::table_name();

@@ -101,11 +101,11 @@ public:
 }; // IdbPort
 
 
-_EDADB_DEFINE_TABLE_BY_CLASS_(IdbRect, "rect_table", (_x))
-_EDADB_DEFINE_TABLE_BY_CLASS_(IdbRect2, "rect2_table", (_y))
+TABLE4CLASS(IdbRect, "rect_table", (_x))
+TABLE4CLASS(IdbRect2, "rect2_table", (_y))
 
-_EDADB_DEFINE_TABLE_BY_CLASS_WITH_VECTOR_(IdbLayerShape, "layer_shape_table", (_name, _layer), (_rects, _rect2s))
-_EDADB_DEFINE_TABLE_BY_CLASS_WITH_VECTOR_(IdbPort, "port_table", (_name), (_layer_shapes, _rects))
+TABLE4CLASS_WVEC(IdbLayerShape, "layer_shape_table", (_name, _layer), (_rects, _rect2s))
+TABLE4CLASS_WVEC(IdbPort, "port_table", (_name), (_layer_shapes, _rects))
 
 
 int main(void) {
@@ -138,12 +138,11 @@ int main(void) {
 
     std::string conn_param = "vec.db";
 
-
     std::cout << "DbMap<" << typeid(IdbLayerShape).name() << ">" << std::endl;
 
     // init database and create table
     std::cout << "[DbMap Init]" << std::endl;
-    if (!edadb::initDatabase<IdbLayerShape>(conn_param)) {
+    if (!edadb::initDatabase(conn_param)) {
         std::cerr << "DbMap::init failed" << std::endl;
         return 1;
     }
@@ -153,17 +152,16 @@ int main(void) {
     edadb::DbMap<IdbLayerShape> dbm_layer_shape;
 
     std::cout << "[DbMap CreateTable]" << std::endl;
-    if (!edadb::createTable<IdbLayerShape>(dbm_layer_shape)) {
+    if (!edadb::createTable(dbm_layer_shape)) {
         std::cerr << "DbMap::createTable failed" << std::endl;
         return 1;
     }
 
 
-
     // Define DbMap instance to operate the database table
     edadb::DbMap<IdbPort> dbm_port;
     std::cout << "[DbMap CreateTable]" << std::endl;
-    if (!edadb::createTable<IdbPort>(dbm_port)) {
+    if (!edadb::createTable(dbm_port)) {
         std::cerr << "DbMap::createTable failed" << std::endl;
         return 1;
     }
