@@ -24,28 +24,35 @@ namespace edadb {
 
 //////// Table Relations //////////////////////////////////////////////////////
 /**
- * @brief Foreign key constraint for the table.
+ * @brief Foreign keys constraint.
  */
-struct ForeignKeyConstraint {
+struct ForeignKey {
 public:
     std::string table; // referenced table name
     std::vector<std::string> column; // column name as foreign key
     std::vector<std::string> type; // column type for each column
 
 public:
-    ForeignKeyConstraint() = default;
-    ForeignKeyConstraint(std::string t, std::vector<std::string> c, std::vector<std::string> ty)
-        : table(t), column(c), type(ty) {}
-    ~ForeignKeyConstraint() = default;
+    ~ForeignKey() = default;
+    ForeignKey () = default;
+    ForeignKey (const ForeignKey &fkc) = default;
+    ForeignKey (std::string tb, std::vector<std::string> c, std::vector<std::string> t)
+        : table(tb), column(c), type(t) {}
+    ForeignKey& operator=(const ForeignKey &fkc) = default;
+
+public:
+    bool valid() const {
+        return !table.empty() && column.size() > 0 && type.size() > 0;
+    }
 
 public:
     void print() const {
-        std::cout << "ForeignKeyConstraint: table=" << table << std::endl;
+        std::cout << "ForeignKey: table=" << table << std::endl;
         for (size_t i = 0; i < column.size(); ++i) {
             std::cout << "  column[" << i << "]=" << column[i] << ", type=" << type[i] << std::endl;
         }
     }
-}; // ForeignKeyConstraint
+}; // ForeignKey
 
 
 

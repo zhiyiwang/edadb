@@ -33,7 +33,7 @@ struct SqlStatementImpl<DbBackendType::SQLITE, T> : public SqlStatementBase {
     
 //////// Standard SQL Statements //////////////////////////////////////
 public: 
-    std::string createTableStatement(ForeignKeyConstraint* fkc = nullptr) {
+    std::string createTableStatement(const ForeignKey& fk = ForeignKey()) {
         std::string sql;
 
         /*
@@ -57,17 +57,17 @@ public:
         assert (name.size() > 0);
 
         // foreign key constraints
-        if (fkc && (fkc->column.size() > 0)) {
-            assert (fkc->column.size() == fkc->type.size());
+        if (fk.valid()) {
+            assert (fk.column.size() == fk.type.size());
 
-            const std::string fk_pref = fkc->table + "_";
-            size_t fk_num = fkc->column.size();
+            const std::string fk_pref = fk.table + "_";
+            size_t fk_num = fk.column.size();
 
             // add foreign key columns to the child table
-            std::vector<std::string> child_column; // referencing column name
+            std::vector<std::string> child_column; // referencing column 
             for (size_t i = 0; i < fk_num; ++i) {
-                child_column.push_back(fk_pref + fkc->column[i]);
-                sql += ", " + child_column.back() + " " + fkc->type[i];
+                child_column.push_back(fk_pref + fk.column[i]);
+                sql += ", " + child_column.back() + " " + fk.type[i];
             } // for
 
             // add foreign key constraint
@@ -75,9 +75,9 @@ public:
             for (size_t i = 0; i < fk_num; ++i) {
                 sql += (i > 0 ? ", " : "") + child_column[i];
             } // for
-            sql += ") REFERENCES " + fkc->table + "(";
+            sql += ") REFERENCES " + fk.table + "(";
             for (size_t i = 0; i < fk_num; ++i) {
-                sql += (i > 0 ? ", " : "") + fkc->column[i];
+                sql += (i > 0 ? ", " : "") + fk.column[i];
             } // for
             sql += ") ON DELETE CASCADE ON UPDATE CASCADE";
         } // if 

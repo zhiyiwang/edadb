@@ -96,11 +96,15 @@ namespace edadb {
         class Reader; // read object from database
 
     protected:
-        const std::string table_name;  // defined in TypeMetaData<T> by TABLE4CLASS macro
+        const std::string table_name; // def in TypeMetaData<T> by TABLE4CLASS 
+        ForeignKey foreign_key; // foreign key constraint of this table
         std::vector<DbMapBase *> child_dbmap_vec; // vector of child DbMap
 
     public:
-        DbMap(const std::string &n = TypeMetaData<T>::table_name()) : table_name(n) {}
+        DbMap(const std::string &n = TypeMetaData<T>::table_name(), const ForeignKey &fk = ForeignKey())
+            : table_name(n), foreign_key(fk) 
+        {}
+
         ~DbMap() {
             // delete all child DbMap
             for (auto &dbmap : child_dbmap_vec) {
@@ -110,20 +114,21 @@ namespace edadb {
 
     public:
         const std::string &getTableName() { return table_name; }
+        ForeignKey &getForeignKey() { return foreign_key; }
 
     public:
         /**
          * @brief Create the table for the class.
          * @return true if success; otherwise, false.
          */
-        bool createTable(ForeignKeyConstraint *fkc = nullptr) {
+        bool createTable(void) {
             if (!manager.isConnected()) {
                 std::cerr << "DbMap::createTable: not inited" << std::endl;
                 return false;
             }
 
             // create table by SqlStatement<T> using this table_name
-            const std::string sql = fmt::format(SqlStatement<T>().createTableStatement(fkc), table_name);
+            const std::string sql = fmt::format(SqlStatement<T>().createTableStatement(foreign_key), table_name);
             if (!manager.exec(sql)) {
                 std::cerr << "DbMap::createTable: create table failed" << std::endl;
                 return false;
@@ -134,8 +139,8 @@ namespace edadb {
             if (Cpp2SqlType<T>::sqlType == SqlType::CompositeVector) {
                 // VecMetaData elements: vector<ElemT>* 
                 using VecElem = typename VecMetaData<T>::VecElem;
-                VecElem seq{}; // only need type, discard value
-                boost::fusion::for_each(seq, [&](auto ptr){ // lambda function
+                VecElem seq{}; // only need type, ignore value
+                boost::fusion::for_each(seq, [&](auto ptr){ // lambda func
                   using PtrT = decltype(ptr);
                   using VecT  = std::remove_const_t<std::remove_pointer_t<PtrT>>;
                   using ElemT = typename VecT::value_type;
@@ -170,30 +175,30 @@ namespace edadb {
             child_dbmap_vec.push_back(child_dbmap);
 
             // create constraint for foreign key
-            ForeignKeyConstraint fkc;
-            fkc.table = table_name;
+            ForeignKey &fk = child_dbmap->getForeignKey();
+            fk.table = table_name;
 
             // get the first element as the foreign key
             const uint32_t primary_key_index = 0;
 
             // get primary key name and type from this class
             const auto &cols = TypeMetaData<T>::column_names();
-            fkc.column.push_back( cols[primary_key_index] );
+            fk.column.push_back( cols[primary_key_index] );
 
             using PrimKeyType = typename boost::fusion::result_of
                 ::value_at_c<typename TypeMetaData<T>::TupType, 
                     primary_key_index>::type;
             std::string t = getSqlTypeString<PrimKeyType>();
-            fkc.type.push_back(t);
+            fk.type.push_back(t);
 
 //            std::cout << "## [Debug] create child table: " << child_table_name
 //                      << std::endl;
 //            std::cout << "## [Debug] foreign key constraint: ";
-//                        fkc.print();
+//                        fk.print();
 //            std::cout << std::endl << std::endl;
 
             // use foreign key constraint to create child table
-            return child_dbmap->createTable(&fkc);
+            return child_dbmap->createTable();
         } // createChildTable
     }; // class DbMap
 
