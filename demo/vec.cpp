@@ -109,6 +109,7 @@ TABLE4CLASS_WVEC(IdbPort, "port_table", (_name), (_layer_shapes, _rects))
 
 
 int main(void) {
+    // Create Object ////////////////////////////////////////////
     IdbLayerShape shape1("IdbLayerShape 1", "Type 1");
     shape1._rects.emplace_back(11);
     shape1._rect2s.emplace_back(12);
@@ -125,22 +126,19 @@ int main(void) {
     port2._layer_shapes.push_back(shape2);
     port2._rects.emplace_back(222);
 
-    if (1) {
-        // print objects
+    if (0) {
+        // Check Object ////////////////////////////////////////////
         std::cout << "================ Demo Vector Init ================" << std::endl;
         port1.print();
         port2.print();
 
         edadb::VecMetaDataPrinter<IdbLayerShape> printer;
         printer.printStatic();
-    }
+    } // if 
 
 
+    // init database 
     std::string conn_param = "vec.db";
-
-    std::cout << "DbMap<" << typeid(IdbLayerShape).name() << ">" << std::endl;
-
-    // init database and create table
     std::cout << "[DbMap Init]" << std::endl;
     if (!edadb::initDatabase(conn_param)) {
         std::cerr << "DbMap::init failed" << std::endl;
@@ -148,7 +146,11 @@ int main(void) {
     }
     std::cout << std::endl << std::endl;
 
+
+    // IdbLayerShape ////////////////////////////////////////////
+
     // Define DbMap instance to operate the database table
+    std::cout << "DbMap<" << typeid(IdbLayerShape).name() << ">" << std::endl;
     edadb::DbMap<IdbLayerShape> dbm_layer_shape;
 
     std::cout << "[DbMap CreateTable]" << std::endl;
@@ -157,18 +159,49 @@ int main(void) {
         return 1;
     }
 
+    std::cout << "[DbMap Insert]" << std::endl;
+    if (!edadb::insertObject(dbm_layer_shape, &shape1)) {
+        std::cerr << "DbMap::Writer::insert failed" << std::endl;
+        return 1;
+    }
+    std::cout << std::endl << std::endl;
+    std::vector<IdbLayerShape*> layer_shape_vec;
+    layer_shape_vec.push_back(&shape2);
+    if (!edadb::insertVector(dbm_layer_shape, layer_shape_vec)) {
+        std::cerr << "DbMap::Writer::insert failed" << std::endl;
+        return 1;
+    }
+    std::cout << std::endl << std::endl;
+
+
+    // IdbPort ////////////////////////////////////////////
 
     // Define DbMap instance to operate the database table
+    std::cout << "DbMap<" << typeid(IdbPort).name() << ">" << std::endl;
     edadb::DbMap<IdbPort> dbm_port;
+
     std::cout << "[DbMap CreateTable]" << std::endl;
     if (!edadb::createTable(dbm_port)) {
         std::cerr << "DbMap::createTable failed" << std::endl;
         return 1;
     }
 
+    std::cout << "[DbMap Insert]" << std::endl;
+    if (!edadb::insertObject(dbm_port, &port1)) {
+        std::cerr << "DbMap::Writer::insert failed" << std::endl;
+        return 1;
+    }
+    std::cout << std::endl << std::endl;
+    std::vector<IdbPort*> port_vec;
+    port_vec.push_back(&port2);
+    if (!edadb::insertVector(dbm_port, port_vec)) {
+        std::cerr << "DbMap::Writer::insert failed" << std::endl;
+        return 1;
+    }
+    std::cout << std::endl << std::endl;
+
 
     // TODO:
-    // 1. create table
     // 2. insert objects
     // 3. select objects
     // 4. delete objects

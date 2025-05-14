@@ -101,8 +101,8 @@ namespace edadb {
         std::vector<DbMapBase *> child_dbmap_vec; // vector of child DbMap
 
     public:
-        DbMap(const std::string &n = TypeMetaData<T>::table_name(), const ForeignKey &fk = ForeignKey())
-            : table_name(n), foreign_key(fk) 
+        DbMap(const std::string &n = TypeMetaData<T>::table_name(),
+            const ForeignKey &fk = ForeignKey()) : table_name(n), foreign_key(fk) 
         {}
 
         ~DbMap() {
@@ -113,8 +113,8 @@ namespace edadb {
         }
 
     public:
-        const std::string &getTableName() { return table_name; }
-        ForeignKey &getForeignKey() { return foreign_key; }
+        const std::string &getTableName () { return table_name;  }
+        ForeignKey        &getForeignKey() { return foreign_key; }
 
     public:
         /**
@@ -161,7 +161,8 @@ namespace edadb {
                 return false;
             }
 
-            const std::string sql = fmt::format("DROP TABLE IF EXISTS \"{}\";", table_name);
+            const std::string sql =
+                fmt::format("DROP TABLE IF EXISTS \"{}\";", table_name);
             return manager.exec(sql);
         }
 
@@ -191,12 +192,6 @@ namespace edadb {
             std::string t = getSqlTypeString<PrimKeyType>();
             fk.type.push_back(t);
 
-//            std::cout << "## [Debug] create child table: " << child_table_name
-//                      << std::endl;
-//            std::cout << "## [Debug] foreign key constraint: ";
-//                        fk.print();
-//            std::cout << std::endl << std::endl;
-
             // use foreign key constraint to create child table
             return child_dbmap->createTable();
         } // createChildTable
@@ -223,41 +218,38 @@ namespace edadb {
     template <typename T>
     struct OpTraits<T, DbMapOperation::INSERT> {
         static constexpr const char *name() { return "Inserter"; }
-        static std::string getSQL(DbMap<T> &dbmap)
-        {
+        static std::string getSQL(DbMap<T> &dbmap) {
             return SqlStatement<T>::insertPlaceHolderStatement();
         }
-        static DbMapOperation op()
-        {
-            return DbMapOperation::INSERT;
-        }
+        static DbMapOperation op() { return DbMapOperation::INSERT; }
     };
 
     template <typename T>
     struct OpTraits<T, DbMapOperation::UPDATE> {
-        static constexpr const char *name() { return "Updater"; }
-        static std::string getSQL(DbMap<T> &dbmap)
-        {
+        static constexpr const char *name() {
+            return "Updater";
+        }
+        static std::string getSQL(DbMap<T> &dbmap) {
             return SqlStatement<T>::updatePlaceHolderStatement();
         }
-        static DbMapOperation op()
-        {
+        static DbMapOperation op() {
             return DbMapOperation::UPDATE;
         }
     };
 
     template <typename T>
     struct OpTraits<T, DbMapOperation::DELETE> {
-        static constexpr const char *name() { return "Deleter"; }
-        static std::string getSQL(DbMap<T> &dbmap)
-        {
+        static constexpr const char *name() {
+            return "Deleter";
+        }
+        static std::string getSQL(DbMap<T> &dbmap) {
             return SqlStatement<T>::deletePlaceHolderStatement();
         }
-        static DbMapOperation op()
-        {
+        static DbMapOperation op() {
             return DbMapOperation::DELETE;
         }
     };
+
 
     // DbMap Writer: write database, include insert, update, delete
     template <typename T>
@@ -284,12 +276,10 @@ namespace edadb {
     public:
         ~Writer() = default;
         Writer(DbMap &m) : dbmap(m), manager(m.getManager()),
-                           bind_idx(manager.s_bind_column_begin_index)
-        {
+                    bind_idx(manager.s_bind_column_begin_index) {
             resetBindIndex();
 
-            if (!manager.isConnected())
-            {
+            if (!manager.isConnected()) {
                 std::cerr << "DbMap::Writer: not inited" << std::endl;
                 return;
             }
@@ -302,31 +292,25 @@ namespace edadb {
          * @return true if success, false otherwise.
          */
         template <DbMapOperation OP>
-        bool prepare2()
-        {
-            if (op != DbMapOperation::NONE)
-            {
+        bool prepare2() {
+            if (op != DbMapOperation::NONE) {
                 std::cerr << "DbMap::Writer::prepare2: already prepared" << std::endl;
                 return false;
             }
 
-            if (!manager.isConnected())
-            {
+            if (!manager.isConnected()) {
                 std::cerr << "DbMap::Writer::prepare2: not inited" << std::endl;
                 return false;
             }
 
-            if (!manager.initStatement(dbstmt))
-            {
+            if (!manager.initStatement(dbstmt)) {
                 std::cerr << "DbMap::Writer::prepare2: init statement failed" << std::endl;
                 return false;
             }
 
             const std::string sql =
                 fmt::format(OpTraits<T, OP>::getSQL(dbmap), dbmap.getTableName());
-            //        std::cout << "## [Debug] prepare2 sql: " << sql << std::endl;
-            if (!dbstmt.prepare(sql))
-            {
+            if (!dbstmt.prepare(sql)) {
                 std::cerr << "DbMap::Writer::prepare2: prepare statement failed" << std::endl;
                 return false;
             }
@@ -342,22 +326,18 @@ namespace edadb {
          * @return true if success, false otherwise.
          */
         template <DbMapOperation OP, typename Func>
-        bool executeOp(Func func)
-        {
+        bool executeOp(Func func) {
             // check if the operation is prepared
-            if ((op == DbMapOperation::NONE) && (!prepare2<OP>()))
-            {
+            if ((op == DbMapOperation::NONE) && (!prepare2<OP>())) {
                 std::cerr << "DbMap::" << OpTraits<T, OP>::name() << "::executeOp: prepare failed" << std::endl;
                 return false;
             }
-            else if (op != OP)
-            {
+            else if (op != OP) {
                 std::cerr << "DbMap::" << OpTraits<T, OP>::name() << "::executeOp: not prepared" << std::endl;
                 return false;
             }
 
-            if (!manager.isConnected())
-            {
+            if (!manager.isConnected()) {
                 std::cerr << "DbMap::" << OpTraits<T, OP>::name() << "::executeOp: not inited" << std::endl;
                 return false;
             }
@@ -365,13 +345,11 @@ namespace edadb {
             // lamda function to bind the object
             func();
 
-            if (!dbstmt.bindStep())
-            {
+            if (!dbstmt.bindStep()) {
                 return false;
             }
 
-            if (!dbstmt.reset())
-            {
+            if (!dbstmt.reset()) {
                 return false;
             }
 
@@ -387,10 +365,8 @@ namespace edadb {
          * @return true if success, false otherwise.
          */
         template <DbMapOperation OP, typename Func>
-        bool processVector(const std::string &errPrefix, Func &&func)
-        {
-            if (!prepare2<OP>())
-            {
+        bool processVector(const std::string &errPrefix, Func &&func) {
+            if (!prepare2<OP>()) {
                 std::cerr << errPrefix << ": prepare failed" << std::endl;
                 return false;
             }
@@ -405,10 +381,8 @@ namespace edadb {
         /**
          * @brief finalize dbstmt and reset the bind_idx
          */
-        bool finalize()
-        {
-            if (!manager.isConnected())
-            {
+        bool finalize() {
+            if (!manager.isConnected()) {
                 std::cerr << "DbMap::insertFinalize: not inited" << std::endl;
                 return false;
             }
@@ -418,34 +392,29 @@ namespace edadb {
         } // finalize
 
     public: // insert API
-        bool insertOne(T *obj)
-        {
+        bool insertOne(T *obj) {
             return prepare2<DbMapOperation::INSERT>() && insert(obj) && finalize();
         }
 
-        bool insertVector(std::vector<T *> &objs)
-        {
-            if (objs.empty())
-            {
+        bool insertVector(std::vector<T *> &objs) {
+            if (objs.empty()) {
                 std::cerr << "DbMap::insertVector: empty vector" << std::endl;
                 return false;
             }
 
-            return processVector<DbMapOperation::INSERT>("DbMap::insertVector", [&]()
-                                                         {
-            for (auto obj : objs) {
-                if (!insert(obj)) {
-                    std::cerr << "DbMap::insertVector: insert failed" << std::endl;
-                    return false;
+            return processVector<DbMapOperation::INSERT>("DbMap::insertVector", [&]() {
+                for (auto obj : objs) {
+                    if (!insert(obj)) {
+                        std::cerr << "DbMap::insertVector: insert failed" << std::endl;
+                        return false;
+                    }
                 }
-            }
-            return true; });
+                return true; 
+            });
         } // insertVector
 
-        bool insert(T *obj)
-        {
-            return executeOp<DbMapOperation::INSERT>([&]()
-                                                     { bindObject(obj); });
+        bool insert(T *obj) {
+            return executeOp<DbMapOperation::INSERT>([&]() { bindObject(obj); });
         } // insert
 
         /**
@@ -453,8 +422,7 @@ namespace edadb {
          * @param elem The element pointer to bind, which is defined as a cpp type pointer.
          */
         template <typename ElemType>
-        void operator()(const ElemType &elem)
-        {
+        void operator()(const ElemType &elem) {
             bindToColumn(elem);
         }
 
@@ -463,13 +431,11 @@ namespace edadb {
          * @param elem The element pointer to bind, which is defined as a cpp type pointer.
          */
         template <typename ElemType>
-        void bindToColumn(const ElemType &elem)
-        {
+        void bindToColumn(const ElemType &elem) {
             // extract the CppType from the ElemType pointer
             using CppType = typename std::remove_const<typename std::remove_pointer<ElemType>::type>::type;
 
-            if constexpr (edadb::Cpp2SqlType<CppType>::sqlType == edadb::SqlType::Composite)
-            {
+            if constexpr (edadb::Cpp2SqlType<CppType>::sqlType == edadb::SqlType::Composite) {
                 assert((bind_idx > 0) &&
                        "DbMap<T>::Writer::bindToColumn: composite type should not be the first element");
 
@@ -488,8 +454,7 @@ namespace edadb {
                     [this](auto const &ne)
                     { this->bindToColumn(ne); });
             }
-            else if constexpr (edadb::Cpp2SqlType<CppType>::sqlType == edadb::SqlType::External)
-            {
+            else if constexpr (edadb::Cpp2SqlType<CppType>::sqlType == edadb::SqlType::External) {
                 assert((bind_idx > 0) &&
                        "DbMap<T>::Writer::bindToColumn: external type should not be the first element");
 
@@ -503,16 +468,14 @@ namespace edadb {
                     [this](auto const &ne)
                     { this->bindToColumn(ne); });
             }
-            else if constexpr (std::is_enum_v<CppType>)
-            {
+            else if constexpr (std::is_enum_v<CppType>) {
                 // bind the enum member to underlying type:
                 //   Default underlying type is int, also can be user defined
                 using U = std::underlying_type_t<CppType>;
                 U tmp = static_cast<U>(*elem); // type safe cast during compile time
                 dbstmt.bindColumn(bind_idx++, &tmp);
             }
-            else
-            {
+            else {
                 // bind the element to the database
                 // only base type needs to be bound
                 dbstmt.bindColumn(bind_idx++, elem);
@@ -521,8 +484,7 @@ namespace edadb {
 
     private: // utility
         /** reset bind_idx to begin to bind */
-        void resetBindIndex()
-        {
+        void resetBindIndex() {
             bind_idx = manager.s_bind_column_begin_index;
         }
 
@@ -530,8 +492,7 @@ namespace edadb {
          * @brief bind the object to the database.
          * @param obj The object to bind.
          */
-        void bindObject(T *obj)
-        {
+        void bindObject(T *obj) {
             // reset bind_idx to begin to bind
             resetBindIndex();
 
@@ -544,16 +505,13 @@ namespace edadb {
         } // bindObject
 
     public: // Delete API: using text delete statement
-        bool deleteByPrimaryKeys(T *obj)
-        {
-            if (op != DbMapOperation::NONE)
-            {
+        bool deleteByPrimaryKeys(T *obj) {
+            if (op != DbMapOperation::NONE) {
                 std::cerr << "DbMap::Deleter::deleteByPrimaryKeys: already prepared" << std::endl;
                 return false;
             }
 
-            if (!manager.isConnected())
-            {
+            if (!manager.isConnected()) {
                 std::cerr << "DbMap::Deleter::deleteOne: not inited" << std::endl;
                 return false;
             }
@@ -564,13 +522,11 @@ namespace edadb {
         } // deleteByPrimaryKeys
 
     public: // delete API: using place holder delete statement
-        bool deleteOne(T *obj)
-        {
+        bool deleteOne(T *obj) {
             return prepare2<DbMapOperation::DELETE>() && deleteOp(obj) && finalize();
         }
 
-        bool deleteOp(T *obj)
-        {
+        bool deleteOp(T *obj) {
             return executeOp<DbMapOperation::DELETE>([&]()
                                                      {
             // bind the primary key value in the where clause using obj
@@ -579,16 +535,13 @@ namespace edadb {
         } // deleteOne
 
     public: // update API: using text update statement
-        bool updateBySqlStmt(T *org_obj, T *new_obj)
-        {
-            if (op != DbMapOperation::NONE)
-            {
+        bool updateBySqlStmt(T *org_obj, T *new_obj) {
+            if (op != DbMapOperation::NONE) {
                 std::cerr << "DbMap::Updater::update: already prepared" << std::endl;
                 return false;
             }
 
-            if (!manager.isConnected())
-            {
+            if (!manager.isConnected()) {
                 std::cerr << "DbMap::Updater::update: not inited" << std::endl;
                 return false;
             }
@@ -599,48 +552,44 @@ namespace edadb {
         } // updateBySqlStmt
 
     public: // update API: using place holder update statement
-        bool updateOne(T *org_obj, T *new_obj)
-        {
+        bool updateOne(T *org_obj, T *new_obj) {
             return prepare2<DbMapOperation::UPDATE>() && update(org_obj, new_obj) && finalize();
         }
 
-        bool updateVector(std::vector<T *> &org_objs, std::vector<T *> &new_objs)
-        {
-            if (org_objs.empty() || new_objs.empty())
-            {
+        bool updateVector(std::vector<T *> &org_objs, std::vector<T *> &new_objs) {
+            if (org_objs.empty() || new_objs.empty()) {
                 std::cerr << "DbMap::updateVector: empty vector" << std::endl;
                 return false;
             }
-            if (org_objs.size() != new_objs.size())
-            {
+            if (org_objs.size() != new_objs.size()) {
                 std::cerr << "DbMap::updateVector: size mismatch" << std::endl;
                 return false;
             }
 
-            return processVector<DbMapOperation::UPDATE>("DbMap::updateVector", [&]()
-                                                         {
-            for (size_t i = 0; i < org_objs.size(); ++i) {
-                if (!update(org_objs[i], new_objs[i])) {
-                    std::cerr << "DbMap::updateVector: update failed" << std::endl;
-                    return false;
+            return processVector<DbMapOperation::UPDATE>("DbMap::updateVector", [&]() {
+                for (size_t i = 0; i < org_objs.size(); ++i) {
+                    if (!update(org_objs[i], new_objs[i])) {
+                        std::cerr << "DbMap::updateVector: update failed" << std::endl;
+                        return false;
+                    }
                 }
-            }
-            return true; });
+                return true;
+            });
         } // updateVector
 
     public:
-        bool update(T *org_obj, T *new_obj)
-        {
-            return executeOp<DbMapOperation::UPDATE>([&]()
-                                                     {
-            // bind new_obj to the database
-            bindObject(new_obj);
+        bool update(T *org_obj, T *new_obj) {
+            return executeOp<DbMapOperation::UPDATE>([&]() {
+                // bind new_obj to the database
+                bindObject(new_obj);
 
-            // bind the primary key value in the where clause using org_obj
-            auto pk_val_ptr = boost::fusion::at_c<0>(TypeMetaData<T>::getVal(org_obj));
-            dbstmt.bindColumn(bind_idx++, pk_val_ptr); });
+                // bind the primary key value in the where clause using org_obj
+                auto pk_val_ptr = boost::fusion::at_c<0>(TypeMetaData<T>::getVal(org_obj));
+                dbstmt.bindColumn(bind_idx++, pk_val_ptr);
+            });
         } // update
     }; // class Writer
+
 
     // DbMap Reader: read database
     template <typename T>
@@ -663,17 +612,14 @@ namespace edadb {
          * @param pred The predicate to filter the object.
          * @return true if prepared; otherwise, false.
          */
-        bool prepareByPredicate(const std::string &pred = "")
-        {
-            if (!manager.isConnected())
-            {
+        bool prepareByPredicate(const std::string &pred = "") {
+            if (!manager.isConnected()) {
                 std::cerr << "DbMap<" << typeid(T).name() << ">::Reader::"
                           << "prepare2Scan: not inited" << std::endl;
                 return false;
             }
 
-            if (!manager.initStatement(dbstmt))
-            {
+            if (!manager.initStatement(dbstmt)) {
                 std::cerr << "DbMap<" << typeid(T).name() << ">::Reader::"
                           << "prepare2Scan: init statement failed" << std::endl;
                 return false;
@@ -683,8 +629,7 @@ namespace edadb {
                 fmt::format(SqlStatement<T>::scanStatement(), dbmap.getTableName());
             sql += (pred.empty() ? "" : " WHERE " + pred + ";");
 
-            if (!dbstmt.prepare(sql))
-            {
+            if (!dbstmt.prepare(sql)) {
                 std::cerr << "DbMap<" << typeid(T).name() << ">::Reader::"
                           << "prepare2Scan: prepare statement failed" << std::endl;
                 return false;
@@ -698,17 +643,14 @@ namespace edadb {
          * @param obj The object to read.
          * @return true if prepared; otherwise, false.
          */
-        bool prepareByPrimaryKey(T *obj)
-        {
-            if (!manager.isConnected())
-            {
+        bool prepareByPrimaryKey(T *obj) {
+            if (!manager.isConnected()) {
                 std::cerr << "DbMap<" << typeid(T).name() << ">::Reader::"
                           << "prepare: not inited" << std::endl;
                 return false;
             }
 
-            if (!manager.initStatement(dbstmt))
-            {
+            if (!manager.initStatement(dbstmt)) {
                 std::cerr << "DbMap<" << typeid(T).name() << ">::Reader::"
                           << "prepare: init statement failed" << std::endl;
                 return false;
@@ -716,8 +658,7 @@ namespace edadb {
 
             std::string sql =
                 fmt::format(SqlStatement<T>::lookupStatement(obj), dbmap.getTableName());
-            if (!dbstmt.prepare(sql))
-            {
+            if (!dbstmt.prepare(sql)) {
                 std::cerr << "DbMap<" << typeid(T).name() << ">::Reader::"
                           << "prepare: prepare statement failed" << std::endl;
                 return false;
@@ -727,17 +668,14 @@ namespace edadb {
         }
 
     public:
-        bool read(T *obj)
-        {
-            if (!manager.isConnected())
-            {
+        bool read(T *obj) {
+            if (!manager.isConnected()) {
                 std::cerr << "DbMap<" << typeid(T).name() << ">::Reader::"
                           << "read: not inited" << std::endl;
                 return false;
             }
 
-            if (!dbstmt.fetchStep())
-            {
+            if (!dbstmt.fetchStep()) {
                 return false; // no more row
             }
 
@@ -745,10 +683,8 @@ namespace edadb {
             return true;
         }
 
-        bool finalize()
-        {
-            if (!manager.isConnected())
-            {
+        bool finalize() {
+            if (!manager.isConnected()) {
                 std::cerr << "DbMap::scanFinalize: not inited" << std::endl;
                 return false;
             }
@@ -758,8 +694,7 @@ namespace edadb {
 
     private:
         /** reset read_idx to begin to read */
-        void resetReadIndex()
-        {
+        void resetReadIndex() {
             read_idx = manager.s_read_column_begin_index;
         }
 
@@ -767,8 +702,7 @@ namespace edadb {
          * @brief read the object from the database.
          * @param obj The object to read.
          */
-        void readObject(T *obj)
-        {
+        void readObject(T *obj) {
             // reset read_idx to begin to read
             resetReadIndex();
 
@@ -776,8 +710,8 @@ namespace edadb {
             // @see DbMap<T>::Writer::fetchFromColumn for the recursive calling
             auto values = TypeMetaData<T>::getVal(obj);
             boost::fusion::for_each(values,
-                                    [this](auto const &ne)
-                                    { this->fetchFromColumn(ne); });
+                [this](auto const &ne) { this->fetchFromColumn(ne); }
+            );
         }
 
     public:
@@ -787,8 +721,7 @@ namespace edadb {
          * @param elem The element to read from column in db row.
          */
         template <typename ElemType>
-        void operator()(ElemType &elem)
-        {
+        void operator()(ElemType &elem) {
             fetchFromColumn(elem);
         }
 
@@ -797,13 +730,11 @@ namespace edadb {
          * @param elem The element pointer to read, which is defined as a cpp type pointer.
          */
         template <typename ElemType>
-        void fetchFromColumn(ElemType &elem)
-        {
+        void fetchFromColumn(ElemType &elem) {
             // extract the CppType from the ElemType pointer
             using CppType = typename std::remove_const<typename std::remove_pointer<ElemType>::type>::type;
 
-            if constexpr (edadb::Cpp2SqlType<CppType>::sqlType == edadb::SqlType::Composite)
-            {
+            if constexpr (edadb::Cpp2SqlType<CppType>::sqlType == edadb::SqlType::Composite) {
                 assert((read_idx > 0) &&
                        "DbMap<T>::Reader::fetchFromColumn: composite type should not be the first element");
 
@@ -813,8 +744,7 @@ namespace edadb {
                                         [this](auto const &ne)
                                         { this->fetchFromColumn(ne); });
             }
-            else if constexpr (edadb::Cpp2SqlType<CppType>::sqlType == edadb::SqlType::External)
-            {
+            else if constexpr (edadb::Cpp2SqlType<CppType>::sqlType == edadb::SqlType::External) {
                 assert((read_idx > 0) &&
                        "DbMap<T>::Reader::fetchFromColumn: external type should not be the first element");
 
@@ -827,19 +757,17 @@ namespace edadb {
                 // transform the object of Shadow type to original type
                 shadow.fromShadow(elem);
             }
-            else if constexpr (std::is_enum_v<CppType>)
-            {
+            else if constexpr (std::is_enum_v<CppType>) {
                 using U = std::underlying_type_t<CppType>; // underlying type of enum
                 U tmp;
                 dbstmt.fetchColumn(read_idx++, &tmp);
                 *elem = static_cast<CppType>(tmp);
             }
-            else
-            {
+            else {
                 // read the element from the database
                 // only base type needs to be read
                 dbstmt.fetchColumn(read_idx++, elem);
             }
-        }
+        } // fetchFromColumn
     };
 } // namespace edadb
