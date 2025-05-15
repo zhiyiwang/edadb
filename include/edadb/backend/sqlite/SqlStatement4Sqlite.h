@@ -33,7 +33,7 @@ struct SqlStatementImpl<DbBackendType::SQLITE, T> : public SqlStatementBase {
     
 //////// Standard SQL Statements //////////////////////////////////////
 public: 
-    std::string createTableStatement(const ForeignKey& fk = ForeignKey()) {
+    static std::string createTableStatement(const ForeignKey& fk) {
         std::string sql;
 
         /*
@@ -83,13 +83,11 @@ public:
         } // if 
 
         sql += ");";
-
-//        std::cout << "[DEADB DEBUG]::create table sql statement: " << std::endl;
-//        std::cout << "[DEADB DEBUG]::    " << sql << std::endl;
         return sql;
     }
 
 
+#if 0
     std::string insertStatement(T* obj) {
         std::stringstream ss;
         ss << "INSERT INTO \"{}\" (";
@@ -192,6 +190,7 @@ public:
         sql += " WHERE " + name[0] + " = " + pk_val_str + ";";
         return sql;
     }
+#endif 
 
 
 //////// SQL Statements using Place Holder ////////////////////////
@@ -200,27 +199,45 @@ public:
      * @brief Generate the insert statement with place holders.
      * @return The insert statement.
      */
-    static std::string insertPlaceHolderStatement() {
-        static std::string sql;
-        if (sql.empty()) {
-            std::stringstream ss;
-            ss << "INSERT INTO \"{}\" (";
+    static std::string insertPlaceHolderStatement(const ForeignKey& fk) {
+        std::string sql;
+        std::stringstream ss;
+        ss << "INSERT INTO \"{}\" (";
 
-            // get column and nested name
-            std::vector<std::string> name, type;
-            const auto vecs = TypeMetaData<T>::tuple_type_pair();
-            boost::fusion::for_each(vecs, ColumnNameType<T>(name, type));
-            for (int i = 0; i < name.size(); ++i) {
-                ss << (i > 0 ? ", " : "") << name[i];
-            }
-            ss << ") VALUES (";
-            // foreach name, append place holder for each column
-            for (int i = 0; i < name.size(); ++i) {
-                ss << (i > 0 ? ", " : "") << "?";
-            }
-            ss << ");";
-            sql.assign(ss.str());
+        // get column and nested name
+        std::vector<std::string> name, type;
+        const auto vecs = TypeMetaData<T>::tuple_type_pair();
+        boost::fusion::for_each(vecs, ColumnNameType<T>(name, type));
+        for (int i = 0; i < name.size(); ++i) {
+            ss << (i > 0 ? ", " : "") << name[i];
         }
+        // has foreign key
+        if (fk.valid()) {
+            assert (fk.column.size() == fk.type.size());
+            assert (fk.table.empty() == false);
+
+            // add foreign key columns to the child table
+            std::vector<std::string> child_column; // referencing column 
+            for (size_t i = 0; i < fk.column.size(); ++i) {
+                child_column.push_back(fk.table + "_" + fk.column[i]);
+                ss << ", " << child_column.back();
+            } // for
+        } 
+
+        ss << ") VALUES (";
+        // foreach name, append place holder for each column
+        for (int i = 0; i < name.size(); ++i)
+            ss << (i > 0 ? ", " : "") << "?";
+
+        // has foreign key
+        if (fk.valid()) {
+            for (int i = 0; i < fk.column.size(); ++i) 
+                ss << ", ?";
+        }
+
+        ss << ");";
+        sql.assign(ss.str());
+
         return sql;
     }
 
@@ -265,26 +282,26 @@ public: // debug
         std::cout << "======== " << "SqlStatement <" << typeid(T).name() << "> ========" << std::endl;
         std::cout << "-------- Standard SQL statements --------" << std::endl;
         std::cout << "Create Table SQL: " << std::endl << "\t" 
-            << createTableStatement() << std::endl;
-       std::cout << "Insert SQL: " << std::endl << "\t" 
-            << insertStatement(obj1) << std::endl;
-        std::cout << "Insert SQL: " << std::endl << "\t" 
-            << insertStatement(obj2) << std::endl;
-        std::cout << "Scan SQL: " << std::endl << "\t" 
-            << scanStatement() << std::endl;
-        std::cout << "Lookup SQL: " << std::endl << "\t"
-            << lookupStatement(obj1) << std::endl;
-        std::cout << "Delete SQL: " << std::endl << "\t"
-            << deleteStatement(obj1) << std::endl;
-        std::cout << "Delete SQL: " << std::endl << "\t"
-            << deleteStatement(obj2) << std::endl;
-        std::cout << "Update SQL: " << std::endl << "\t"
-            << updateStatement(obj1, obj2) << std::endl;
-        std::cout << std::endl;
+            << createTableStatement(ForeignKey()) << std::endl;
+//       std::cout << "Insert SQL: " << std::endl << "\t" 
+//            << insertStatement(obj1) << std::endl;
+//        std::cout << "Insert SQL: " << std::endl << "\t" 
+//            << insertStatement(obj2) << std::endl;
+//        std::cout << "Scan SQL: " << std::endl << "\t" 
+//            << scanStatement() << std::endl;
+//        std::cout << "Lookup SQL: " << std::endl << "\t"
+//            << lookupStatement(obj1) << std::endl;
+//        std::cout << "Delete SQL: " << std::endl << "\t"
+//            << deleteStatement(obj1) << std::endl;
+//        std::cout << "Delete SQL: " << std::endl << "\t"
+//            << deleteStatement(obj2) << std::endl;
+//        std::cout << "Update SQL: " << std::endl << "\t"
+//            << updateStatement(obj1, obj2) << std::endl;
+//        std::cout << std::endl;
 
         std::cout << "-------- SQL statements with Place Holder --------" << std::endl;
         std::cout << "Insert Place Holder SQL: " << std::endl << "\t" 
-            << insertPlaceHolderStatement() << std::endl;
+            << insertPlaceHolderStatement(ForeignKey()) << std::endl;
         std::cout << "Update Place Holder SQL: " << std::endl << "\t"
             << updatePlaceHolderStatement() << std::endl;
         std::cout << "Delete Place Holder SQL: " << std::endl << "\t"

@@ -147,6 +147,7 @@ int main(void) {
     std::cout << std::endl << std::endl;
 
 
+#if 1
     // IdbLayerShape ////////////////////////////////////////////
 
     // Define DbMap instance to operate the database table
@@ -172,8 +173,10 @@ int main(void) {
         return 1;
     }
     std::cout << std::endl << std::endl;
+#endif
 
 
+#if 0
     // IdbPort ////////////////////////////////////////////
 
     // Define DbMap instance to operate the database table
@@ -199,6 +202,7 @@ int main(void) {
         return 1;
     }
     std::cout << std::endl << std::endl;
+#endif
 
 
     // TODO:

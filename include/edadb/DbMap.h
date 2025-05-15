@@ -26,7 +26,6 @@ namespace edadb {
 
     /**
      * @brief DbMapBase class is the base class for all DbMap classes and manages the database connection.
-     *
      */
     class DbMapBase : public Singleton<DbMapBase> {
     private:
@@ -39,6 +38,7 @@ namespace edadb {
         // Singleton DbManager ins to connect to database
         inline static DbManager &manager = DbManager::i();
 
+    protected:
         DbMapBase() = default;
 
     public:
@@ -96,8 +96,9 @@ namespace edadb {
         class Reader; // read object from database
 
     protected:
-        const std::string table_name; // def in TypeMetaData<T> by TABLE4CLASS 
-        ForeignKey foreign_key; // foreign key constraint of this table
+        const std::string table_name; // by TypeMetaData<T> using TABLE4CLASS
+        ForeignKey       foreign_key; // foreign key constraint
+
         std::vector<DbMapBase *> child_dbmap_vec; // vector of child DbMap
 
     public:
@@ -106,15 +107,15 @@ namespace edadb {
         {}
 
         ~DbMap() {
-            // delete all child DbMap
             for (auto &dbmap : child_dbmap_vec) {
                 delete dbmap; dbmap = nullptr;
-            }
+            } // for 
         }
 
     public:
         const std::string &getTableName () { return table_name;  }
         ForeignKey        &getForeignKey() { return foreign_key; }
+        std::vector<DbMapBase*> &getChildDbMap() { return child_dbmap_vec; }
 
     public:
         /**
@@ -127,20 +128,21 @@ namespace edadb {
                 return false;
             }
 
-            // create table by SqlStatement<T> using this table_name
-            const std::string sql = fmt::format(SqlStatement<T>().createTableStatement(foreign_key), table_name);
+            // create this table by SqlStatement<T> using this table_name
+            const std::string sql = fmt::format(
+                SqlStatement<T>::createTableStatement(foreign_key), table_name);
             if (!manager.exec(sql)) {
                 std::cerr << "DbMap::createTable: create table failed" << std::endl;
                 return false;
             }
 
-            // create table for composite vector
+            // create child table for composite vector type 
             bool crt_tab = true;
-            if (Cpp2SqlType<T>::sqlType == SqlType::CompositeVector) {
-                // VecMetaData elements: vector<ElemT>* 
+            if constexpr (Cpp2SqlType<T>::sqlType == SqlType::CompositeVector) {
+                // vector< vector<ElemT1>*, vector<ElemT2>*, ... >
                 using VecElem = typename VecMetaData<T>::VecElem;
                 VecElem seq{}; // only need type, ignore value
-                boost::fusion::for_each(seq, [&](auto ptr){ // lambda func
+                boost::fusion::for_each(seq, [&](auto ptr){ 
                   using PtrT = decltype(ptr);
                   using VecT  = std::remove_const_t<std::remove_pointer_t<PtrT>>;
                   using ElemT = typename VecT::value_type;
@@ -169,30 +171,28 @@ namespace edadb {
     private:
         template <typename ElemT>
         bool createChildTable(void) {
-            // create child DbMap for each element
-            std::string child_table_name =
+            std::string child_table_name = // "this table name" + "_" + "child defined table name"
                 table_name + "_" + TypeMetaData<ElemT>::table_name();
-            DbMap<ElemT> *child_dbmap = new DbMap<ElemT>(child_table_name);
-            child_dbmap_vec.push_back(child_dbmap);
 
             // create constraint for foreign key
-            ForeignKey &fk = child_dbmap->getForeignKey();
+            ForeignKey fk;
             fk.table = table_name;
 
-            // get the first element as the foreign key
-            const uint32_t primary_key_index = 0;
+            // use the first element as the foreign key
+            const uint32_t primary_key_index = Config::fk_ref_pk_col_index;
 
             // get primary key name and type from this class
             const auto &cols = TypeMetaData<T>::column_names();
             fk.column.push_back( cols[primary_key_index] );
 
-            using PrimKeyType = typename boost::fusion::result_of
-                ::value_at_c<typename TypeMetaData<T>::TupType, 
-                    primary_key_index>::type;
-            std::string t = getSqlTypeString<PrimKeyType>();
-            fk.type.push_back(t);
+            using PrimKeyType = typename boost::fusion::result_of ::value_at_c<
+                    typename TypeMetaData<T>::TupType, primary_key_index>::type;
+            fk.type.push_back( getSqlTypeString<PrimKeyType>() );
 
-            // use foreign key constraint to create child table
+
+            // create child dbmap and table
+            DbMap<ElemT> *child_dbmap = new DbMap<ElemT>(child_table_name, fk);
+            child_dbmap_vec.push_back(child_dbmap);
             return child_dbmap->createTable();
         } // createChildTable
     }; // class DbMap
@@ -217,11 +217,15 @@ namespace edadb {
 
     template <typename T>
     struct OpTraits<T, DbMapOperation::INSERT> {
-        static constexpr const char *name() { return "Inserter"; }
-        static std::string getSQL(DbMap<T> &dbmap) {
-            return SqlStatement<T>::insertPlaceHolderStatement();
+        static constexpr const char *name() {
+            return "Inserter";
         }
-        static DbMapOperation op() { return DbMapOperation::INSERT; }
+        static std::string getSQL(DbMap<T> &dbmap) {
+            return SqlStatement<T>::insertPlaceHolderStatement(dbmap.getForeignKey());
+        }
+        static DbMapOperation op() {
+            return DbMapOperation::INSERT;
+        }
     };
 
     template <typename T>
@@ -230,7 +234,7 @@ namespace edadb {
             return "Updater";
         }
         static std::string getSQL(DbMap<T> &dbmap) {
-            return SqlStatement<T>::updatePlaceHolderStatement();
+            return SqlStatement<T>::updatePlaceHolderStatement(dbmap.getForeignKey());
         }
         static DbMapOperation op() {
             return DbMapOperation::UPDATE;
@@ -259,7 +263,7 @@ namespace edadb {
          * Writer related DbMap and DbManager to access the database:
          * DbMap contains the table name and DbManager contains the database connection.
          */
-        DbMap &dbmap;
+        DbMap     &dbmap;
         DbManager &manager;
 
         /**
@@ -276,7 +280,8 @@ namespace edadb {
     public:
         ~Writer() = default;
         Writer(DbMap &m) : dbmap(m), manager(m.getManager()),
-                    bind_idx(manager.s_bind_column_begin_index) {
+            bind_idx(manager.s_bind_column_begin_index)
+        {
             resetBindIndex();
 
             if (!manager.isConnected()) {
@@ -284,6 +289,7 @@ namespace edadb {
                 return;
             }
         }
+
 
     public: // utility
         /**
@@ -342,12 +348,14 @@ namespace edadb {
                 return false;
             }
 
-            // lamda function to bind the object
+            /**
+             * lamda function to bind the object and communicate with the database 
+             */
             func();
 
-            if (!dbstmt.bindStep()) {
-                return false;
-            }
+//            if (!dbstmt.bindStep()) {
+//                return false;
+//            }
 
             if (!dbstmt.reset()) {
                 return false;
@@ -391,12 +399,15 @@ namespace edadb {
             return dbstmt.finalize();
         } // finalize
 
+
     public: // insert API
-        bool insertOne(T *obj) {
-            return prepare2<DbMapOperation::INSERT>() && insert(obj) && finalize();
+        template <typename ParentType = void>
+        bool insertOne(T *obj, ParentType *p = nullptr) {
+            return prepare2<DbMapOperation::INSERT>() && insert(obj, p) && finalize();
         }
 
-        bool insertVector(std::vector<T *> &objs) {
+        template <typename ParentType = void>
+        bool insertVector(std::vector<T *> &objs, ParentType *p = nullptr) {
             if (objs.empty()) {
                 std::cerr << "DbMap::insertVector: empty vector" << std::endl;
                 return false;
@@ -404,7 +415,7 @@ namespace edadb {
 
             return processVector<DbMapOperation::INSERT>("DbMap::insertVector", [&]() {
                 for (auto obj : objs) {
-                    if (!insert(obj)) {
+                    if (!insert(obj, p)) {
                         std::cerr << "DbMap::insertVector: insert failed" << std::endl;
                         return false;
                     }
@@ -413,8 +424,11 @@ namespace edadb {
             });
         } // insertVector
 
-        bool insert(T *obj) {
-            return executeOp<DbMapOperation::INSERT>([&]() { bindObject(obj); });
+        template <typename ParentType = void>
+        bool insert(T *obj, ParentType *p = nullptr) {
+            return executeOp<DbMapOperation::INSERT>(
+                [&]() { bindObject(obj, p); }
+            );
         } // insert
 
         /**
@@ -433,11 +447,12 @@ namespace edadb {
         template <typename ElemType>
         void bindToColumn(const ElemType &elem) {
             // extract the CppType from the ElemType pointer
-            using CppType = typename std::remove_const<typename std::remove_pointer<ElemType>::type>::type;
+            using CppType = typename
+                std::remove_const<typename std::remove_pointer<ElemType>::type>::type;
 
             if constexpr (edadb::Cpp2SqlType<CppType>::sqlType == edadb::SqlType::Composite) {
                 assert((bind_idx > 0) &&
-                       "DbMap<T>::Writer::bindToColumn: composite type should not be the first element");
+                    "DbMap<T>::Writer::bindToColumn: composite type should not be the first element");
 
                 auto values = TypeMetaData<CppType>::getVal(elem);
                 boost::fusion::for_each(
@@ -458,8 +473,8 @@ namespace edadb {
                 assert((bind_idx > 0) &&
                        "DbMap<T>::Writer::bindToColumn: external type should not be the first element");
 
-                Shadow<CppType> shadow;
                 // transform the object of external type to Shadow
+                Shadow<CppType> shadow;
                 shadow.toShadow(elem);
 
                 auto values = TypeMetaData<edadb::Shadow<CppType>>::getVal(&shadow);
@@ -492,16 +507,63 @@ namespace edadb {
          * @brief bind the object to the database.
          * @param obj The object to bind.
          */
-        void bindObject(T *obj) {
+        template <typename ParentType = void>
+        void bindObject(T *obj, ParentType *p = nullptr) {
             // reset bind_idx to begin to bind
             resetBindIndex();
 
-            // iterate through the values and bind them
+            // iterate through the non-vector members and bind them
             // @see DbMap<T>::Writer::bindToColumn for the recursive calling
             auto values = TypeMetaData<T>::getVal(obj);
             boost::fusion::for_each(values,
-                                    [this](auto const &ne)
-                                    { this->bindToColumn(ne); });
+                [this](auto const &ne) { this->bindToColumn(ne); });
+
+            // ignore no ParentType (= void) during compile time
+            // Otherwise, bind DbMap<T> foreign key value from ParentType p
+            if constexpr (!std::is_same_v<ParentType, void>) {
+                assert(this->dbmap.getForeignKey().valid());
+
+                // bind the foreign key value (1st column in parent)
+                auto fk_val_ptr = boost::fusion::at_c<Config::fk_ref_pk_col_index>
+                    (TypeMetaData<ParentType>::getVal(p)
+                );
+                dbstmt.bindColumn(bind_idx++, fk_val_ptr);
+            } // if 
+
+            // bind the primary key tuple before bind the foreign key in child
+            if (!dbstmt.bindStep()) {
+                std::cerr << "DbMap::Writer::bindObject: bind step failed" << std::endl;
+                return;
+            }
+
+
+            // CompositeVector type: use obj as primary key to bind the child
+            // constexpr to avoid compile time error
+            if constexpr (Cpp2SqlType<T>::sqlType == SqlType::CompositeVector) {
+                auto ve = VecMetaData<T>::getVecElem(obj);
+                bool retval = true;
+                std::size_t vidx = 0;
+                boost::fusion::for_each(
+                    ve,
+                    [&](auto ptr) {
+                        using PtrT = decltype(ptr);
+                        using VecT  = std::remove_const_t<std::remove_pointer_t<PtrT>>;
+                        using ElemT = typename VecT::value_type;
+                        auto child_dbmap_vec = this->dbmap.getChildDbMap();
+                        DbMap<ElemT> *child_dbmap = 
+                            static_cast<DbMap<ElemT> *>(child_dbmap_vec.at(vidx++));
+                        assert(child_dbmap != nullptr);
+
+                        // trans vector<ElemT>* to vector<ElemT*> to call insertVector
+                        std::vector<ElemT *> vec_elem;
+                        for (auto &v : *ptr) 
+                            vec_elem.push_back(&v);
+
+                        typename DbMap<ElemT>::Writer child_writer(*child_dbmap);
+                        retval = retval && child_writer.insertVector(vec_elem, obj);
+                    }
+                );
+            } // if 
         } // bindObject
 
     public: // Delete API: using text delete statement

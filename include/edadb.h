@@ -71,32 +71,28 @@ bool initDatabase(const std::string& dbName) {
     return res;
 }
 
-template<typename T>
 bool executeSql(const std::string& sql) {
     return DbMapBase::i().executeSql(sql);
 }
 
+bool beginTransaction() {
+    return DbMapBase::i().beginTransaction();
+}
+
+bool commitTransaction() {
+    return DbMapBase::i().commitTransaction();
+}
+
+
 
 template<typename T>
 bool createTable(DbMap<T> &dbmap) {
-    return DbMapBase::i().beginTransaction()
-        && dbmap.createTable()
-        && DbMapBase::i().commitTransaction();
+    return beginTransaction() && dbmap.createTable() && commitTransaction();
 }// createTable
 
 template<typename T>
 bool dropTable() {
     return DbMap<T>::i().dropTable();
-}
-
-template <typename T>
-bool beginTransaction() {
-    return DbMap<T>::i().beginTransaction();
-}
-
-template <typename T>
-bool commitTransaction() {
-    return DbMap<T>::i().commitTransaction();
 }
 
 /**
@@ -106,8 +102,10 @@ bool commitTransaction() {
  */
 template <typename T>
 bool insertObject(DbMap<T> &dbmap, T* obj) {
+    bool got = beginTransaction();
     typename DbMap<T>::Writer writer(dbmap);
-    return writer.insertOne(obj);
+    got = got && writer.insertOne(obj);
+    return got && commitTransaction();
 }
 
 /**
@@ -117,8 +115,10 @@ bool insertObject(DbMap<T> &dbmap, T* obj) {
  */
 template <typename T>
 bool insertVector(DbMap<T> &dbmap, std::vector<T*>& obj_ptr_vec) {
+    bool got = beginTransaction();
     typename DbMap<T>::Writer writer(dbmap); 
-    return writer.insertVector(obj_ptr_vec);
+    got = got && writer.insertVector(obj_ptr_vec);
+    return got && commitTransaction();
 }
 
 /**
