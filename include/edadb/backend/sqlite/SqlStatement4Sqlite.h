@@ -30,11 +30,15 @@ namespace edadb {
  */
 template<typename T>
 struct SqlStatementImpl<DbBackendType::SQLITE, T> : public SqlStatementBase {
-    
-//////// Standard SQL Statements //////////////////////////////////////
 public: 
+    /**
+     * @brief create the table statement.
+     * @param fk The foreign key constraint.
+     * @return The create table statement.
+     */
     static std::string createTableStatement(const ForeignKey& fk) {
         std::string sql;
+        sql = "CREATE TABLE IF NOT EXISTS \"{}\" (";
 
         /*
          * get column name and type from TypeMetaData<T>::tuple_type_pair()
@@ -45,26 +49,23 @@ public:
         std::vector<std::string> name, type;
         const auto vecs = TypeMetaData<T>::tuple_type_pair();
         boost::fusion::for_each(vecs, ColumnNameType<T>(name, type));
-
-        sql = "CREATE TABLE IF NOT EXISTS \"{}\" (";
+        assert (name.size() == type.size());
+        assert (name.size() > 0);
 
         // table columns by object member variables
         for (int i = 0; i < name.size(); ++i) {
             sql += (i == 0) ? (name[i] + " " + type[i] + " PRIMARY KEY") :
                 (", " + name[i] + " " + type[i]);
         }
-        assert (name.size() == type.size());
-        assert (name.size() > 0);
 
         // foreign key constraints
         if (fk.valid()) {
             assert (fk.column.size() == fk.type.size());
 
-            const std::string fk_pref = fk.table + "_";
-            size_t fk_num = fk.column.size();
-
             // add foreign key columns to the child table
             std::vector<std::string> child_column; // referencing column 
+            const std::string fk_pref = fk.table + "_";
+            size_t fk_num = fk.column.size();
             for (size_t i = 0; i < fk_num; ++i) {
                 child_column.push_back(fk_pref + fk.column[i]);
                 sql += ", " + child_column.back() + " " + fk.type[i];
@@ -84,9 +85,196 @@ public:
 
         sql += ");";
         return sql;
+    } // createTableStatement
+
+
+    /**
+     * @brief Generate the insert statement with place holders.
+     * @return The insert statement.
+     */
+    static std::string insertPlaceHolderStatement(const ForeignKey& fk) {
+        std::string sql;
+        sql = "INSERT INTO \"{}\" (";
+
+        // get column and nested name
+        std::vector<std::string> name, type;
+        const auto vecs = TypeMetaData<T>::tuple_type_pair();
+        boost::fusion::for_each(vecs, ColumnNameType<T>(name, type));
+        assert (name.size() == type.size());
+        assert (name.size() > 0);
+
+        for (size_t i = 0; i < name.size(); ++i) {
+            sql += (i > 0 ? ", " : "") + name[i];
+        }
+
+        // foreign key columns
+        if (fk.valid()) {
+            assert(fk.column.size() == fk.type.size());
+
+            // add foreign key columns to the child table
+            for (size_t i = 0; i < fk.column.size(); ++i) {
+                sql += ", " + (fk.table + "_" + fk.column[i]);
+            } // for
+        } 
+
+        sql += ") VALUES (";
+
+        // foreach name, append place holder for each column
+        for (size_t i = 0; i < name.size(); ++i) {
+            sql += (i > 0 ? ", ?" : "?");
+        }
+
+        // has foreign key
+        if (fk.valid()) {
+            for (size_t i = 0; i < fk.column.size(); ++i) 
+                sql += ", ?"; 
+        }
+
+        sql += ");";
+        return sql;
+    } // insertPlaceHolderStatement
+
+
+    /**
+     * @brief Generate the project statement with all column names without tail ";"
+     * @param fk The foreign key columns
+     * @return The project statement with all column names, also include the foreign key columns
+     */ 
+    static std::string projectAllStatement(const ForeignKey& fk) {
+        // select col1, col2, ... from table_name;
+        // colx is defined in TypeMetaData<T>::column_names() by TABLE4CLASS
+        std::string sql;
+        sql = "SELECT ";
+
+        // query TypeMetaData<T> defined tuples
+        std::vector<std::string> name, type;
+        const auto vecs = TypeMetaData<T>::tuple_type_pair();
+        boost::fusion::for_each(vecs, ColumnNameType<T>(name, type));
+        assert (name.size() == type.size());
+        assert (name.size() > 0);
+
+        for (int i = 0; i < name.size(); ++i) {
+            sql += (i > 0 ? ", " : "") + name[i];
+        }
+
+        // foreign key columns
+        if (fk.valid()) {
+            assert (fk.column.size() == fk.type.size());
+
+            // add foreign key columns to the child table
+            for (size_t i = 0; i < fk.column.size(); ++i) {
+                sql += ", " + (fk.table + "_" + fk.column[i]);
+            } // for
+        } 
+
+        sql += " FROM \"{}\" "; // NO ";" at the end
+        return sql;
+    } // projectAllStatement
+
+
+    static std::string scanStatement(const ForeignKey& fk) {
+        std::string sql = projectAllStatement(fk);
+        return sql += ";"; 
+    } // scanStatement
+
+
+    static std::string queryPrimaryKeyStatement(const ForeignKey& fk) {
+        std::string sql = projectAllStatement(fk);
+
+        // get the first as the primary key to query
+        auto pk_name = TypeMetaData<T>::column_names()[Config::fk_ref_pk_col_index];
+        sql += " WHERE " + pk_name + " = ?";
+
+        return sql += ";";
+    } // queryPrimaryKeyStatement
+
+
+    /**
+     * @brief Generate the query statement with place holders using predicate text 
+     * @param fk The foreign key columns
+     * @param pred The predicate text
+     * @return The query statement
+     */
+    static std::string queryPredicateStatement(const ForeignKey& fk, const std::string& pred) {
+        std::string sql = projectAllStatement(fk);
+        sql += (pred.empty() ? "" : (" WHERE " + pred));
+        return sql += ";";
+    } // queryPredicateStatement 
+
+
+    /**
+     * @brief Generate the update statement with place holders.
+     * @return The update statement.
+     */
+    static std::string updatePlaceHolderStatement(const ForeignKey& fk) {
+        std::string sql;
+        sql = "UPDATE \"{}\" SET ";
+
+        std::vector<std::string> name, type;
+        const auto vecs = TypeMetaData<T>::tuple_type_pair();
+        boost::fusion::for_each(vecs, ColumnNameType<T>(name, type));
+        assert(name.size() == type.size());
+        assert(name.size() > 0);
+
+        for (int i = 0; i < name.size(); ++i) {
+            sql += (i > 0 ? ", " : "") + name[i] + " = ?";
+        }
+        if (fk.valid()) {
+            assert(fk.column.size() == fk.type.size());
+
+            // add foreign key columns to the child table
+            for (size_t i = 0; i < fk.column.size(); ++i) {
+                sql += ", " + (fk.table + "_" + fk.column[i]) + " = ?";
+            } // for
+        }
+        sql += " WHERE " + name[0] + " = ?;";
+        return sql;
+    } // updatePlaceHolderStatement
+
+
+
+    /**
+     * @brief Generate the delete statement with place holders
+     *          Only need to delete the record by primary key, which is the first column
+     * @return The delete statement.
+     */
+    static std::string deletePlaceHolderStatement() {
+        static std::string sql;
+        if (sql.empty()) {
+            sql = "DELETE FROM \"{}\" WHERE ";
+            auto name = TypeMetaData<T>::column_names();
+            sql += name[0] + " = ?;";
+        }
+        return sql;
     }
 
 
+
+public: // debug
+    void print(T* obj1, T* obj2) {
+        std::cout << "======== " << "SqlStatement <" << typeid(T).name() << "> ========" << std::endl;
+        std::cout << "-------- Standard SQL statements --------" << std::endl;
+        std::cout << "Create Table SQL: " << std::endl << "\t" 
+            << createTableStatement(ForeignKey()) << std::endl;
+        std::cout << "-------- SQL statements with Place Holder --------" << std::endl;
+        std::cout << "Insert Place Holder SQL: " << std::endl << "\t" 
+            << insertPlaceHolderStatement(ForeignKey()) << std::endl;
+        std::cout << "ScanStatement SQL: " << std::endl << "\t"
+            << scanStatement(ForeignKey()) << std::endl;
+        std::cout << "Query Primary Key SQL: " << std::endl << "\t"
+            << queryPrimaryKeyStatement(ForeignKey()) << std::endl;
+        std::cout << "Query Predicate SQL: " << std::endl << "\t"
+            << queryPredicateStatement(ForeignKey(), "col1 = ?") << std::endl;
+        std::cout << "Update Place Holder SQL: " << std::endl << "\t"
+            << updatePlaceHolderStatement(ForeignKey()) << std::endl;
+        std::cout << "Delete Place Holder SQL: " << std::endl << "\t"
+            << deletePlaceHolderStatement() << std::endl;
+    }
+
+
+
+// discard the following code: Generate the text SQL statements
+// We use the place holder SQL statements instead.
 #if 0
     std::string insertStatement(T* obj) {
         std::stringstream ss;
@@ -107,24 +295,6 @@ public:
         }
         ss << ");";
         return ss.str();
-    }
-
-
-    static std::string const &scanStatement() {
-        // select col1, col2, ... from table_name;
-        // colx is defined in TypeMetaData<T>::column_names() by TABLE4CLASS
-        static std::string sql;
-        if (sql.empty()) {
-            std::stringstream ss;
-            std::vector<std::string> name, type;
-            const auto vecs = TypeMetaData<T>::tuple_type_pair();
-            boost::fusion::for_each(vecs, ColumnNameType<T>(name, type));
-            for (int i = 0; i < name.size(); ++i) {
-                ss << (i > 0 ? ", " : "") << name[i];
-            }
-            sql = "SELECT " + ss.str() + " FROM \"{}\";";
-        }
-        return sql;
     }
 
 
@@ -192,121 +362,6 @@ public:
     }
 #endif 
 
-
-//////// SQL Statements using Place Holder ////////////////////////
-public:
-    /**
-     * @brief Generate the insert statement with place holders.
-     * @return The insert statement.
-     */
-    static std::string insertPlaceHolderStatement(const ForeignKey& fk) {
-        std::string sql;
-        std::stringstream ss;
-        ss << "INSERT INTO \"{}\" (";
-
-        // get column and nested name
-        std::vector<std::string> name, type;
-        const auto vecs = TypeMetaData<T>::tuple_type_pair();
-        boost::fusion::for_each(vecs, ColumnNameType<T>(name, type));
-        for (int i = 0; i < name.size(); ++i) {
-            ss << (i > 0 ? ", " : "") << name[i];
-        }
-        // has foreign key
-        if (fk.valid()) {
-            assert (fk.column.size() == fk.type.size());
-            assert (fk.table.empty() == false);
-
-            // add foreign key columns to the child table
-            std::vector<std::string> child_column; // referencing column 
-            for (size_t i = 0; i < fk.column.size(); ++i) {
-                child_column.push_back(fk.table + "_" + fk.column[i]);
-                ss << ", " << child_column.back();
-            } // for
-        } 
-
-        ss << ") VALUES (";
-        // foreach name, append place holder for each column
-        for (int i = 0; i < name.size(); ++i)
-            ss << (i > 0 ? ", " : "") << "?";
-
-        // has foreign key
-        if (fk.valid()) {
-            for (int i = 0; i < fk.column.size(); ++i) 
-                ss << ", ?";
-        }
-
-        ss << ");";
-        sql.assign(ss.str());
-
-        return sql;
-    }
-
-    /**
-     * @brief Generate the update statement with place holders.
-     * @return The update statement.
-     */
-    static std::string updatePlaceHolderStatement() {
-        static std::string sql;
-        if (sql.empty()) {
-            sql = "UPDATE \"{}\" SET ";
-
-            std::vector<std::string> name, type;
-            const auto vecs = TypeMetaData<T>::tuple_type_pair();
-            boost::fusion::for_each(vecs, ColumnNameType<T>(name, type));
-            for (int i = 0; i < name.size(); ++i) {
-                sql += (i > 0 ? ", " : "") + name[i] + " = ?";
-            }
-            sql += " WHERE " + name[0] + " = ?;";
-        }
-        return sql;
-    }
-
-    /**
-     * @brief Generate the delete statement with place holders.
-     * @return The delete statement.
-     */
-    static std::string deletePlaceHolderStatement() {
-        static std::string sql;
-        if (sql.empty()) {
-            sql = "DELETE FROM \"{}\" WHERE ";
-            auto name = TypeMetaData<T>::column_names();
-            sql += name[0] + " = ?;";
-        }
-        return sql;
-    }
-
-
-
-public: // debug
-    void print(T* obj1, T* obj2) {
-        std::cout << "======== " << "SqlStatement <" << typeid(T).name() << "> ========" << std::endl;
-        std::cout << "-------- Standard SQL statements --------" << std::endl;
-        std::cout << "Create Table SQL: " << std::endl << "\t" 
-            << createTableStatement(ForeignKey()) << std::endl;
-//       std::cout << "Insert SQL: " << std::endl << "\t" 
-//            << insertStatement(obj1) << std::endl;
-//        std::cout << "Insert SQL: " << std::endl << "\t" 
-//            << insertStatement(obj2) << std::endl;
-//        std::cout << "Scan SQL: " << std::endl << "\t" 
-//            << scanStatement() << std::endl;
-//        std::cout << "Lookup SQL: " << std::endl << "\t"
-//            << lookupStatement(obj1) << std::endl;
-//        std::cout << "Delete SQL: " << std::endl << "\t"
-//            << deleteStatement(obj1) << std::endl;
-//        std::cout << "Delete SQL: " << std::endl << "\t"
-//            << deleteStatement(obj2) << std::endl;
-//        std::cout << "Update SQL: " << std::endl << "\t"
-//            << updateStatement(obj1, obj2) << std::endl;
-//        std::cout << std::endl;
-
-        std::cout << "-------- SQL statements with Place Holder --------" << std::endl;
-        std::cout << "Insert Place Holder SQL: " << std::endl << "\t" 
-            << insertPlaceHolderStatement(ForeignKey()) << std::endl;
-        std::cout << "Update Place Holder SQL: " << std::endl << "\t"
-            << updatePlaceHolderStatement() << std::endl;
-        std::cout << "Delete Place Holder SQL: " << std::endl << "\t"
-            << deletePlaceHolderStatement() << std::endl;
-    }
 };
 
 

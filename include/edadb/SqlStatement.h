@@ -46,12 +46,14 @@ public:
     }
 
 public:
-    void print() const {
-        std::cout << "ForeignKey: table=" << table << std::endl;
+    void print(const std::string& pref = "") const {
+        std::cout << pref << "ForeignKey: table=" << table << std::endl;
         for (size_t i = 0; i < column.size(); ++i) {
-            std::cout << "  column[" << i << "]=" << column[i] << ", type=" << type[i] << std::endl;
-        }
-    }
+            std::cout << pref
+                << "  column[" << i << "]=" << column[i] << ", type=" << type[i]
+                << std::endl;
+        } // for 
+    } // print
 }; // ForeignKey
 
 
@@ -138,15 +140,16 @@ protected:  // some utility functions
                     ColumnNameType<edadb::Shadow<CppType>>(name, type, next_pref));
             }
             else {
-                std::string sqlTypeString = edadb::getSqlTypeString<CppType> ();
+                std::string sqlTypeString = edadb::getSqlTypeString<CppType>();
                 type.push_back(sqlTypeString);
 
                 // use the user defined column name
                 name.push_back(prefix + column_name);
 //                name.push_back(x.second); // x.second is the name of the member variable
             }
-        }
-    };
+        } // operator()
+    }; // ColumnNameType
+
 
     /**
      * @brief Appender for column names to the vector.
@@ -176,15 +179,18 @@ protected:  // some utility functions
             else if constexpr (edadb::Cpp2SqlType<CppType>::sqlType == edadb::SqlType::External) {
                 // transform the object of external type to string:
                 //   expand the external type's member variables to the vector
-                boost::fusion::for_each(TypeMetaData<edadb::Shadow<CppType>>::getVal(v), ColumnValues(values));
+                boost::fusion::for_each(
+                    TypeMetaData<edadb::Shadow<CppType>>::getVal(v),
+                    ColumnValues(values)
+                );
             }
             else {
                 // transform the value of basic type to string:
                 //   append the value to the vector
                 values.push_back(binary2String(*v));
             }
-        }
-    };
+        } // operator()
+    }; // ColumnValues
 }; // SqlStatementBase
 
 
