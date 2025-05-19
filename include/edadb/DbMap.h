@@ -94,6 +94,7 @@ public:
 template <typename T>
 class DbMap : public DbMapBase {
 public:
+    class DbStmtOp; // DB statement operation 
     class Writer; // write object to database
     class Reader; // read object from database
 
@@ -201,7 +202,7 @@ private:
 
 
 
-
+////////////////////////////////////////////////////////////////////////////////
 
 // enum for DbMap operation
 enum class DbMapOperation {
@@ -284,10 +285,10 @@ struct OpTraits<T, DbMapOperation::SCAN> {
 template <typename T>
 struct OpTraits<T, DbMapOperation::QUERY_PRED> {
     static constexpr const char *name() {
-        return "Query using text predicates";
+        return "QueryWithPredicate";
     }
-    static std::string getSQL(DbMap<T> &dbmap) {
-        return SqlStatement<T>::queryByPredicateStatement(dbmap.getForeignKey());
+    static std::string getSQL(DbMap<T> &dbmap, const std::string &pred) {
+        return SqlStatement<T>::queryPredicateStatement(dbmap.getForeignKey(), pred);
     }
     static DbMapOperation op() {
         return DbMapOperation::QUERY_PRED;
@@ -298,10 +299,10 @@ struct OpTraits<T, DbMapOperation::QUERY_PRED> {
 template <typename T>
 struct OpTraits<T, DbMapOperation::QUERY_PRIKEY> {
     static constexpr const char *name() {
-        return "Query using primary key";
+        return "QueryWithPrimaryKey";
     }
-    static std::string getSQL(DbMap<T> &dbmap, const std::string &pred) {
-        return SqlStatement<T>::queryByPrimaryKeyStatement(dbmap.getForeignKey(), pred);
+    static std::string getSQL(DbMap<T> &dbmap) {
+        return SqlStatement<T>::queryPrimaryKeyStatement(dbmap.getForeignKey());
     }
     static DbMapOperation op() {
         return DbMapOperation::QUERY_PRIKEY;
@@ -310,14 +311,17 @@ struct OpTraits<T, DbMapOperation::QUERY_PRIKEY> {
 
 
 
+////////////////////////////////////////////////////////////////////////////////
 
-
-// DbMap Writer: write database, include insert, update, delete
+/**
+ * @brief DbMap::Writer class is used to write objects to the database.
+ * @tparam T The class type.
+ */
 template <typename T>
-class DbMap<T>::Writer {
+class DbMap<T>::DbStmtOp {
 protected:
     /**
-     * Writer related DbMap and DbManager to access the database:
+     * Related DbMap and DbManager to access the database:
      * DbMap contains the table name and DbManager contains the database connection.
      */
     DbMap     &dbmap;
@@ -330,22 +334,23 @@ protected:
      *   static thread_local: var is shared by all instances of the thread
      */
     DbStatement dbstmt;
-    uint32_t bind_idx;
+    uint32_t  bind_idx;
 
     DbMapOperation op = DbMapOperation::NONE;
 
-public:
-    ~Writer() = default;
-    Writer(DbMap &m) : dbmap(m), manager(m.getManager()),
+
+protected:
+    virtual ~DbStmtOp(void) = default;
+    DbStmtOp(DbMap &m) : dbmap(m), manager(m.getManager()),
         bind_idx(manager.s_bind_column_begin_index)
     {
         resetBindIndex();
 
         if (!manager.isConnected()) {
-            std::cerr << "DbMap::Writer: not inited" << std::endl;
+            std::cerr << "DbMap::DbStmtOp: not inited" << std::endl;
             return;
         }
-    }
+    } // DbStmtOp
 
 
 public: // utility
@@ -355,32 +360,50 @@ public: // utility
      * @return true if success, false otherwise.
      */
     template <DbMapOperation OP>
-    bool prepareImpl() {
+    bool prepareImpl(void) {
+        return prepareImpl<OP>([&] {
+            return fmt::format(OpTraits<T, OP>::getSQL(dbmap), dbmap.getTableName());
+        });
+    } // prepareImpl
+
+
+    /**
+     * @brief prepareImpl for the operation.
+     * @tparam OP The operation type.
+     * @tparam SqlBuilder The text sql statement builder lambda function.
+     * @return true if success, false otherwise.
+     */
+    template <DbMapOperation OP, typename SqlBuilder>
+    bool prepareImpl(SqlBuilder buildSql) {
         if (op != DbMapOperation::NONE) {
-            std::cerr << "DbMap::Writer::prepareImpl: already prepared" << std::endl;
+            std::cerr << "DbMap::DbStmtOp::prepareImpl ["
+                << OpTraits<T, OP>::name() << "]: already prepared" << std::endl;
             return false;
         }
 
         if (!manager.isConnected()) {
-            std::cerr << "DbMap::Writer::prepareImpl: not inited" << std::endl;
+            std::cerr << "DbMap::DbStmtOp::prepareImpl ["
+                << OpTraits<T, OP>::name() << "]: not inited" << std::endl;
             return false;
         }
 
         if (!manager.initStatement(dbstmt)) {
-            std::cerr << "DbMap::Writer::prepareImpl: init statement failed" << std::endl;
+            std::cerr << "DbMap::DbStmtOp::prepareImpl ["
+                << OpTraits<T, OP>::name() << "]: init statement failed" << std::endl;
             return false;
         }
 
-        const std::string sql =
-            fmt::format(OpTraits<T, OP>::getSQL(dbmap), dbmap.getTableName());
+        const std::string sql = buildSql();
         if (!dbstmt.prepare(sql)) {
-            std::cerr << "DbMap::Writer::prepareImpl: prepare statement failed" << std::endl;
+            std::cerr << "DbMap::DbStmtOp::prepareImpl ["
+                << OpTraits<T, OP>::name() << "]: prepare failed" << std::endl;
             return false;
         }
 
         op = OpTraits<T, OP>::op();
         return true;
     } // prepareImpl
+
 
     /**
      * @brief execute the operation.
@@ -391,11 +414,7 @@ public: // utility
     template <DbMapOperation OP, typename Func>
     bool executeOp(Func func) {
         // check if the operation is prepared
-        if ((op == DbMapOperation::NONE) && (!prepareImpl<OP>())) {
-            std::cerr << "DbMap::" << OpTraits<T, OP>::name() << "::executeOp: prepare failed" << std::endl;
-            return false;
-        }
-        else if (op != OP) {
+        if (op != OP) {
             std::cerr << "DbMap::" << OpTraits<T, OP>::name() << "::executeOp: not prepared" << std::endl;
             return false;
         }
@@ -423,27 +442,6 @@ public: // utility
         return true;
     } // executeOp
 
-    /**
-     * @brief process the vector of objects.
-     * @tparam OP The operation type.
-     * @tparam Func The function to execute, which is a lambda function.
-     * @param errPrefix The error prefix.
-     * @param func The function to execute, which is a lambda function.
-     * @return true if success, false otherwise.
-     */
-    template <DbMapOperation OP, typename Func>
-    bool processVector(const std::string &errPrefix, Func &&func) {
-        if (!prepareImpl<OP>()) {
-            std::cerr << errPrefix << ": prepare failed" << std::endl;
-            return false;
-        }
-
-        // lambda function to bind the object
-        if (!func())
-            return false;
-
-        return finalize();
-    } // processVector
 
     /**
      * @brief finalize dbstmt and reset the bind_idx
@@ -459,46 +457,16 @@ public: // utility
     } // finalize
 
 
-public: // insert API
-    template <typename ParentType = void>
-    bool insertOne(T *obj, ParentType *p = nullptr) {
-        return prepareImpl<DbMapOperation::INSERT>() && insert(obj, p) && finalize();
-    }
-
-    template <typename ParentType = void>
-    bool insertVector(std::vector<T *> &objs, ParentType *p = nullptr) {
-        if (objs.empty()) {
-            std::cerr << "DbMap::insertVector: empty vector" << std::endl;
-            return false;
-        }
-
-        return processVector<DbMapOperation::INSERT>("DbMap::insertVector", [&]() {
-            for (auto obj : objs) {
-                if (!insert(obj, p)) {
-                    std::cerr << "DbMap::insertVector: insert failed" << std::endl;
-                    return false;
-                }
-            }
-            return true; 
-        });
-    } // insertVector
-
-    template <typename ParentType = void>
-    bool insert(T *obj, ParentType *p = nullptr) {
-        return executeOp<DbMapOperation::INSERT>(
-            [&]() { bindObject(obj, p); }
-        );
-    } // insert
-
+protected:
     /**
-     * @brief Use operator() to bind each element in obj
-     * @param elem The element pointer to bind, which is defined as a cpp type pointer.
+     * @brief reset the bind index to the begin index.
      */
-    template <typename ElemType>
-    void operator()(const ElemType &elem) {
-        bindToColumn(elem);
-    }
+    void resetBindIndex() {
+        bind_idx = manager.s_bind_column_begin_index;
+    } // resetBindIndex
 
+
+protected:
     /**
      * @brief bind the element to the database.
      * @param elem The element pointer to bind, which is defined as a cpp type pointer.
@@ -556,11 +524,6 @@ public: // insert API
         }
     } // bindToColumn
 
-private: // utility
-    /** reset bind_idx to begin to bind */
-    void resetBindIndex() {
-        bind_idx = manager.s_bind_column_begin_index;
-    }
 
     /**
      * @brief bind the object to the database.
@@ -588,6 +551,7 @@ private: // utility
             );
             dbstmt.bindColumn(bind_idx++, fk_val_ptr);
         } // if 
+
 
         // bind the primary key tuple before bind the foreign key in child
         if (!dbstmt.bindStep()) {
@@ -625,9 +589,84 @@ private: // utility
         } // if 
     } // bindObject
 
+
+}; // DbStmtOp
+
+
+////////////////////////////////////////////////////////////////////////////////
+
+
+// DbMap Writer: write database, include insert, update, delete
+template <typename T>
+class DbMap<T>::Writer : public DbStmtOp {
+public:
+    ~Writer() = default;
+    Writer(DbMap &m) : DbStmtOp(m) {} 
+
+
+public: // insert API
+    template <typename ParentType = void>
+    bool insertOne(T *obj, ParentType *p = nullptr) {
+        return this->template prepareImpl<DbMapOperation::INSERT>()
+            && insert(obj, p)
+            && this->finalize();
+    }
+
+private:
+    template <typename ParentType = void>
+    bool insert(T *obj, ParentType *p = nullptr) {
+        return this->template executeOp<DbMapOperation::INSERT>(
+            [&]() { this->bindObject(obj, p); }
+        );
+    } // insert
+
+
+public:
+    template <typename ParentType = void>
+    bool insertVector(std::vector<T *> &objs, ParentType *p = nullptr) {
+        if (objs.empty()) {
+            std::cerr << "DbMap::insertVector: empty vector" << std::endl;
+            return false;
+        }
+
+        return processVector<DbMapOperation::INSERT>("DbMap::insertVector", [&]() {
+            for (auto obj : objs) {
+                if (!insert(obj, p)) {
+                    std::cerr << "DbMap::insertVector: insert failed" << std::endl;
+                    return false;
+                }
+            }
+            return true; 
+        });
+    } // insertVector
+
+private:
+    /**
+     * @brief process the vector of objects.
+     * @tparam OP The operation type.
+     * @tparam Func The function to execute, which is a lambda function.
+     * @param errPrefix The error prefix.
+     * @param func The function to execute, which is a lambda function.
+     * @return true if success, false otherwise.
+     */
+    template <DbMapOperation OP, typename Func>
+    bool processVector(const std::string &errPrefix, Func &&func) {
+        if (!this->template prepareImpl<OP>()) {
+            std::cerr << errPrefix << ": prepare failed" << std::endl;
+            return false;
+        }
+
+        // lambda function to bind the object
+        if (!func())
+            return false;
+
+        return this->template finalize();
+    } // processVector
+
+
 public: // Delete API: using text delete statement
     bool deleteByPrimaryKeys(T *obj) {
-        if (op != DbMapOperation::NONE) {
+        if (this->op != DbMapOperation::NONE) {
             std::cerr << "DbMap::Deleter::deleteByPrimaryKeys: already prepared" << std::endl;
             return false;
         }
@@ -638,26 +677,31 @@ public: // Delete API: using text delete statement
         }
 
         const std::string sql =
-            fmt::format(SqlStatement<T>::deleteStatement(obj), dbmap.getTableName());
+            fmt::format(SqlStatement<T>::deleteStatement(obj), this->dbmap.getTableName());
         return manager.exec(sql);
     } // deleteByPrimaryKeys
 
+
 public: // delete API: using place holder delete statement
     bool deleteOne(T *obj) {
-        return prepareImpl<DbMapOperation::DELETE>() && deleteOp(obj) && finalize();
+        return this->template prepareImpl<DbMapOperation::DELETE>()
+            && deleteOp(obj)
+            && this->template finalize();
     }
 
+
     bool deleteOp(T *obj) {
-        return executeOp<DbMapOperation::DELETE>([&]()
+        return this->template executeOp<DbMapOperation::DELETE>([&]()
                                                  {
         // bind the primary key value in the where clause using obj
         auto pk_val_ptr = boost::fusion::at_c<0>(TypeMetaData<T>::getVal(obj));
-        dbstmt.bindColumn(bind_idx++, pk_val_ptr); });
+        this->dbstmt.bindColumn(this->bind_idx++, pk_val_ptr); });
     } // deleteOne
+
 
 public: // update API: using text update statement
     bool updateBySqlStmt(T *org_obj, T *new_obj) {
-        if (op != DbMapOperation::NONE) {
+        if (this->op != DbMapOperation::NONE) {
             std::cerr << "DbMap::Updater::update: already prepared" << std::endl;
             return false;
         }
@@ -667,15 +711,20 @@ public: // update API: using text update statement
             return false;
         }
 
-        const std::string sql =
-            fmt::format(SqlStatement<T>::updateStatement(org_obj, new_obj), dbmap.getTableName());
+        const std::string sql = fmt::format(
+            SqlStatement<T>::updateStatement(org_obj, new_obj),
+            this->dbmap.getTableName());
         return manager.exec(sql);
     } // updateBySqlStmt
 
+
 public: // update API: using place holder update statement
     bool updateOne(T *org_obj, T *new_obj) {
-        return prepareImpl<DbMapOperation::UPDATE>() && update(org_obj, new_obj) && finalize();
+        return this->template prepareImpl<DbMapOperation::UPDATE>()
+            && update(org_obj, new_obj)
+            && this->template finalize();
     }
+
 
     bool updateVector(std::vector<T *> &org_objs, std::vector<T *> &new_objs) {
         if (org_objs.empty() || new_objs.empty()) {
@@ -698,15 +747,16 @@ public: // update API: using place holder update statement
         });
     } // updateVector
 
+
 public:
     bool update(T *org_obj, T *new_obj) {
-        return executeOp<DbMapOperation::UPDATE>([&]() {
+        return this->template executeOp<DbMapOperation::UPDATE>([&]() {
             // bind new_obj to the database
-            bindObject(new_obj);
+            this->bindObject(new_obj);
 
             // bind the primary key value in the where clause using org_obj
             auto pk_val_ptr = boost::fusion::at_c<0>(TypeMetaData<T>::getVal(org_obj));
-            dbstmt.bindColumn(bind_idx++, pk_val_ptr);
+            this->dbstmt.bindColumn(this->bind_idx++, pk_val_ptr);
         });
     } // update
 }; // DbMap::Writer
@@ -715,54 +765,15 @@ public:
 
 // DbMap Reader: read database
 template <typename T>
-class DbMap<T>::Reader {
+class DbMap<T>::Reader : public DbStmtOp {
 protected:
-    DbMap     &dbmap;
-    DbManager &manager;
-
-    // thread local variables
-    DbStatement dbstmt;
     uint32_t read_idx = 0;
 
 public:
     ~Reader() = default;
-    Reader(DbMap &m) : dbmap(m), manager(m.getManager()) {
+    Reader(DbMap &m) : DbStmtOp(m) {
         resetReadIndex();
     }
-
-private:
-    /**
-     * @fn prepareImpl
-     * @brief generic prepare function for the Reader class.
-     * @param funcName The function name to prepare.
-     * @param buildSql The function to build the SQL statement.:w
-     * @return true if prepared; otherwise, false.
-     * @tparam SqlBuilder The SQL builder type.
-     */
-    template <typename SqlBuilder>
-    bool prepareImpl(const char* funcName, SqlBuilder buildSql) {
-        if (!manager.isConnected()) {
-            std::cerr << "DbMap<" << typeid(T).name() << ">::Reader::"
-                << funcName << ": not inited" << std::endl;
-            return false;
-        }
-
-        if (!manager.initStatement(dbstmt)) {
-            std::cerr << "DbMap<" << typeid(T).name() << ">::Reader::"
-                << funcName << ": init statement failed" << std::endl;
-            return false;
-        }
-
-        auto sql = buildSql();
-        if (!dbstmt.prepare(sql)) {
-            std::cerr << "DbMap<" << typeid(T).name() << ">::Reader::"
-                << funcName << ": prepare statement failed" << std::endl;
-            return false;
-        }
-
-        return true;
-    } // prepareImpl
-
 
 public:
     /**
@@ -770,14 +781,7 @@ public:
      * @return true if prepared; otherwise, false.
      */
     bool prepare2Scan() {
-        return prepareImpl( "prepare2Scan",
-            [&]() {
-                return fmt::format(
-                    SqlStatement<T>::scanStatement(dbmap.getForeignKey()),
-                    dbmap.getTableName()
-                );
-            }
-        );
+        return this->template prepareImpl<DbMapOperation::SCAN>();
     } // prepare2Scan
 
     /**
@@ -786,11 +790,13 @@ public:
      * @return true if prepared; otherwise, false.
      */
     bool prepareByPredicate(const std::string &pred) {
-        return prepareImpl( "prepareByPredicate",
+        // need predicate to build the sql statement,
+        // call prepareImpl with lambda function
+        return this->template prepareImpl<DbMapOperation::QUERY_PRED>(
             [&]() {
-                return fmt::format(
-                    SqlStatement<T>::queryPredicateStatement(dbmap.getForeignKey(), pred),
-                    dbmap.getTableName()
+                return fmt::format(SqlStatement<T>::queryPredicateStatement(
+                    this->dbmap.getForeignKey(), pred),
+                    this->dbmap.getTableName()
                 );
             }
         );
@@ -802,14 +808,7 @@ public:
      * @return true if prepared; otherwise, false.
      */
     bool prepareByPrimaryKey(T *obj) {
-        return prepareImpl( "prepareByPrimaryKey",
-            [&]() {
-                return fmt::format(
-                    SqlStatement<T>::queryPrimaryKeyStatement(dbmap.getForeignKey()),
-                    dbmap.getTableName()
-                );
-            }
-        );
+        return this->template prepareImpl<DbMapOperation::QUERY_PRIKEY>();
     } // prepareByPrimaryKey
 
 
@@ -826,7 +825,7 @@ public:
             return false;
         }
 
-        if (!dbstmt.fetchStep()) {
+        if (!this->dbstmt.fetchStep()) {
             return false; // no more row
         }
 
@@ -846,7 +845,7 @@ public:
             return false;
         }
 
-        return dbstmt.finalize();
+        return this->dbstmt.finalize();
     }
 
 private:
@@ -879,7 +878,7 @@ private:
             auto fk_val_ptr = boost::fusion::at_c<Config::fk_ref_pk_col_index>
                 (TypeMetaData<ParentType>::getVal(obj)
             );
-            dbstmt.fetchColumn(read_idx++, fk_val_ptr);
+            this->dbstmt.fetchColumn(this->read_idx++, fk_val_ptr);
         } // if
 
 
@@ -932,13 +931,13 @@ public:
         else if constexpr (std::is_enum_v<CppType>) {
             using U = std::underlying_type_t<CppType>; // underlying type of enum
             U tmp;
-            dbstmt.fetchColumn(read_idx++, &tmp);
+            this->dbstmt.fetchColumn(read_idx++, &tmp);
             *elem = static_cast<CppType>(tmp);
         }
         else {
             // read the element from the database
             // only base type needs to be read
-            dbstmt.fetchColumn(read_idx++, elem);
+            this->dbstmt.fetchColumn(read_idx++, elem);
         }
     } // fetchFromColumn
 }; // DbMap::Reader
