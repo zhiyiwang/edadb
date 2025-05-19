@@ -114,8 +114,7 @@ template<typename T>
 int scanTable(edadb::DbMap<T>& dbm) {
     edadb::DbMapReader<T> *rd = nullptr;
     T got;
-    std::string pred = "";
-    while (edadb::readByPredicate<T>(rd, dbm, &got, pred) > 0) {
+    while (edadb::read2Scan<T>(rd, dbm, &got) > 0) {
         std::cout << "scanTable<" << typeid(T).name() << "> :  ";
         got.print();
     } 

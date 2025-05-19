@@ -350,37 +350,37 @@ public:
 
 public: // utility
     /**
-     * @brief prepare2 for the operation.
+     * @brief prepareImpl for the operation.
      * @tparam OP The operation type.
      * @return true if success, false otherwise.
      */
     template <DbMapOperation OP>
-    bool prepare2() {
+    bool prepareImpl() {
         if (op != DbMapOperation::NONE) {
-            std::cerr << "DbMap::Writer::prepare2: already prepared" << std::endl;
+            std::cerr << "DbMap::Writer::prepareImpl: already prepared" << std::endl;
             return false;
         }
 
         if (!manager.isConnected()) {
-            std::cerr << "DbMap::Writer::prepare2: not inited" << std::endl;
+            std::cerr << "DbMap::Writer::prepareImpl: not inited" << std::endl;
             return false;
         }
 
         if (!manager.initStatement(dbstmt)) {
-            std::cerr << "DbMap::Writer::prepare2: init statement failed" << std::endl;
+            std::cerr << "DbMap::Writer::prepareImpl: init statement failed" << std::endl;
             return false;
         }
 
         const std::string sql =
             fmt::format(OpTraits<T, OP>::getSQL(dbmap), dbmap.getTableName());
         if (!dbstmt.prepare(sql)) {
-            std::cerr << "DbMap::Writer::prepare2: prepare statement failed" << std::endl;
+            std::cerr << "DbMap::Writer::prepareImpl: prepare statement failed" << std::endl;
             return false;
         }
 
         op = OpTraits<T, OP>::op();
         return true;
-    } // prepare2
+    } // prepareImpl
 
     /**
      * @brief execute the operation.
@@ -391,7 +391,7 @@ public: // utility
     template <DbMapOperation OP, typename Func>
     bool executeOp(Func func) {
         // check if the operation is prepared
-        if ((op == DbMapOperation::NONE) && (!prepare2<OP>())) {
+        if ((op == DbMapOperation::NONE) && (!prepareImpl<OP>())) {
             std::cerr << "DbMap::" << OpTraits<T, OP>::name() << "::executeOp: prepare failed" << std::endl;
             return false;
         }
@@ -433,7 +433,7 @@ public: // utility
      */
     template <DbMapOperation OP, typename Func>
     bool processVector(const std::string &errPrefix, Func &&func) {
-        if (!prepare2<OP>()) {
+        if (!prepareImpl<OP>()) {
             std::cerr << errPrefix << ": prepare failed" << std::endl;
             return false;
         }
@@ -462,7 +462,7 @@ public: // utility
 public: // insert API
     template <typename ParentType = void>
     bool insertOne(T *obj, ParentType *p = nullptr) {
-        return prepare2<DbMapOperation::INSERT>() && insert(obj, p) && finalize();
+        return prepareImpl<DbMapOperation::INSERT>() && insert(obj, p) && finalize();
     }
 
     template <typename ParentType = void>
@@ -644,7 +644,7 @@ public: // Delete API: using text delete statement
 
 public: // delete API: using place holder delete statement
     bool deleteOne(T *obj) {
-        return prepare2<DbMapOperation::DELETE>() && deleteOp(obj) && finalize();
+        return prepareImpl<DbMapOperation::DELETE>() && deleteOp(obj) && finalize();
     }
 
     bool deleteOp(T *obj) {
@@ -674,7 +674,7 @@ public: // update API: using text update statement
 
 public: // update API: using place holder update statement
     bool updateOne(T *org_obj, T *new_obj) {
-        return prepare2<DbMapOperation::UPDATE>() && update(org_obj, new_obj) && finalize();
+        return prepareImpl<DbMapOperation::UPDATE>() && update(org_obj, new_obj) && finalize();
     }
 
     bool updateVector(std::vector<T *> &org_objs, std::vector<T *> &new_objs) {
@@ -730,39 +730,71 @@ public:
         resetReadIndex();
     }
 
+private:
+    /**
+     * @fn prepareImpl
+     * @brief generic prepare function for the Reader class.
+     * @param funcName The function name to prepare.
+     * @param buildSql The function to build the SQL statement.:w
+     * @return true if prepared; otherwise, false.
+     * @tparam SqlBuilder The SQL builder type.
+     */
+    template <typename SqlBuilder>
+    bool prepareImpl(const char* funcName, SqlBuilder buildSql) {
+        if (!manager.isConnected()) {
+            std::cerr << "DbMap<" << typeid(T).name() << ">::Reader::"
+                << funcName << ": not inited" << std::endl;
+            return false;
+        }
+
+        if (!manager.initStatement(dbstmt)) {
+            std::cerr << "DbMap<" << typeid(T).name() << ">::Reader::"
+                << funcName << ": init statement failed" << std::endl;
+            return false;
+        }
+
+        auto sql = buildSql();
+        if (!dbstmt.prepare(sql)) {
+            std::cerr << "DbMap<" << typeid(T).name() << ">::Reader::"
+                << funcName << ": prepare statement failed" << std::endl;
+            return false;
+        }
+
+        return true;
+    } // prepareImpl
+
+
 public:
+    /**
+     * @brief prepare to read the object from the database.
+     * @return true if prepared; otherwise, false.
+     */
+    bool prepare2Scan() {
+        return prepareImpl( "prepare2Scan",
+            [&]() {
+                return fmt::format(
+                    SqlStatement<T>::scanStatement(dbmap.getForeignKey()),
+                    dbmap.getTableName()
+                );
+            }
+        );
+    } // prepare2Scan
+
     /**
      * @brief prepare to read the object from the database W/WO predicate.
      * @param pred The predicate to filter the object.
      * @return true if prepared; otherwise, false.
      */
     bool prepareByPredicate(const std::string &pred) {
-        if (!manager.isConnected()) {
-            std::cerr << "DbMap<" << typeid(T).name() << ">::Reader::"
-                      << "prepare2Scan: not inited" << std::endl;
-            return false;
-        }
-
-        if (!manager.initStatement(dbstmt)) {
-            std::cerr << "DbMap<" << typeid(T).name() << ">::Reader::"
-                      << "prepare2Scan: init statement failed" << std::endl;
-            return false;
-        }
-
-        std::string sql = fmt::format(
-            SqlStatement<T>::queryPredicateStatement(dbmap.getForeignKey(), pred),
-            dbmap.getTableName()
+        return prepareImpl( "prepareByPredicate",
+            [&]() {
+                return fmt::format(
+                    SqlStatement<T>::queryPredicateStatement(dbmap.getForeignKey(), pred),
+                    dbmap.getTableName()
+                );
+            }
         );
-
-        if (!dbstmt.prepare(sql)) {
-            std::cerr << "DbMap<" << typeid(T).name() << ">::Reader::"
-                      << "prepare2Scan: prepare statement failed" << std::endl;
-            return false;
-        }
-
-        return true;
     } // prepareByPredicate
-
 
     /**
      * @brief prepare to read the object from the database by primary key
@@ -770,33 +802,23 @@ public:
      * @return true if prepared; otherwise, false.
      */
     bool prepareByPrimaryKey(T *obj) {
-        if (!manager.isConnected()) {
-            std::cerr << "DbMap<" << typeid(T).name() << ">::Reader::"
-                      << "prepare: not inited" << std::endl;
-            return false;
-        }
-
-        if (!manager.initStatement(dbstmt)) {
-            std::cerr << "DbMap<" << typeid(T).name() << ">::Reader::"
-                      << "prepare: init statement failed" << std::endl;
-            return false;
-        }
-
-        std::string sql = fmt::format(
-            SqlStatement<T>::queryPrimaryKeyStatement(dbmap.getForeignKey()),
-            dbmap.getTableName()
+        return prepareImpl( "prepareByPrimaryKey",
+            [&]() {
+                return fmt::format(
+                    SqlStatement<T>::queryPrimaryKeyStatement(dbmap.getForeignKey()),
+                    dbmap.getTableName()
+                );
+            }
         );
-        if (!dbstmt.prepare(sql)) {
-            std::cerr << "DbMap<" << typeid(T).name() << ">::Reader::"
-                      << "prepare: prepare statement failed" << std::endl;
-            return false;
-        }
-
-        return true;
     } // prepareByPrimaryKey
 
 
 public:
+    /**
+     * @brief read the object from the database.
+     * @param obj The object to read.
+     * @return true if read successfully; otherwise, false.
+     */
     bool read(T *obj) {
         if (!manager.isConnected()) {
             std::cerr << "DbMap<" << typeid(T).name() << ">::Reader::"
@@ -812,6 +834,12 @@ public:
         return true;
     }
 
+    /**
+     * @brief read the object from the database by predicate.
+     * @param obj The object to read.
+     * @param pred The predicate to filter the object.
+     * @return true if read successfully; otherwise, false.
+     */
     bool finalize() {
         if (!manager.isConnected()) {
             std::cerr << "DbMap::scanFinalize: not inited" << std::endl;

@@ -166,6 +166,7 @@ bool deleteObject(DbMap<T> &dbmap, T* obj_ptr) {
 //    return writer.deleteByPrimaryKeys(obj_ptr);
     return writer.deleteOne(obj_ptr);
 }
+
   
 
 /**
@@ -176,6 +177,56 @@ template<typename T>
 using DbMapReader = typename edadb::DbMap<T>::Reader;
 
 /**
+ * @fn readGeneric
+ * @brief generic read function to read the object from the database.
+ * @param reader The reader to read the object.
+ * @param obj The object to read.
+ * @param prepare The prepare function to prepare the reader.
+ * @return int Returns 1 if read successfully, 0 if no more row, -1 if error.
+ */
+template <typename T, typename PrepareFunc>
+int readGeneric( typename edadb::DbMap<T>::Reader*& reader, DbMap<T>& dbmap, T* obj,
+    PrepareFunc prepare)
+{
+    // prepare the reader if not prepared
+    if (reader == nullptr) {
+        reader = new typename edadb::DbMap<T>::Reader(dbmap);
+        if (!prepare(*reader)) {
+            std::cerr << "DbMap::Reader::prepare failed" << std::endl;
+            delete reader;
+            reader = nullptr;
+            return -1;
+        } 
+    } 
+
+    // read until no more row
+    bool got = reader->read(obj);
+    if (!got) {
+        reader->finalize();
+        delete reader;
+        reader = nullptr;
+    }
+    return got ? 1 : 0;
+} // readGeneric
+
+
+/**
+ * @fn read2Scan
+ * @brief read the object from the database by predicate.
+ * @param reader The reader to read the object.
+ * @param obj The object to read.
+ * @return int Returns 1 if read successfully, 0 if no more row, -1 if error.
+ */
+template <typename T>
+int read2Scan(typename edadb::DbMap<T>::Reader*& reader, DbMap<T>& dbmap, T* obj)
+{
+    return readGeneric( reader, dbmap, obj,
+        [](auto& r) { return r.prepare2Scan(); }
+    );
+}
+
+
+/**
  * @fn readByPredicate
  * @brief read the object from the database by predicate.
  * @param reader The reader to read the object.
@@ -184,31 +235,35 @@ using DbMapReader = typename edadb::DbMap<T>::Reader;
  * @return int Returns 1 if read successfully, 0 if no more row, -1 if error.
  */    
 template <typename T>
-int readByPredicate(typename edadb::DbMap<T>::Reader*& reader,
-        DbMap<T> &dbmap, T* obj, const std::string& predicate) {
-    if (reader == nullptr) {
-        reader = new typename edadb::DbMap<T>::Reader(dbmap);
-        if (reader->prepareByPredicate(predicate) == false) {
-            std::cerr << "DbMap::Reader::prepareByPredicate: prepare failed" << std::endl;
-            delete reader;
-            reader = nullptr;
-            return -1;
-        }
-    }
+int readByPredicate(typename edadb::DbMap<T>::Reader*& reader, DbMap<T>& dbmap, T* obj,
+                    const std::string& predicate)
+{
+    return readGeneric(
+        reader, dbmap, obj,
+        [&](auto& r) { return r.prepareByPredicate(predicate); }
+    );
+}
 
-    bool got = reader->read(obj);
-    if (!got) {
-        reader->finalize();
-        delete reader;
-        reader = nullptr;
-    }
-    return got ? 1 : 0;
+/**
+ * @fn readByPrimaryKey: use readGeneric lambda function to read the object
+ * @brief read the object from the database by primary key.
+ * @param reader The reader to read the object.
+ * @param obj The object to read.
+ * @return int Returns 1 if read successfully, -1 if error.
+ */
+template <typename T>
+int readByPrimaryKey(typename edadb::DbMap<T>::Reader*& reader, DbMap<T>& dbmap, T* obj)
+{
+    return readGeneric(
+        reader, dbmap, obj,
+        [&](auto& r) { return r.prepareByPrimaryKey(obj); }
+    );
 }
 
 /**
  * @fn readByPrimaryKey
  * @brief read the object from the database by primary key.
- * @param reader The reader to read the object.
+ * @param dbmap The database map to read the object.
  * @param obj The object to read.
  * @return int Returns 1 if read successfully, -1 if error.
  */
@@ -217,6 +272,7 @@ int readByPrimaryKey(DbMap<T> &dbmap, T* obj) {
     // primary key read is one time only
     typename edadb::DbMap<T>::Reader reader(dbmap);
     bool got = false;
+
     if (!(got = reader.prepareByPrimaryKey(obj))) {
         std::cerr << "DbMap::Reader::prepareByPrimaryKey: prepare failed" << std::endl;
     }
