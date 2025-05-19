@@ -108,6 +108,23 @@ TABLE4CLASS_WVEC(IdbLayerShape, "layer_shape_table", (_name, _layer), (_rects, _
 TABLE4CLASS_WVEC(IdbPort, "port_table", (_name), (_layer_shapes, _rects))
 
 
+
+// utlity functions
+template<typename T>
+int scanTable(edadb::DbMap<T>& dbm) {
+    edadb::DbMapReader<T> *rd = nullptr;
+    T got;
+    std::string pred = "";
+    while (edadb::readByPredicate<T>(rd, dbm, &got, pred) > 0) {
+        std::cout << "scanTable<" << typeid(T).name() << "> :  ";
+        got.print();
+    } 
+    assert(rd == nullptr);
+    return 0;
+} // scanTable
+
+
+
 int main(void) {
     // Create Object ////////////////////////////////////////////
     IdbLayerShape shape1("IdbLayerShape 1", "Type 1");
@@ -173,6 +190,10 @@ int main(void) {
         return 1;
     }
     std::cout << std::endl << std::endl;
+
+    std::cout << "[DbMap Scan]" << std::endl;
+    scanTable(dbm_layer_shape);
+    std::cout << std::endl << std::endl;
 #endif
 
 
@@ -202,11 +223,14 @@ int main(void) {
         return 1;
     }
     std::cout << std::endl << std::endl;
+
+    std::cout << "[DbMap Scan]" << std::endl;
+    scanTable(dbm_port);
+    std::cout << std::endl << std::endl;
 #endif
 
 
     // TODO:
-    // 2. insert objects
     // 3. select objects
     // 4. delete objects
     // 5. update objects
