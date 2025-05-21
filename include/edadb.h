@@ -186,7 +186,7 @@ using DbMapReader = typename edadb::DbMap<T>::Reader;
  */
 template <typename T, typename PrepareFunc>
 int readGeneric( typename edadb::DbMap<T>::Reader*& reader, DbMap<T>& dbmap, T* obj,
-    PrepareFunc prepare)
+        PrepareFunc prepare)
 {
     // prepare the reader if not prepared
     if (reader == nullptr) {
@@ -218,9 +218,8 @@ int readGeneric( typename edadb::DbMap<T>::Reader*& reader, DbMap<T>& dbmap, T* 
  * @return int Returns 1 if read successfully, 0 if no more row, -1 if error.
  */
 template <typename T>
-int read2Scan(typename edadb::DbMap<T>::Reader*& reader, DbMap<T>& dbmap, T* obj)
-{
-    return readGeneric( reader, dbmap, obj,
+int read2Scan(typename edadb::DbMap<T>::Reader*& reader, DbMap<T>& dbmap, T* obj) {
+    return readGeneric(reader, dbmap, obj,
         [](auto& r) { return r.prepare2Scan(); }
     );
 }
@@ -236,10 +235,8 @@ int read2Scan(typename edadb::DbMap<T>::Reader*& reader, DbMap<T>& dbmap, T* obj
  */    
 template <typename T>
 int readByPredicate(typename edadb::DbMap<T>::Reader*& reader, DbMap<T>& dbmap, T* obj,
-                    const std::string& predicate)
-{
-    return readGeneric(
-        reader, dbmap, obj,
+            const std::string& predicate) {
+    return readGeneric(reader, dbmap, obj,
         [&](auto& r) { return r.prepareByPredicate(predicate); }
     );
 }
@@ -252,8 +249,7 @@ int readByPredicate(typename edadb::DbMap<T>::Reader*& reader, DbMap<T>& dbmap, 
  * @return int Returns 1 if read successfully, -1 if error.
  */
 template <typename T>
-int readByPrimaryKey(typename edadb::DbMap<T>::Reader*& reader, DbMap<T>& dbmap, T* obj)
-{
+int readByPrimaryKey(typename edadb::DbMap<T>::Reader*& reader, DbMap<T>& dbmap, T* obj) {
     return readGeneric(
         reader, dbmap, obj,
         [&](auto& r) { return r.prepareByPrimaryKey(obj); }
@@ -273,7 +269,7 @@ int readByPrimaryKey(DbMap<T> &dbmap, T* obj) {
     typename edadb::DbMap<T>::Reader reader(dbmap);
     bool got = false;
 
-    if (!(got = reader.prepareByPrimaryKey(obj))) {
+    if (!(got = reader.prepareByPrimaryKey())) {
         std::cerr << "DbMap::Reader::prepareByPrimaryKey: prepare failed" << std::endl;
     }
     

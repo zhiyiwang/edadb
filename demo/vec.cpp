@@ -67,6 +67,7 @@ public:
             r.print(vec_pref);
         }
         std::cout << pref << "[LayerShape] End ----------------------------------------" << std::endl;
+        std::cout << std::endl;
     } // print
 }; // IdbLayerShape
 
@@ -115,7 +116,7 @@ int scanTable(edadb::DbMap<T>& dbm) {
     edadb::DbMapReader<T> *rd = nullptr;
     T got;
     while (edadb::read2Scan<T>(rd, dbm, &got) > 0) {
-        std::cout << "scanTable<" << typeid(T).name() << "> :  ";
+        std::cout << "scanTable<" << typeid(T).name() << "> :  " << std::endl;
         got.print();
     } 
     assert(rd == nullptr);
@@ -196,7 +197,7 @@ int main(void) {
 #endif
 
 
-#if 0
+#if 1
     // IdbPort ////////////////////////////////////////////
 
     // Define DbMap instance to operate the database table

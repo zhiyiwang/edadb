@@ -136,6 +136,52 @@ public:
 
 
     /**
+     * @brief Generate the update statement with place holders.
+     * @return The update statement.
+     */
+    static std::string updatePlaceHolderStatement(const ForeignKey& fk) {
+        std::string sql;
+        sql = "UPDATE \"{}\" SET ";
+
+        std::vector<std::string> name, type;
+        const auto vecs = TypeMetaData<T>::tuple_type_pair();
+        boost::fusion::for_each(vecs, ColumnNameType<T>(name, type));
+        assert(name.size() == type.size());
+        assert(name.size() > 0);
+
+        for (int i = 0; i < name.size(); ++i) {
+            sql += (i > 0 ? ", " : "") + name[i] + " = ?";
+        }
+        if (fk.valid()) {
+            assert(fk.column.size() == fk.type.size());
+
+            // add foreign key columns to the child table
+            for (size_t i = 0; i < fk.column.size(); ++i) {
+                sql += ", " + (fk.table + "_" + fk.column[i]) + " = ?";
+            } // for
+        }
+        sql += " WHERE " + name[0] + " = ?;";
+        return sql;
+    } // updatePlaceHolderStatement
+
+
+    /**
+     * @brief Generate the delete statement with place holders
+     *          Only need to delete the record by primary key, which is the first column
+     * @return The delete statement.
+     */
+    static std::string deletePlaceHolderStatement() {
+        static std::string sql;
+        if (sql.empty()) {
+            sql = "DELETE FROM \"{}\" WHERE ";
+            auto name = TypeMetaData<T>::column_names();
+            sql += name[0] + " = ?;";
+        }
+        return sql;
+    }
+
+
+    /**
      * @brief Generate the project statement with all column names without tail ";"
      * @param fk The foreign key columns
      * @return The project statement with all column names, also include the foreign key columns
@@ -172,21 +218,15 @@ public:
     } // projectAllStatement
 
 
+    /**
+     * @brief Generate the scan statement with all column names
+     * @param fk The foreign key columns
+     * @return The scan statement with all column names
+     */
     static std::string scanStatement(const ForeignKey& fk) {
         std::string sql = projectAllStatement(fk);
         return sql += ";"; 
     } // scanStatement
-
-
-    static std::string queryPrimaryKeyStatement(const ForeignKey& fk) {
-        std::string sql = projectAllStatement(fk);
-
-        // get the first as the primary key to query
-        auto pk_name = TypeMetaData<T>::column_names()[Config::fk_ref_pk_col_index];
-        sql += " WHERE " + pk_name + " = ?";
-
-        return sql += ";";
-    } // queryPrimaryKeyStatement
 
 
     /**
@@ -203,51 +243,35 @@ public:
 
 
     /**
-     * @brief Generate the update statement with place holders.
-     * @return The update statement.
-     */
-    static std::string updatePlaceHolderStatement(const ForeignKey& fk) {
-        std::string sql;
-        sql = "UPDATE \"{}\" SET ";
+     * @brief Generate the query statement with place holders using primary key
+     * @param fk The foreign key columns
+     * @return The query statement using primary key
+    */
+    static std::string queryPrimaryKeyStatement(const ForeignKey& fk) {
+        std::string sql = projectAllStatement(fk);
 
-        std::vector<std::string> name, type;
-        const auto vecs = TypeMetaData<T>::tuple_type_pair();
-        boost::fusion::for_each(vecs, ColumnNameType<T>(name, type));
-        assert(name.size() == type.size());
-        assert(name.size() > 0);
+        // get the first as the primary key to query
+        auto pk_name = TypeMetaData<T>::column_names()[Config::fk_ref_pk_col_index];
+        sql += " WHERE " + pk_name + " = ?";
 
-        for (int i = 0; i < name.size(); ++i) {
-            sql += (i > 0 ? ", " : "") + name[i] + " = ?";
-        }
-        if (fk.valid()) {
-            assert(fk.column.size() == fk.type.size());
-
-            // add foreign key columns to the child table
-            for (size_t i = 0; i < fk.column.size(); ++i) {
-                sql += ", " + (fk.table + "_" + fk.column[i]) + " = ?";
-            } // for
-        }
-        sql += " WHERE " + name[0] + " = ?;";
-        return sql;
-    } // updatePlaceHolderStatement
-
+        return sql += ";";
+    } // queryPrimaryKeyStatement
 
 
     /**
-     * @brief Generate the delete statement with place holders
-     *          Only need to delete the record by primary key, which is the first column
-     * @return The delete statement.
+     * @brief Generate the query statement with place holders using foreign key
+     * @param fk The foreign key columns
+     * @return The query statement using foreign key
      */
-    static std::string deletePlaceHolderStatement() {
-        static std::string sql;
-        if (sql.empty()) {
-            sql = "DELETE FROM \"{}\" WHERE ";
-            auto name = TypeMetaData<T>::column_names();
-            sql += name[0] + " = ?;";
-        }
-        return sql;
-    }
+    static std::string queryForeignKeyStatement(const ForeignKey& fk) {
+        std::string sql = projectAllStatement(fk);
 
+        // get foreign key column name
+        std::string fk_name = fk.table + "_" + fk.column[0];
+        sql += " WHERE " + fk_name + " = ?";
+        
+        return sql += ";";
+    } // queryForeignKeyStatement
 
 
 public: // debug
@@ -270,7 +294,6 @@ public: // debug
         std::cout << "Delete Place Holder SQL: " << std::endl << "\t"
             << deletePlaceHolderStatement() << std::endl;
     }
-
 
 
 // discard the following code: Generate the text SQL statements
@@ -363,7 +386,6 @@ public: // debug
 #endif 
 
 };
-
 
 
 // if Config::backend_type == SQLITE, use SqlStatement4Sqlite as SqlStatement
