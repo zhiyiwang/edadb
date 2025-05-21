@@ -102,10 +102,10 @@ bool dropTable() {
  */
 template <typename T>
 bool insertObject(DbMap<T> &dbmap, T* obj) {
-    bool got = beginTransaction();
+    bool ok = beginTransaction();
     typename DbMap<T>::Writer writer(dbmap);
-    got = got && writer.insertOne(obj);
-    return got && commitTransaction();
+    ok = ok && writer.insertOne(obj);
+    return ok && commitTransaction();
 }
 
 /**
@@ -115,23 +115,12 @@ bool insertObject(DbMap<T> &dbmap, T* obj) {
  */
 template <typename T>
 bool insertVector(DbMap<T> &dbmap, std::vector<T*>& obj_ptr_vec) {
-    bool got = beginTransaction();
+    bool ok = beginTransaction();
     typename DbMap<T>::Writer writer(dbmap); 
-    got = got && writer.insertVector(obj_ptr_vec);
-    return got && commitTransaction();
+    ok = ok && writer.insertVector(obj_ptr_vec);
+    return ok && commitTransaction();
 }
 
-/**
- * @brief Update the object in the database.
- * @param obj_ptr_org The original object pointer to update.
- * @param obj_ptr_new The new object pointer to update.
- * @return use decltype to return the type of the update function, which is bool.
- */
-template <typename T>
-bool updateObjectBySqlStmt(DbMap<T> &dbmap, T* obj_ptr_org, T* obj_ptr_new) {
-    typename DbMap<T>::Writer writer(dbmap);
-    return writer.updateBySqlStmt(obj_ptr_org, obj_ptr_new);
-}
 
 /**
  * @brief DbMapWriter: This is a type alias for the DbMap Writer class.
@@ -143,15 +132,18 @@ using DbMapWriter = typename edadb::DbMap<T>::Writer;
 
 template <typename T>
 int updateObject(DbMap<T> &dbmap, T* org_obj_ptr, T* new_obj_ptr) {
+    bool ok = beginTransaction();
     typename DbMap<T>::Writer writer(dbmap);
-    return writer.updateOne(org_obj_ptr, new_obj_ptr);
+    ok = ok && writer.updateOne(org_obj_ptr, new_obj_ptr); 
+    return ok && commitTransaction();
 }
 
 template <typename T>
-bool updateVector(DbMap<T> &dbmap,
-        std::vector<T*>& org_vec_ptr, std::vector<T*>& new_vec_ptr) {
+bool updateVector(DbMap<T> &dbmap, std::vector<T*>& org_vec_ptr, std::vector<T*>& new_vec_ptr) {
+    bool ok = beginTransaction();
     typename DbMap<T>::Writer writer(dbmap);
-    return writer.updateVector(org_vec_ptr, new_vec_ptr);
+    ok = ok && writer.updateVector(org_vec_ptr, new_vec_ptr);
+    return ok && commitTransaction();
 }
 
 
@@ -162,9 +154,10 @@ bool updateVector(DbMap<T> &dbmap,
  */
 template <typename T>
 bool deleteObject(DbMap<T> &dbmap, T* obj_ptr) {
+    bool ok = beginTransaction();
     typename DbMap<T>::Writer writer(dbmap);
-//    return writer.deleteByPrimaryKeys(obj_ptr);
-    return writer.deleteOne(obj_ptr);
+    ok = ok &&writer.deleteOne(obj_ptr);
+    return ok && commitTransaction();
 }
 
   
@@ -200,13 +193,13 @@ int readGeneric( typename edadb::DbMap<T>::Reader*& reader, DbMap<T>& dbmap, T* 
     } 
 
     // read until no more row
-    bool got = reader->read(obj);
-    if (!got) {
+    bool ok = reader->read(obj);
+    if (!ok) {
         reader->finalize();
         delete reader;
         reader = nullptr;
     }
-    return got ? 1 : 0;
+    return ok ? 1 : 0;
 } // readGeneric
 
 
@@ -267,18 +260,18 @@ template <typename T>
 int readByPrimaryKey(DbMap<T> &dbmap, T* obj) {
     // primary key read is one time only
     typename edadb::DbMap<T>::Reader reader(dbmap);
-    bool got = false;
+    bool ok = false;
 
-    if (!(got = reader.prepareByPrimaryKey())) {
+    if (!(ok = reader.prepareByPrimaryKey())) {
         std::cerr << "DbMap::Reader::prepareByPrimaryKey: prepare failed" << std::endl;
     }
     
-    if (got && !(got = reader.read(obj))) {
+    if (ok && !(ok = reader.read(obj))) {
         std::cerr << "DbMap::Reader::read: read failed" << std::endl;
     }
 
     reader.finalize();
-    return got ? 1 : -1;
+    return ok ? 1 : -1;
 }
 
 } // namespace edadb

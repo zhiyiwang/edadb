@@ -683,23 +683,6 @@ private:
     } // processVector
 
 
-public: // Delete API: using text delete statement
-    bool deleteByPrimaryKeys(T *obj) {
-        if (this->op != DbMapOperation::NONE) {
-            std::cerr << "DbMap::Deleter::deleteByPrimaryKeys: already prepared" << std::endl;
-            return false;
-        }
-
-        if (!manager.isConnected()) {
-            std::cerr << "DbMap::Deleter::deleteOne: not inited" << std::endl;
-            return false;
-        }
-
-        const std::string sql =
-            fmt::format(SqlStatement<T>::deleteStatement(obj), this->dbmap.getTableName());
-        return manager.exec(sql);
-    } // deleteByPrimaryKeys
-
 
 public: // delete API: using place holder delete statement
     bool deleteOne(T *obj) {
@@ -708,41 +691,53 @@ public: // delete API: using place holder delete statement
             && this->template finalize();
     }
 
+    bool deleteVector(std::vector<T *> &objs) {
+        if (objs.empty()) {
+            std::cerr << "DbMap::deleteVector: empty vector" << std::endl;
+            return false;
+        }
+
+        return processVector<DbMapOperation::DELETE>("DbMap::deleteVector", [&]() {
+            for (auto obj : objs) {
+                if (!deleteOp(obj)) {
+                    std::cerr << "DbMap::deleteVector: delete failed" << std::endl;
+                    return false;
+                }
+            }
+            return true; 
+        });
+    } // deleteVector
+
 private:
     bool deleteOp(T *obj) {
-        return this->template executeImpl<DbMapOperation::DELETE>([&]()
-                                                 {
-        // bind the primary key value in the where clause using obj
-        auto pk_val_ptr = boost::fusion::at_c<0>(TypeMetaData<T>::getVal(obj));
-        this->dbstmt.bindColumn(this->bind_idx++, pk_val_ptr); });
+        return this->template executeImpl<DbMapOperation::DELETE>(
+            [&]() {
+                // bind the primary key value in the where clause using obj
+                auto pk_val_ptr = boost::fusion::at_c<0>(TypeMetaData<T>::getVal(obj));
+                this->dbstmt.bindColumn(this->bind_idx++, pk_val_ptr);
+
+                return this->dbstmt.bindStep();
+            } // lambda function
+        ); // executeImpl
     } // deleteOne
 
-
-public: // update API: using text update statement
-    bool updateBySqlStmt(T *org_obj, T *new_obj) {
-        if (this->op != DbMapOperation::NONE) {
-            std::cerr << "DbMap::Updater::update: already prepared" << std::endl;
-            return false;
-        }
-
-        if (!manager.isConnected()) {
-            std::cerr << "DbMap::Updater::update: not inited" << std::endl;
-            return false;
-        }
-
-        const std::string sql = fmt::format(
-            SqlStatement<T>::updateStatement(org_obj, new_obj),
-            this->dbmap.getTableName());
-        return manager.exec(sql);
-    } // updateBySqlStmt
 
 
 public: // update API: using place holder update statement
     bool updateOne(T *org_obj, T *new_obj) {
-        return this->template prepareImpl<DbMapOperation::UPDATE>()
-            && this->update(org_obj, new_obj)
-            && this->template finalize();
-    }
+        if constexpr (Cpp2SqlType<T>::sqlType == SqlType::CompositeVector) {
+            // Update MULTIPLE objects in MULTIPLE tables:
+            //   delete the old object and insert the new object
+            return deleteOne(org_obj) && insertOne(new_obj);
+        }
+        else {
+            // update SINGLE object in ONE table:
+            //   directly update the object
+            return this->template prepareImpl<DbMapOperation::UPDATE>()
+                && this->update(org_obj, new_obj)
+                && this->template finalize();
+        } // if constexpr SqlType::CompositeVector
+    } // updateOne
 
 
     bool updateVector(std::vector<T *> &org_objs, std::vector<T *> &new_objs) {
@@ -755,15 +750,20 @@ public: // update API: using place holder update statement
             return false;
         }
 
-        return processVector<DbMapOperation::UPDATE>("DbMap::updateVector", [&]() {
-            for (size_t i = 0; i < org_objs.size(); ++i) {
-                if (!update(org_objs[i], new_objs[i])) {
-                    std::cerr << "DbMap::updateVector: update failed" << std::endl;
-                    return false;
+        if constexpr (Cpp2SqlType<T>::sqlType == SqlType::CompositeVector) {
+            return deleteVector(org_objs) && insertVector(new_objs); 
+        }
+        else {
+            return processVector<DbMapOperation::UPDATE>("DbMap::updateVector", [&]() {
+                for (size_t i = 0; i < org_objs.size(); ++i) {
+                    if (!update(org_objs[i], new_objs[i])) {
+                        std::cerr << "DbMap::updateVector: update failed" << std::endl;
+                        return false;
+                    }
                 }
-            }
-            return true;
-        });
+                return true;
+            });
+        } // if constexpr SqlType::CompositeVector
     } // updateVector
 
 private:

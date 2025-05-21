@@ -16,6 +16,8 @@ public:
     IdbRect (const IdbRect& obj) : _x(obj._x) {}
 
 public:
+    void clear(void) { _x = 0; }
+
     void print(const std::string& pref = "") const {
         std::cout << pref << "[IdbRect]: _x=" << _x << std::endl;
     }
@@ -33,6 +35,8 @@ public:
     IdbRect2 (const IdbRect2& obj) : _y(obj._y) {}
 
 public:
+    void clear(void) { _y = 0; }
+
     void print(const std::string& pref = "") const {
         std::cout << pref << "[IdbRect2]: _y=" << _y << std::endl;
     }
@@ -53,6 +57,13 @@ public:
     IdbLayerShape(const IdbLayerShape& obj) = default;
 
 public:
+    void clear(void) {
+        _name.clear();
+        _layer.clear();
+        _rects.clear();
+        _rect2s.clear();
+    } // clear
+
     void print(const std::string& pref = "") const {
         std::string vec_pref = pref + "  ";
         std::cout << pref << "[LayerShape] Begin ----------------------------------------" << std::endl;
@@ -85,6 +96,12 @@ public:
     IdbPort(const IdbPort& obj) = default;
 
 public:
+    void clear(void) {
+        _name.clear();
+        _layer_shapes.clear();
+        _rects.clear();
+    } // clear
+
     void print(const std::string& pref = "") const {
         std::string vec_pref = pref + "  ";
         std::cout << pref << "[Port] Begin ----------------------------------------" << std::endl;
@@ -118,6 +135,7 @@ int scanTable(edadb::DbMap<T>& dbm) {
     while (edadb::read2Scan<T>(rd, dbm, &got) > 0) {
         std::cout << "scanTable<" << typeid(T).name() << "> :  " << std::endl;
         got.print();
+        got.clear();
     } 
     assert(rd == nullptr);
     return 0;
@@ -171,12 +189,14 @@ int main(void) {
     std::cout << "DbMap<" << typeid(IdbLayerShape).name() << ">" << std::endl;
     edadb::DbMap<IdbLayerShape> dbm_layer_shape;
 
+    // Create table
     std::cout << "[DbMap CreateTable]" << std::endl;
     if (!edadb::createTable(dbm_layer_shape)) {
         std::cerr << "DbMap::createTable failed" << std::endl;
         return 1;
     }
 
+    // Insert objects
     std::cout << "[DbMap Insert]" << std::endl;
     if (!edadb::insertObject(dbm_layer_shape, &shape1)) {
         std::cerr << "DbMap::Writer::insert failed" << std::endl;
@@ -191,6 +211,37 @@ int main(void) {
     }
     std::cout << std::endl << std::endl;
 
+    // Scan table
+    std::cout << "[DbMap Scan]" << std::endl;
+    scanTable(dbm_layer_shape);
+    std::cout << std::endl << std::endl;
+
+    // Update objects
+    std::cout << "[DbMap Update]" << std::endl;
+    IdbLayerShape shape1_new(shape1);
+    shape1_new._layer = "IdbLayerShape 1 new";
+    shape1_new._rects.at(0)._x = 13;
+    shape1_new._rect2s.emplace_back(14);
+    if (!edadb::updateObject(dbm_layer_shape, &shape1, &shape1_new)) {
+        std::cerr << "DbMap::update failed" << std::endl;
+        return 1;
+    }
+    std::cout << std::endl << std::endl;
+
+    // Scan table
+    std::cout << "[DbMap Scan]" << std::endl;
+    scanTable(dbm_layer_shape);
+    std::cout << std::endl << std::endl;
+
+    // delete objects
+    std::cout << "[DbMap Delete]" << std::endl;
+    if (!edadb::deleteObject(dbm_layer_shape, &shape2)) {
+        std::cerr << "DbMap::delete failed" << std::endl;
+        return 1;
+    }
+    std::cout << std::endl << std::endl;
+
+    // Scan table
     std::cout << "[DbMap Scan]" << std::endl;
     scanTable(dbm_layer_shape);
     std::cout << std::endl << std::endl;
@@ -204,12 +255,14 @@ int main(void) {
     std::cout << "DbMap<" << typeid(IdbPort).name() << ">" << std::endl;
     edadb::DbMap<IdbPort> dbm_port;
 
+    // Create table
     std::cout << "[DbMap CreateTable]" << std::endl;
     if (!edadb::createTable(dbm_port)) {
         std::cerr << "DbMap::createTable failed" << std::endl;
         return 1;
     }
 
+    // Insert objects
     std::cout << "[DbMap Insert]" << std::endl;
     if (!edadb::insertObject(dbm_port, &port1)) {
         std::cerr << "DbMap::Writer::insert failed" << std::endl;
@@ -224,6 +277,36 @@ int main(void) {
     }
     std::cout << std::endl << std::endl;
 
+    // Scan table
+    std::cout << "[DbMap Scan]" << std::endl;
+    scanTable(dbm_port);
+    std::cout << std::endl << std::endl;
+
+    // update objects
+    std::cout << "[DbMap Update]" << std::endl;
+    IdbPort port1_new(port1);
+    port1_new._name = "Port 1 new";
+    port1_new._layer_shapes.at(0)._layer = "Type 1 new";
+    port1_new._rects.at(0)._x = 113;
+    port1_new._layer_shapes.at(0)._rects.at(0)._x = 113;
+    port1_new._layer_shapes.at(0)._rect2s.emplace_back(114);
+    edadb::updateObject(dbm_port, &port1, &port1_new);
+    std::cout << std::endl << std::endl;
+
+    // Scan table
+    std::cout << "[DbMap Scan]" << std::endl;
+    scanTable(dbm_port);
+    std::cout << std::endl << std::endl;
+
+    // delete objects
+    std::cout << "[DbMap Delete]" << std::endl;
+    if (!edadb::deleteObject(dbm_port, &port2)) {
+        std::cerr << "DbMap::delete failed" << std::endl;
+        return 1;
+    }
+    std::cout << std::endl << std::endl;
+
+    // Scan table
     std::cout << "[DbMap Scan]" << std::endl;
     scanTable(dbm_port);
     std::cout << std::endl << std::endl;
@@ -231,7 +314,6 @@ int main(void) {
 
 
     // TODO:
-    // 3. select objects
     // 4. delete objects
     // 5. update objects
 
