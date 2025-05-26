@@ -294,7 +294,7 @@ public: // debug
         std::cout << "Delete Place Holder SQL: " << std::endl << "\t"
             << deletePlaceHolderStatement() << std::endl;
     } // print
-};
+}; // SqlStatementImpl
 
 
 // if Config::backend_type == SQLITE, use SqlStatement4Sqlite as SqlStatement

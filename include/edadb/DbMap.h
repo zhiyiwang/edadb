@@ -233,7 +233,7 @@ struct OpTraits {
 template <typename T>
 struct OpTraits<T, DbMapOperation::INSERT> {
     static constexpr const char *name() {
-        return "Inserter";
+        return "Insert";
     }
     static std::string getSQL(DbMap<T> &dbmap) {
         return SqlStatement<T>::insertPlaceHolderStatement(dbmap.getForeignKey());
@@ -247,7 +247,7 @@ struct OpTraits<T, DbMapOperation::INSERT> {
 template <typename T>
 struct OpTraits<T, DbMapOperation::UPDATE> {
     static constexpr const char *name() {
-        return "Updater";
+        return "Update";
     }
     static std::string getSQL(DbMap<T> &dbmap) {
         return SqlStatement<T>::updatePlaceHolderStatement(dbmap.getForeignKey());
@@ -261,7 +261,7 @@ struct OpTraits<T, DbMapOperation::UPDATE> {
 template <typename T>
 struct OpTraits<T, DbMapOperation::DELETE> {
     static constexpr const char *name() {
-        return "Deleter";
+        return "Delete";
     }
     static std::string getSQL(DbMap<T> &dbmap) {
         return SqlStatement<T>::deletePlaceHolderStatement();
@@ -275,7 +275,7 @@ struct OpTraits<T, DbMapOperation::DELETE> {
 template <typename T>
 struct OpTraits<T, DbMapOperation::SCAN> {
     static constexpr const char *name() {
-        return "Scanner";
+        return "Scan";
     }
     static std::string getSQL(DbMap<T> &dbmap) {
         return SqlStatement<T>::scanStatement(dbmap.getForeignKey());
@@ -289,7 +289,7 @@ struct OpTraits<T, DbMapOperation::SCAN> {
 template <typename T>
 struct OpTraits<T, DbMapOperation::QUERY_PRED> {
     static constexpr const char *name() {
-        return "QueryWithPredicate";
+        return "QueryPredicate";
     }
     static std::string getSQL(DbMap<T> &dbmap, const std::string &pred) {
         return SqlStatement<T>::queryPredicateStatement(dbmap.getForeignKey(), pred);
@@ -303,7 +303,7 @@ struct OpTraits<T, DbMapOperation::QUERY_PRED> {
 template <typename T>
 struct OpTraits<T, DbMapOperation::QUERY_PRIKEY> {
     static constexpr const char *name() {
-        return "QueryWithPrimaryKey";
+        return "QueryPrimaryKey";
     }
     static std::string getSQL(DbMap<T> &dbmap) {
         return SqlStatement<T>::queryPrimaryKeyStatement(dbmap.getForeignKey());
@@ -317,7 +317,7 @@ struct OpTraits<T, DbMapOperation::QUERY_PRIKEY> {
 template <typename T>
 struct OpTraits<T, DbMapOperation::QUEYR_FORKEY> {
     static constexpr const char *name() {
-        return "QueryWithForeignKey";
+        return "QueryForeignKey";
     }
     static std::string getSQL(DbMap<T> &dbmap) {
         return SqlStatement<T>::queryForeignKeyStatement(dbmap.getForeignKey());
@@ -449,12 +449,6 @@ public: // utility
          */
         func();
 
-//TODO: insert move this bind into func bindObject
-//TODO: other operation maybe need update the code 
-//          if (!dbstmt.bindStep()) {
-//              return false;
-//          }
-
         if (!dbstmt.reset()) {
             return false;
         }
@@ -545,10 +539,13 @@ protected:
 
     /**
      * @brief bind the object to the database.
+     * @tparam ParentType The parent type, default is void.
      * @param obj The object to bind.
+     * @param p The parent object, if any, to bind the foreign key value.
+     * 
      */
     template <typename ParentType = void>
-    void bindObject(T *obj, ParentType *p = nullptr) {
+    void bindObject(T *obj, ParentType *p = nullptr, bool autoStep = true) {
         // reset bind_idx to begin to bind
         resetBindIndex();
 
@@ -571,8 +568,10 @@ protected:
             dbstmt.bindColumn(bind_idx++, fk_val_ptr);
         } // if 
 
+
+        // autoStep: run backend db step statement automatically
         // bind the this tuple before bind the child tuple referencing this primary key
-        if (!dbstmt.bindStep()) {
+        if (autoStep && !dbstmt.bindStep()) {
             std::cerr << "DbMap::Writer::bindObject: bind step failed" << std::endl;
             return;
         }
@@ -750,6 +749,7 @@ public: // update API: using place holder update statement
             return false;
         }
 
+        return deleteVector(org_objs) && insertVector(new_objs);
         if constexpr (Cpp2SqlType<T>::sqlType == SqlType::CompositeVector) {
             return deleteVector(org_objs) && insertVector(new_objs); 
         }
@@ -769,12 +769,22 @@ public: // update API: using place holder update statement
 private:
     bool update(T *org_obj, T *new_obj) {
         return this->template executeImpl<DbMapOperation::UPDATE>([&]() {
-            // bind new_obj to the database
-            this->bindObject(new_obj);
+            // T should not be CompositeVector type,
+            //   which means there is only one tuple to update
+            static_assert(Cpp2SqlType<T>::sqlType != SqlType::CompositeVector,
+                "T is CompositeVector, use deleteOne and insertOne instead");
+
+            // bind new_obj to the database, params are:
+            //   1. bindObject using new_obj
+            //   2. ParentType is void, no foreign key value to bind
+            //   3. no auto step, because we will bind the primary key value in the where clause
+            this->bindObject(new_obj, static_cast<void*>(nullptr), false);
 
             // bind the primary key value in the where clause using org_obj
             auto pk_val_ptr = boost::fusion::at_c<0>(TypeMetaData<T>::getVal(org_obj));
             this->dbstmt.bindColumn(this->bind_idx++, pk_val_ptr);
+
+            return this->dbstmt.bindStep();
         });
     } // update
 }; // DbMap::Writer
@@ -985,7 +995,7 @@ protected:
         // create reader to read the child object
         typename DbMap<ElemT>::Reader child_reader(*child_dbmap);
         if (!child_reader.prepareByForeignKey()) {
-            std::cerr << "DbMap::Reader::readObject: prepare failed" << std::endl;
+            std::cerr << "DbMap::Reader::fetchChildVector: prepareByForeignKey failed" << std::endl;
             return false;
         }
 
@@ -996,7 +1006,7 @@ protected:
         } // while
 
         if (!child_reader.finalize()) {
-            std::cerr << "DbMap::Reader::readObject: finalize failed" << std::endl;
+            std::cerr << "DbMap::Reader::fetchChildVector: finalize failed" << std::endl;
             return false;
         }
 
