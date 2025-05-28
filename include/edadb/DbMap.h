@@ -214,9 +214,9 @@ enum class DbMapOperation {
     UPDATE,
     DELETE,
     SCAN,
-    QUERY_PRED,
-    QUERY_PRIKEY,
-    QUEYR_FORKEY,
+    QUERY_PREDICATE,
+    QUERY_PRIMARY_KEY,
+    QUEYR_FOREIGN_KEY, 
     MAX
 };
 
@@ -287,7 +287,7 @@ struct OpTraits<T, DbMapOperation::SCAN> {
 
 
 template <typename T>
-struct OpTraits<T, DbMapOperation::QUERY_PRED> {
+struct OpTraits<T, DbMapOperation::QUERY_PREDICATE> {
     static constexpr const char *name() {
         return "QueryPredicate";
     }
@@ -295,13 +295,13 @@ struct OpTraits<T, DbMapOperation::QUERY_PRED> {
         return SqlStatement<T>::queryPredicateStatement(dbmap.getForeignKey(), pred);
     }
     static DbMapOperation op() {
-        return DbMapOperation::QUERY_PRED;
+        return DbMapOperation::QUERY_PREDICATE;
     }
 };
 
 
 template <typename T>
-struct OpTraits<T, DbMapOperation::QUERY_PRIKEY> {
+struct OpTraits<T, DbMapOperation::QUERY_PRIMARY_KEY> {
     static constexpr const char *name() {
         return "QueryPrimaryKey";
     }
@@ -309,13 +309,13 @@ struct OpTraits<T, DbMapOperation::QUERY_PRIKEY> {
         return SqlStatement<T>::queryPrimaryKeyStatement(dbmap.getForeignKey());
     }
     static DbMapOperation op() {
-        return DbMapOperation::QUERY_PRIKEY;
+        return DbMapOperation::QUERY_PRIMARY_KEY;
     }
 };
 
 
 template <typename T>
-struct OpTraits<T, DbMapOperation::QUEYR_FORKEY> {
+struct OpTraits<T, DbMapOperation::QUEYR_FOREIGN_KEY> {
     static constexpr const char *name() {
         return "QueryForeignKey";
     }
@@ -323,7 +323,7 @@ struct OpTraits<T, DbMapOperation::QUEYR_FORKEY> {
         return SqlStatement<T>::queryForeignKeyStatement(dbmap.getForeignKey());
     }
     static DbMapOperation op() {
-        return DbMapOperation::QUEYR_FORKEY;
+        return DbMapOperation::QUEYR_FOREIGN_KEY;
     }
 };
 
@@ -822,7 +822,7 @@ public:
     bool prepareByPredicate(const std::string &pred) {
         // need predicate to build the sql statement,
         // call prepareImpl with lambda function
-        return this->template prepareImpl<DbMapOperation::QUERY_PRED>(
+        return this->template prepareImpl<DbMapOperation::QUERY_PREDICATE>(
             [&]() {
                 return fmt::format(
                     SqlStatement<T>::queryPredicateStatement(this->dbmap.getForeignKey(), pred),
@@ -838,7 +838,7 @@ public:
      * @return true if prepared; otherwise, false.
      */
     bool prepareByPrimaryKey(void) {
-        return this->template prepareImpl<DbMapOperation::QUERY_PRIKEY>();
+        return this->template prepareImpl<DbMapOperation::QUERY_PRIMARY_KEY>();
     } // prepareByPrimaryKey
 
     /**
@@ -847,7 +847,7 @@ public:
      * @return true if prepared; otherwise, false.
      */
     bool prepareByForeignKey(void) {
-        return this->template prepareImpl<DbMapOperation::QUEYR_FORKEY>();
+        return this->template prepareImpl<DbMapOperation::QUEYR_FOREIGN_KEY>();
     } // prepareByForeignKey
 
 
