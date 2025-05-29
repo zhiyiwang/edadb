@@ -11,6 +11,8 @@
 #include <boost/fusion/include/vector.hpp>
 #include <boost/fusion/include/pair.hpp>
 
+#include "Macro4Sqlite.h"
+
 
 namespace edadb {
 

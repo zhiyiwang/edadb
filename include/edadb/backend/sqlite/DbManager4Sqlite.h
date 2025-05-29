@@ -12,6 +12,8 @@
 #include <stdint.h>
 #include <sqlite3.h>
 
+#include "Macro4Sqlite.h"
+
 #include "Config.h"
 #include "Singleton.h"
 #include "Cpp2SqlType.h"
@@ -61,6 +63,7 @@ protected:
     DbManagerImpl(const DbManagerImpl &) = delete;
     DbManagerImpl &operator=(const DbManagerImpl &) = delete;
 
+
 public: // database operation
     /**
      * @brief Get the database connection parameter.
@@ -69,6 +72,7 @@ public: // database operation
     bool isConnected() const {
         return !connect_param.empty();
     }
+
 
     /**
      * @brief Connect to the database using the connection parameter.
@@ -82,26 +86,36 @@ public: // database operation
 
         // connect to the database
         connect_param = c;
-        if (!(sqlite3_open(connect_param.c_str(), &db) == SQLITE_OK)) {
-            std::cerr << "Sqlite3 Error: can't open database: " << connect_param << std::endl;
-            std::cerr << "Sqlite3 Error: " << sqlite3_errmsg(db) << std::endl;
+        int rc = sqlite3_open(connect_param.c_str(), &db);
+        if (rc != SQLITE_OK) {
+            std::cerr << "DbManager4Sqlite::connect[sqlite3_open] failed!" << std::endl;
+            SQLITE_LOG_ERROR(rc, db, "Failed to open database using param: " + c);
             return false;
         }
 
         // enable foreign key constraint
         if (!exec("PRAGMA foreign_keys = ON;")) {
-            std::cerr << "Sqlite3 Error: can't enable foreign key constraint" << std::endl;
+            std::cerr << "DbManager4Sqlite::connect[PRAGMA foreign_keys] failed!" << std::endl;
             return false;
         }
 
         // enable sqlite trace if needed
         #if _EDADB_DEBUG_TRACE_SQL_STMT_
+            if (!checkForeignKeyEnabled()) {
+                std::cerr << "DbManager4Sqlite::connect: foreign key constraint is not enabled!" << std::endl;
+                return false;
+            } 
+            else {
+                std::cout << "DbManager4Sqlite::connect: foreign key constraint is enabled." << std::endl;
+            }
+
             // register the trace callback to output the SQL statement
             registerTrace();
         #endif
 
         return true;
     } // connect
+
 
     /**
      * @brief Execute the SQL statement directly.
@@ -110,14 +124,17 @@ public: // database operation
      */
     bool exec(const std::string &sql) {
         char *zErrMsg = nullptr;
-        bool executed = (sqlite3_exec(db, sql.c_str(), 0, 0, &zErrMsg) == SQLITE_OK);
+        int rc = sqlite3_exec(db, sql.c_str(), 0, 0, &zErrMsg);
+        bool executed = (rc == SQLITE_OK);
         if (!executed) {
-            std::cerr << "Sqlite3 Error: can't execute SQL: " << sql << std::endl;
-            std::cerr << "Sqlite3 Error: " << zErrMsg << std::endl;
-            sqlite3_free(zErrMsg);
-        }
+            std::cerr << "DbManager4Sqlite::exec[sqlite3_exec] failed!" << std::endl;
+            std::cerr << "Error: " << (zErrMsg ? zErrMsg : "Unknown error") << std::endl;
+            sqlite3_free(zErrMsg); // free the error message
+            SQLITE_LOG_ERROR(rc, db, "Failed to execute SQL: " + sql);
+        } // if 
         return executed;
     } // exec
+
 
     /**
      * @brief Close the database.
@@ -129,10 +146,11 @@ public: // database operation
             return true;
         }
 
-        bool closed = (sqlite3_close(db) == SQLITE_OK);
+        int rc = sqlite3_close(db);
+        bool closed = (rc == SQLITE_OK);
         if (!closed) {
-            std::cerr << "Sqlite3 Error: can't close database: " << connect_param << std::endl;
-            std::cerr << "Sqlite3 Error: " << sqlite3_errmsg(db) << std::endl;
+            std::cerr << "DbManager4Sqlite::close[sqlite3_close] failed!" << std::endl;
+            SQLITE_LOG_ERROR(rc, db, "Failed to close database: " + connect_param);
         }
         connect_param.clear();
         db = nullptr;
@@ -161,6 +179,29 @@ public: // sqlite3 statement operation
     int changes() {
         return sqlite3_changes(db);
     }
+
+
+private:
+    /**
+     * @brief check if foreign key constraint is enabled.
+     * @return true if enabled; otherwise, false.
+     */
+    bool checkForeignKeyEnabled(void) {
+        // check if foreign key constraint is enabled
+        sqlite3_stmt *stmt = nullptr;
+        const char *sql = "PRAGMA foreign_keys;";
+        int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr);
+        if (rc != SQLITE_OK) {
+            std::cerr << "DbManager4Sqlite::checkForeignKeyEnabled: sqlite3_prepare_v2 failed!" << std::endl;
+            SQLITE_LOG_ERROR(rc, db, "Failed to prepare PRAGMA foreign_keys statement");
+            return false;
+        }
+
+        rc = sqlite3_step(stmt);
+        bool enabled = (rc == SQLITE_ROW && sqlite3_column_int(stmt, 0) == 1);
+        sqlite3_finalize(stmt);
+        return enabled;
+    } // checkForeignKeyEnabled
 
 
 private: // sqlite3 trace API
@@ -212,8 +253,8 @@ private: // sqlite3 trace API
         std::cout << std::endl;
 
         return 0;
-    }
-};
+    } // traceCallback
+}; // DbManagerImpl<DbBackendType::SQLITE>
 
 
 

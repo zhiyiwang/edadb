@@ -78,7 +78,6 @@ public:
             r.print(vec_pref);
         }
         std::cout << pref << "[LayerShape] End ----------------------------------------" << std::endl;
-        std::cout << std::endl;
     } // print
 }; // IdbLayerShape
 
@@ -158,6 +157,7 @@ int main(void) {
     shape2._rect2s.emplace_back(22);
 
     IdbPort port2("Port 2");
+//    port2._layer_shapes.push_back(shape1); // TODO: UNIQUE constraint violation
     port2._layer_shapes.push_back(shape2);
     port2._rects.emplace_back(222);
 
@@ -218,11 +218,10 @@ int main(void) {
 
     // Update objects
     std::cout << "[DbMap Update]" << std::endl;
-    IdbLayerShape shape1_new(shape1);
-    shape1_new._layer = "IdbLayerShape 1 new";
-    shape1_new._rects.at(0)._x = 13;
-    shape1_new._rect2s.emplace_back(14);
-    if (!edadb::updateObject(dbm_layer_shape, &shape1, &shape1_new)) {
+    shape1._layer = "Type 1 new";
+    shape1._rects.at(0)._x = 13;
+    shape1._rect2s.emplace_back(14);
+    if (!edadb::updateObject(dbm_layer_shape, &shape1)) {
         std::cerr << "DbMap::update failed" << std::endl;
         return 1;
     }
@@ -284,13 +283,12 @@ int main(void) {
 
     // update objects
     std::cout << "[DbMap Update]" << std::endl;
-    IdbPort port1_new(port1);
-    port1_new._name = "Port 1 new";
-    port1_new._layer_shapes.at(0)._layer = "Type 1 new";
-    port1_new._rects.at(0)._x = 113;
-    port1_new._layer_shapes.at(0)._rects.at(0)._x = 113;
-    port1_new._layer_shapes.at(0)._rect2s.emplace_back(114);
-    edadb::updateObject(dbm_port, &port1, &port1_new);
+    port1._name = "Port 1";
+    port1._layer_shapes.at(0)._layer = "Type 1 new";
+    port1._rects.at(0)._x = 113;
+    port1._layer_shapes.at(0)._rects.at(0)._x = 113;
+    port1._layer_shapes.at(0)._rect2s.emplace_back(114);
+    edadb::updateObject(dbm_port, &port1);
     std::cout << std::endl << std::endl;
 
     // Scan table
@@ -311,11 +309,6 @@ int main(void) {
     scanTable(dbm_port);
     std::cout << std::endl << std::endl;
 #endif
-
-
-    // TODO:
-    // 4. delete objects
-    // 5. update objects
 
     return 0;
 } // main

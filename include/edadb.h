@@ -40,20 +40,6 @@
 #include "DbMap.h"
 
 
-//#define _EDADB_DEFINE_TABLE_BY_CLASS_(CLASS_NAME, TABLE_NAME, CLASS_ELEMS_TUP) \
-//    TABLE4CLASS(CLASS_NAME, TABLE_NAME, CLASS_ELEMS_TUP)
-//
-//#define _EDADB_DEFINE_TABLE_BY_COLUMN_(CLASS_NAME, TABLE_NAME, CLASS_ELEMS_TUP, COLNAME_TUP) \
-//    TABLE4CLASS_COLNAME(CLASS_NAME, TABLE_NAME, CLASS_ELEMS_TUP, COLNAME_TUP)
-//
-//#define _EDADB_DEFINE_TABLE_4_EXTERNAL_CLASS_(CLASS_NAME, CLASS_ELEMS_TUP) \
-//    TABLE4EXTERNALCLASS(CLASS_NAME, CLASS_ELEMS_TUP)
-//
-//#define _EDADB_DEFINE_TABLE_BY_CLASS_WITH_VECTOR_(CLASS_NAME, TABLE_NAME, CLASS_ELEMS_TUP, VECTOR_ELEMS_TUP) \
-//    TABLE4CLASS_WVEC(CLASS_NAME, TABLE_NAME, CLASS_ELEMS_TUP, VECTOR_ELEMS_TUP)
-
-
-
 namespace edadb {
 
 /**
@@ -131,18 +117,18 @@ using DbMapWriter = typename edadb::DbMap<T>::Writer;
 
 
 template <typename T>
-int updateObject(DbMap<T> &dbmap, T* org_obj_ptr, T* new_obj_ptr) {
+int updateObject(DbMap<T> &dbmap, T* obj) {
     bool ok = beginTransaction();
     typename DbMap<T>::Writer writer(dbmap);
-    ok = ok && writer.updateOne(org_obj_ptr, new_obj_ptr); 
+    ok = ok && writer.updateOne(obj); 
     return ok && commitTransaction();
 }
 
 template <typename T>
-bool updateVector(DbMap<T> &dbmap, std::vector<T*>& org_vec_ptr, std::vector<T*>& new_vec_ptr) {
+bool updateVector(DbMap<T> &dbmap, std::vector<T*>& objs) {
     bool ok = beginTransaction();
     typename DbMap<T>::Writer writer(dbmap);
-    ok = ok && writer.updateVector(org_vec_ptr, new_vec_ptr);
+    ok = ok && writer.updateVector(objs);
     return ok && commitTransaction();
 }
 

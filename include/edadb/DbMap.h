@@ -447,7 +447,10 @@ public: // utility
         /**
          * lamda function to bind the object and communicate with the database 
          */
-        func();
+        if (!func()) {
+            std::cerr << "DbMap::" << OpTraits<T, OP>::name() << "::executeImpl: bind failed" << std::endl;
+            return false;
+        }
 
         if (!dbstmt.reset()) {
             return false;
@@ -484,9 +487,12 @@ protected:
     /**
      * @brief bind the element to the database.
      * @param elem The element pointer to bind, which is defined as a cpp type pointer.
+     * @return true if success; otherwise, false.
      */
     template <typename ElemType>
-    void bindToColumn(const ElemType &elem) {
+    bool bindToColumn(const ElemType &elem) {
+        bool ok = true;
+
         // extract the CppType from the ElemType pointer
         using CppType = typename
             std::remove_const<typename std::remove_pointer<ElemType>::type>::type;
@@ -507,7 +513,7 @@ protected:
                  *   hence, the bindToColumn function will be called recursively and
                  *       always use this->bind_idx to bind the element
                  */
-                [this](auto const &ne) { this->bindToColumn(ne); });
+                [this, &ok](auto const &ne) { ok = ok && this->bindToColumn(ne); });
         }
         else if constexpr (edadb::Cpp2SqlType<CppType>::sqlType == edadb::SqlType::External) {
             assert((bind_idx > 0) &&
@@ -520,20 +526,22 @@ protected:
             auto values = TypeMetaData<edadb::Shadow<CppType>>::getVal(&shadow);
             boost::fusion::for_each(
                 values,
-                [this](auto const &ne) { this->bindToColumn(ne); });
+                [this, &ok](auto const &ne) { ok = ok && this->bindToColumn(ne); });
         }
         else if constexpr (std::is_enum_v<CppType>) {
             // bind the enum member to underlying type:
             //   Default underlying type is int, also can be user defined
             using U = std::underlying_type_t<CppType>;
             U tmp = static_cast<U>(*elem); // type safe cast during compile time
-            dbstmt.bindColumn(bind_idx++, &tmp);
+            ok = ok && dbstmt.bindColumn(bind_idx++, &tmp);
         }
         else {
             // bind the element to the database
             // only base type needs to be bound
-            dbstmt.bindColumn(bind_idx++, elem);
+            ok = ok && dbstmt.bindColumn(bind_idx++, elem);
         } // if constexpr SQLType::Composite
+
+        return ok;
     } // bindToColumn
 
 
@@ -542,10 +550,12 @@ protected:
      * @tparam ParentType The parent type, default is void.
      * @param obj The object to bind.
      * @param p The parent object, if any, to bind the foreign key value.
-     * 
+     * @return true if success; otherwise, false.
      */
     template <typename ParentType = void>
-    void bindObject(T *obj, ParentType *p = nullptr, bool autoStep = true) {
+    bool bindObject(T *obj, ParentType *p = nullptr, bool autoStep = true) {
+        bool ok = true;
+
         // reset bind_idx to begin to bind
         resetBindIndex();
 
@@ -554,7 +564,7 @@ protected:
         auto values = TypeMetaData<T>::getVal(obj);
         boost::fusion::for_each(
             values,
-            [this](auto const &ne) { this->bindToColumn(ne); }
+            [this, &ok](auto const &ne) { ok = ok && this->bindToColumn(ne); }
         );
 
         // ignore no ParentType (= void) during compile time
@@ -565,15 +575,15 @@ protected:
             // bind the foreign key value (1st column in parent)
             auto fk_val_ptr = boost::fusion::at_c<Config::fk_ref_pk_col_index>
                     (TypeMetaData<ParentType>::getVal(p));
-            dbstmt.bindColumn(bind_idx++, fk_val_ptr);
+            ok = ok && dbstmt.bindColumn(bind_idx++, fk_val_ptr);
         } // if 
 
 
         // autoStep: run backend db step statement automatically
         // bind the this tuple before bind the child tuple referencing this primary key
-        if (autoStep && !dbstmt.bindStep()) {
+        if (autoStep && !(ok = dbstmt.bindStep())) {
             std::cerr << "DbMap::Writer::bindObject: bind step failed" << std::endl;
-            return;
+            return ok;
         }
 
 
@@ -581,7 +591,6 @@ protected:
         // constexpr to avoid compile time error
         if constexpr (Cpp2SqlType<T>::sqlType == SqlType::CompositeVector) {
             auto ve = VecMetaData<T>::getVecElem(obj);
-            bool retval = true;
             std::size_t vidx = 0;
             boost::fusion::for_each(
                 ve,
@@ -600,10 +609,12 @@ protected:
                         vec_elem.push_back(&v);
 
                     typename DbMap<ElemT>::Writer child_writer(*child_dbmap);
-                    retval = retval && child_writer.insertVector(vec_elem, obj);
+                    ok = ok && child_writer.insertVector(vec_elem, obj);
                 } // lambda function
             ); // boost::fusion::for_each
         } // if constexpr SqlType::CompositeVector
+
+        return ok;
     } // bindObject
 
 }; // DbStmtOp
@@ -634,7 +645,7 @@ private:
     template <typename ParentType = void>
     bool insert(T *obj, ParentType *p = nullptr) {
         return this->template executeImpl<DbMapOperation::INSERT>(
-            [&]() { this->bindObject(obj, p); }
+            [&]() { return this->bindObject(obj, p); }
         );
     } // insert
 
@@ -718,45 +729,41 @@ private:
                 return this->dbstmt.bindStep();
             } // lambda function
         ); // executeImpl
-    } // deleteOne
+    } // deleteOp
 
 
 
 public: // update API: using place holder update statement
-    bool updateOne(T *org_obj, T *new_obj) {
+    bool updateOne(T *obj) {
         if constexpr (Cpp2SqlType<T>::sqlType == SqlType::CompositeVector) {
             // Update MULTIPLE objects in MULTIPLE tables:
-            //   delete the old object and insert the new object
-            return deleteOne(org_obj) && insertOne(new_obj);
+            //   delete the object's original related tuples in multiple tables,
+            //   then insert the object's new related tuples in multiple tables
+            return deleteOne(obj) && insertOne(obj);
         }
         else {
             // update SINGLE object in ONE table:
             //   directly update the object
             return this->template prepareImpl<DbMapOperation::UPDATE>()
-                && this->update(org_obj, new_obj)
+                && this->update(obj)
                 && this->template finalize();
         } // if constexpr SqlType::CompositeVector
     } // updateOne
 
 
-    bool updateVector(std::vector<T *> &org_objs, std::vector<T *> &new_objs) {
-        if (org_objs.empty() || new_objs.empty()) {
+    bool updateVector(std::vector<T *> &objs) {
+        if (objs.empty()) {
             std::cerr << "DbMap::updateVector: empty vector" << std::endl;
             return false;
         }
-        if (org_objs.size() != new_objs.size()) {
-            std::cerr << "DbMap::updateVector: size mismatch" << std::endl;
-            return false;
-        }
 
-        return deleteVector(org_objs) && insertVector(new_objs);
         if constexpr (Cpp2SqlType<T>::sqlType == SqlType::CompositeVector) {
-            return deleteVector(org_objs) && insertVector(new_objs); 
+            return deleteVector(objs) && insertVector(objs); 
         }
         else {
             return processVector<DbMapOperation::UPDATE>("DbMap::updateVector", [&]() {
-                for (size_t i = 0; i < org_objs.size(); ++i) {
-                    if (!update(org_objs[i], new_objs[i])) {
+                for (size_t i = 0; i < objs.size(); ++i) {
+                    if (!update(objs[i])) {
                         std::cerr << "DbMap::updateVector: update failed" << std::endl;
                         return false;
                     }
@@ -767,21 +774,21 @@ public: // update API: using place holder update statement
     } // updateVector
 
 private:
-    bool update(T *org_obj, T *new_obj) {
+    bool update(T *obj) {
         return this->template executeImpl<DbMapOperation::UPDATE>([&]() {
             // T should not be CompositeVector type,
             //   which means there is only one tuple to update
             static_assert(Cpp2SqlType<T>::sqlType != SqlType::CompositeVector,
                 "T is CompositeVector, use deleteOne and insertOne instead");
 
-            // bind new_obj to the database, params are:
-            //   1. bindObject using new_obj
-            //   2. ParentType is void, no foreign key value to bind
+            // bind obj to the database, params are:
+            //   1. bindObject using obj primary key value
+            //   2. ParentType is void, no foreign key value need to bind
             //   3. no auto step, because we will bind the primary key value in the where clause
-            this->bindObject(new_obj, static_cast<void*>(nullptr), false);
+            this->bindObject(obj, static_cast<void*>(nullptr), false);
 
-            // bind the primary key value in the where clause using org_obj
-            auto pk_val_ptr = boost::fusion::at_c<0>(TypeMetaData<T>::getVal(org_obj));
+            // bind the primary key value in the where clause using obj first column
+            auto pk_val_ptr = boost::fusion::at_c<0>(TypeMetaData<T>::getVal(obj));
             this->dbstmt.bindColumn(this->bind_idx++, pk_val_ptr);
 
             return this->dbstmt.bindStep();
@@ -846,8 +853,25 @@ public:
      * @param obj The object to read.
      * @return true if prepared; otherwise, false.
      */
-    bool prepareByForeignKey(void) {
-        return this->template prepareImpl<DbMapOperation::QUEYR_FOREIGN_KEY>();
+    template <typename ParentType>
+    bool prepareByForeignKey(ParentType *p) {
+        bool ok =  this->template prepareImpl<DbMapOperation::QUEYR_FOREIGN_KEY>();
+        if (!ok) {
+            std::cerr << "DbMap::Reader::prepareByForeignKey: prepare failed" << std::endl;
+            return false;
+        }
+
+        // get the foreign key value from the parent object to query as foreign key
+        // read DbMap<T> foreign key value from ParentType p
+        assert(this->dbmap.getForeignKey().valid());
+
+        // get the foreign key from 1st column in parent
+        auto fk_val_ptr = boost::fusion::at_c<Config::fk_ref_pk_col_index>
+            (TypeMetaData<ParentType>::getVal(p)
+        );
+        ok = ok && this->dbstmt.bindColumn(this->bind_idx++, fk_val_ptr);
+
+        return ok;
     } // prepareByForeignKey
 
 
@@ -857,16 +881,15 @@ public:
      * @param obj The object to read.
      * @return true if read successfully; otherwise, false.
      */
-    template <typename ParentType = void>
-    bool read(T *obj, ParentType *p = nullptr) {
+    bool read(T *obj) {
         if (!manager.isConnected()) {
             std::cerr << "DbMap<" << typeid(T).name() << ">::Reader::"
                       << "read: not inited" << std::endl;
             return false;
         }
 
-        return readObject(obj, p);
-    }
+        return readObject(obj);
+    } // read
 
 protected:
     /** reset read_idx to begin to read */
@@ -879,31 +902,14 @@ protected:
      * @param obj The object to read.
      * @return true if read successfully; otherwise, false.
      */
-    template <typename ParentType>
-    bool readObject(T *obj, ParentType *p) {
-        // 0. reset bind and read index to read  
-        this->resetBindIndex();
+    bool readObject(T *obj) {
+        // 1. reset read index to read  
         this->resetReadIndex();
 
-        // 1. get the foreign key value from the parent object to query as foreign key
-        // ignore no ParentType (= void) during compile time
-        // Otherwise, read DbMap<T> foreign key value from ParentType p
-        if constexpr (!std::is_same_v<ParentType, void>) {
-            assert(this->dbmap.getForeignKey().valid());
-
-            // get the foreign key from 1st column in parent
-            auto fk_val_ptr = boost::fusion::at_c<Config::fk_ref_pk_col_index>
-                (TypeMetaData<ParentType>::getVal(p)
-            );
-            this->dbstmt.bindColumn(this->bind_idx++, fk_val_ptr);
-        } // if
-
-
-        // 2. fetch the tuple as primary key tuple 
+        // 2. fetch the tuple using prepared statement
         if (!this->dbstmt.fetchStep()) {
             return false; // no more row
         }
-
 
         // 3. iterate to fetch the columns and read to members
         // @see DbMap<T>::Writer::fetchFromColumn for the recursive calling
@@ -912,7 +918,6 @@ protected:
             values,
             [this](auto const &ne) { this->fetchFromColumn(ne); }
         );
-
 
         // 4. CompositeVector type: use this obj as primary key tuple to read the child
         // constexpr to avoid compile time error
@@ -924,7 +929,7 @@ protected:
                 ve,
                 [&](auto ptr) {
                     // fetch the child vector when ok
-                    ok = ok && fetchChildVector(ptr, obj, vidx);
+                    ok = ok && fetchChildVector(obj, vidx, ptr);
                 } // lambda function
             ); // for_each
         } // if 
@@ -981,7 +986,7 @@ protected:
 
 
     template <typename VecPtr>
-    bool fetchChildVector(VecPtr ptr, T *obj, size_t &vidx) {
+    bool fetchChildVector(T *obj, size_t &vidx, VecPtr ptr) {
         using PtrT = decltype(ptr);
         using VecT = std::remove_const_t<std::remove_pointer_t<PtrT>>;
         using ElemT= typename VecT::value_type;
@@ -994,13 +999,13 @@ protected:
 
         // create reader to read the child object
         typename DbMap<ElemT>::Reader child_reader(*child_dbmap);
-        if (!child_reader.prepareByForeignKey()) {
+        if (!child_reader.prepareByForeignKey(obj)) {
             std::cerr << "DbMap::Reader::fetchChildVector: prepareByForeignKey failed" << std::endl;
             return false;
         }
 
         ElemT child_obj;
-        while (child_reader.read(&child_obj, obj)) {
+        while (child_reader.read(&child_obj)) {
             // push the child object to the vector
             ptr->push_back(child_obj);
         } // while

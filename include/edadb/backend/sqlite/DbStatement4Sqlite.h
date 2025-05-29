@@ -13,6 +13,7 @@
 #include "DbBackendType.h"
 #include "DbStatement.h"
 
+
 namespace edadb {
 
 /**
@@ -38,7 +39,7 @@ public:
 public:
     inline bool invalidDb     () { return (db   == nullptr); }
     inline bool stmtIsNull    () { return (stmt == nullptr); }
-    inline bool stmtIsPrepared() { return (stmt != nullptr); }
+    inline bool stmtIsPrepared() { return !stmtIsNull(); }
 
     /**
      * @brief prepare the SQL statement
@@ -54,12 +55,11 @@ public:
             return false;
         }
 
-        bool prepared =
-            (sqlite3_prepare_v2(db, sql.c_str(), -1, &(stmt), 0) == SQLITE_OK);
+        int rc = sqlite3_prepare_v2(db, sql.c_str(), -1, &(stmt), 0);
+        bool prepared = (rc == SQLITE_OK);
         if (!prepared) {
-            std::cerr << "DbStatementImpl::prepare: can't prepare SQL: " << sql << std::endl;
-            zErrMsg = sqlite3_errmsg(db);
-            std::cerr << "DbStatementImpl::prepare: " << zErrMsg << std::endl;
+            std::cerr << "DbStatementImpl::prepare: sqlite3_prepare_v2 failed!" << std::endl;
+            SQLITE_LOG_ERROR(rc, db, "Failed to prepare SQL: " + sql);
         }
         return prepared;
     }
@@ -69,12 +69,11 @@ public:
      * @return true if reseted; otherwise, false.
      */
     bool reset() {
-        bool reseted = (sqlite3_reset(stmt) == SQLITE_OK);
+        int rc = sqlite3_reset(stmt);
+        bool reseted = (rc == SQLITE_OK);
         if (!reseted) {
-            std::cerr << "Sqlite3 Error: can't reset SQL" << std::endl;
-
-            zErrMsg = sqlite3_errmsg(db);
-            std::cerr << "Sqlite3 Error: " << zErrMsg << std::endl;
+            std::cerr << "DbStatementImpl::reset: sqlite3_reset failed!" << std::endl;
+            SQLITE_LOG_ERROR(rc, db, "Failed to reset SQL statement");
         }
         return reseted;
     }
@@ -84,12 +83,11 @@ public:
      * @return true if finalized; otherwise, false.
      */
     bool finalize() {
-        bool finalized = (sqlite3_finalize(stmt) == SQLITE_OK);
+        int rc = sqlite3_finalize(stmt);
+        bool finalized = (rc == SQLITE_OK);
         if (!finalized) {
-            std::cerr << "Sqlite3 Error: can't finalize SQL" << std::endl;
-
-            zErrMsg = sqlite3_errmsg(db);
-            std::cerr << "Sqlite3 Error: " << zErrMsg << std::endl;
+            std::cerr << "DbStatementImpl::finalize: sqlite3_finalize failed!" << std::endl;
+            SQLITE_LOG_ERROR(rc, db, "Failed to finalize SQL statement");
         }
 
         stmt = nullptr;
@@ -108,7 +106,12 @@ public: // insert column
     template <typename T>
     std::enable_if_t<std::is_integral_v<T> && (sizeof(T) <= sizeof(int)), bool>
         bindColumn(int index, T *value) {
-        return (sqlite3_bind_int(stmt, index, *value) == SQLITE_OK);
+        int rc = sqlite3_bind_int(stmt, index, *value);
+        if (rc != SQLITE_OK) {
+            std::cerr << "DbStatementImpl::bindColumn: sqlite3_bind_int failed!" << std::endl;
+            SQLITE_LOG_ERROR(rc, db, "Failed to bind column at index " + std::to_string(index));
+        }
+        return (rc == SQLITE_OK);
     }
 
     /**
@@ -120,7 +123,12 @@ public: // insert column
     template <typename T>
     std::enable_if_t<std::is_integral_v<T> && (sizeof(T) > sizeof(int)), bool>
         bindColumn(int index, T *value) {
-        return (sqlite3_bind_int64(stmt, index, *value) == SQLITE_OK);
+        int rc = sqlite3_bind_int64(stmt, index, *value);
+        if (rc != SQLITE_OK) {
+            std::cerr << "DbStatementImpl::bindColumn: sqlite3_bind_int64 failed!" << std::endl;
+            SQLITE_LOG_ERROR(rc, db, "Failed to bind column at index " + std::to_string(index));
+        }
+        return (rc == SQLITE_OK);
     }
 
     /**
@@ -131,7 +139,12 @@ public: // insert column
     template <typename T>
     std::enable_if_t<std::is_floating_point_v<T>, bool>
         bindColumn(int index, T *value) {
-        return (sqlite3_bind_double(stmt, index, *value) == SQLITE_OK);
+        int rc = sqlite3_bind_double(stmt, index, *value);
+        if (rc != SQLITE_OK) {
+            std::cerr << "DbStatementImpl::bindColumn: sqlite3_bind_double failed!" << std::endl;
+            SQLITE_LOG_ERROR(rc, db, "Failed to bind column at index " + std::to_string(index));
+        }
+        return (rc == SQLITE_OK);
     }
 
     /**
@@ -139,10 +152,15 @@ public: // insert column
      * @return true if binded; otherwise, false.
      */
     bool bindColumn(int index, std::string *value) {
-        return (sqlite3_bind_text(stmt, index, value->c_str(), -1, SQLITE_STATIC) == SQLITE_OK);
+        return bindColumn(index, value->c_str());
     }
     bool bindColumn(int index, const char *value) {
-        return (sqlite3_bind_text(stmt, index, value, -1, SQLITE_STATIC) == SQLITE_OK);
+        int rc = sqlite3_bind_text(stmt, index, value, -1, SQLITE_STATIC);
+        if (rc != SQLITE_OK) {
+            std::cerr << "DbStatementImpl::bindColumn: sqlite3_bind_text failed!" << std::endl;
+            SQLITE_LOG_ERROR(rc, db, "Failed to bind column at index " + std::to_string(index));
+        }
+        return (rc == SQLITE_OK);
     }
 
     /**
@@ -150,10 +168,15 @@ public: // insert column
      * @return true if binded; otherwise, false.
      */
     bool bindColumn(int index, std::wstring *value) {
-        return (sqlite3_bind_text16(stmt, index, value->c_str(), -1, SQLITE_STATIC) == SQLITE_OK);
+        return bindColumn(index, value->c_str());
     }
     bool bindColumn(int index, const wchar_t *value) {
-        return (sqlite3_bind_text16(stmt, index, value, -1, SQLITE_STATIC) == SQLITE_OK);
+        int rc = sqlite3_bind_text16(stmt, index, value, -1, SQLITE_STATIC);
+        if (rc != SQLITE_OK) {
+            std::cerr << "DbStatementImpl::bindColumn: sqlite3_bind_text16 failed!" << std::endl;
+            SQLITE_LOG_ERROR(rc, db, "Failed to bind column at index " + std::to_string(index));
+        }
+        return (rc == SQLITE_OK);
     }
 
 
@@ -162,12 +185,11 @@ public: // insert column
      * @return true if inserted; otherwise, false.
      */
     bool bindStep() {
-        bool stepped = (sqlite3_step(stmt) == SQLITE_DONE);
+        int rc = sqlite3_step(stmt);
+        bool stepped = (rc == SQLITE_DONE);
         if (!stepped) {
-            std::cerr << "sqlite3_step failed" << std::endl;
-
-            zErrMsg = sqlite3_errmsg(db);
-            std::cerr << "Sqlite3 Error: " << zErrMsg << std::endl;
+            std::cerr << "DbStatementImpl::bindStep: sqlite3_step failed!" << std::endl;
+            SQLITE_LOG_ERROR(rc, db, "Failed to step SQL statement");
         }
 
         #if _DEADB_DEBUG_TRACE_SQL_STMT_
@@ -220,7 +242,13 @@ public: // fetch column
             std::cout << "DbManager::fetchStep" << std::endl;
         #endif
 
-        return (sqlite3_step(stmt) == SQLITE_ROW);
+        int rc = sqlite3_step(stmt);
+        // get one row or read done
+        if ((rc != SQLITE_ROW) && (rc != SQLITE_DONE)) {
+            std::cerr << "DbStatementImpl::fetchStep: sqlite3_step failed!" << std::endl;
+            SQLITE_LOG_ERROR(rc, db, "Failed to fetch step SQL statement");
+        }
+        return (rc == SQLITE_ROW);
     }
 
     /**
