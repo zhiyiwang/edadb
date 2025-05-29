@@ -48,6 +48,7 @@ namespace edadb {
  * @param dbName The database name.
  * @return use decltype to return the type of the init function, which is bool.
  */
+inline
 bool initDatabase(const std::string& dbName) {
     bool res = false;
     if ((res = DbMapBase::i().init(dbName)) == false) {
@@ -57,14 +58,17 @@ bool initDatabase(const std::string& dbName) {
     return res;
 }
 
+inline
 bool executeSql(const std::string& sql) {
     return DbMapBase::i().executeSql(sql);
 }
 
+inline
 bool beginTransaction() {
     return DbMapBase::i().beginTransaction();
 }
 
+inline
 bool commitTransaction() {
     return DbMapBase::i().commitTransaction();
 }
