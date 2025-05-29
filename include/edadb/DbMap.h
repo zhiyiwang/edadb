@@ -734,52 +734,62 @@ private:
 
 
 public: // update API: using place holder update statement
-    bool updateOne(T *obj) {
+    /**
+     * @brief update a single object in the database.
+     * @param obj The object to update.
+     * @param updateChild Whether to update child objects if the object is a CompositeVector type.
+     * @return true if success; otherwise, false.
+     */
+    bool updateOne(T *obj, bool updateChild = true) {
+        // compile time check for the object type
         if constexpr (Cpp2SqlType<T>::sqlType == SqlType::CompositeVector) {
-            // Update MULTIPLE objects in MULTIPLE tables:
-            //   delete the object's original related tuples in multiple tables,
-            //   then insert the object's new related tuples in multiple tables
-            return deleteOne(obj) && insertOne(obj);
-        }
-        else {
-            // update SINGLE object in ONE table:
-            //   directly update the object
-            return this->template prepareImpl<DbMapOperation::UPDATE>()
-                && this->update(obj)
-                && this->template finalize();
-        } // if constexpr SqlType::CompositeVector
+            // update composite vector type vector children
+            if (updateChild) {
+                // Update MULTIPLE objects in MULTIPLE tables:
+                //   delete the object's original related tuples in multiple tables,
+                //   then insert the object's new related tuples in multiple tables
+                return deleteOne(obj) && insertOne(obj);
+            }
+        } // if 
+
+        // update SINGLE object in ONE table:
+        //   directly update the object
+        return this->template prepareImpl<DbMapOperation::UPDATE>()
+            && this->update(obj)
+            && this->template finalize();
     } // updateOne
 
 
-    bool updateVector(std::vector<T *> &objs) {
+    bool updateVector(std::vector<T *> &objs, bool updateChild = true) {
         if (objs.empty()) {
             std::cerr << "DbMap::updateVector: empty vector" << std::endl;
             return false;
         }
 
         if constexpr (Cpp2SqlType<T>::sqlType == SqlType::CompositeVector) {
-            return deleteVector(objs) && insertVector(objs); 
+            if (updateChild) {
+                return deleteVector(objs) && insertVector(objs); 
+            }
         }
-        else {
-            return processVector<DbMapOperation::UPDATE>("DbMap::updateVector", [&]() {
-                for (size_t i = 0; i < objs.size(); ++i) {
-                    if (!update(objs[i])) {
-                        std::cerr << "DbMap::updateVector: update failed" << std::endl;
-                        return false;
-                    }
+
+        return processVector<DbMapOperation::UPDATE>("DbMap::updateVector", [&]() {
+            for (size_t i = 0; i < objs.size(); ++i) {
+                if (!update(objs[i])) {
+                    std::cerr << "DbMap::updateVector: update failed" << std::endl;
+                    return false;
                 }
-                return true;
-            });
-        } // if constexpr SqlType::CompositeVector
+            }
+            return true;
+        });
     } // updateVector
 
 private:
     bool update(T *obj) {
         return this->template executeImpl<DbMapOperation::UPDATE>([&]() {
-            // T should not be CompositeVector type,
-            //   which means there is only one tuple to update
-            static_assert(Cpp2SqlType<T>::sqlType != SqlType::CompositeVector,
-                "T is CompositeVector, use deleteOne and insertOne instead");
+////            // Discard this ASSERT: T should not be CompositeVector type,
+////            //   which means there is only one tuple to update
+////            static_assert(Cpp2SqlType<T>::sqlType != SqlType::CompositeVector,
+////                "T is CompositeVector, use deleteOne and insertOne instead");
 
             // bind obj to the database, params are:
             //   1. bindObject using obj primary key value
