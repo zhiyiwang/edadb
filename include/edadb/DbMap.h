@@ -141,15 +141,23 @@ public:
         // create child table for composite vector type 
         bool crt_tab = true;
         if constexpr (Cpp2SqlType<T>::sqlType == SqlType::CompositeVector) {
-            // vector< vector<ElemT1>*, vector<ElemT2>*, ... >
+            // vector< vector<ElemT1>*, vector<ElemT2>*, ... > 
+            //   each vector<ElemT>* is for a vector<ElemT> member variable 
             using VecElem = typename VecMetaData<T>::VecElem;
             VecElem seq{}; // only need type, ignore value
             boost::fusion::for_each(seq, [&](auto ptr){ 
-              using PtrT = decltype(ptr);
-              using VecT  = std::remove_const_t<std::remove_pointer_t<PtrT>>;
-              using ElemT = typename VecT::value_type;
-              crt_tab = (crt_tab && createChildTable<ElemT>());
-            });
+                using PtrT = decltype(ptr);
+                using VecT  = std::remove_const_t<std::remove_pointer_t<PtrT>>;
+                using ElemT = typename VecT::value_type;
+                using OrgType = std::conditional_t<
+                    std::is_pointer_v<ElemT>, std::remove_pointer_t<ElemT>, ElemT
+                >;
+                static_assert(!std::is_pointer_v<OrgType>,
+                    "DbMap::createTable: ElemT must not be a high dimension pointer type");
+
+                // ElemT is not a pointer type, create child table directly
+                crt_tab = (crt_tab && createChildTable<OrgType>());
+            }); // for_each
         } // if 
 
         return crt_tab;
@@ -173,10 +181,15 @@ public:
 
 
 private:
-    template <typename ElemT>
+    template <typename OrgT>
     bool createChildTable(void) {
-        std::string child_table_name = // "this table name" + "_" + "child defined table name"
-            table_name + "_" + TypeMetaData<ElemT>::table_name();
+        // assert OrgT is not pointer type
+        static_assert(!std::is_pointer<OrgT>::value,
+            "createChildTable: OrgT must not be a pointer type");
+
+        // "this table name" + "_" + "child defined table name"
+        std::string child_table_name = 
+            table_name + "_" + TypeMetaData<OrgT>::table_name();
 
         // create constraint for foreign key
         ForeignKey fk;
@@ -195,7 +208,7 @@ private:
 
 
         // create child dbmap and table
-        DbMap<ElemT> *child_dbmap = new DbMap<ElemT>(child_table_name, fk);
+        DbMap<OrgT> *child_dbmap = new DbMap<OrgT>(child_table_name, fk);
         child_dbmap_vec.push_back(child_dbmap);
         return child_dbmap->createTable();
     } // createChildTable
@@ -586,7 +599,6 @@ protected:
             return ok;
         }
 
-
         // CompositeVector type: use obj as primary key to bind the child
         // constexpr to avoid compile time error
         if constexpr (Cpp2SqlType<T>::sqlType == SqlType::CompositeVector) {
@@ -595,21 +607,7 @@ protected:
             boost::fusion::for_each(
                 ve,
                 [&](auto ptr) {
-                    using PtrT = decltype(ptr);
-                    using VecT  = std::remove_const_t<std::remove_pointer_t<PtrT>>;
-                    using ElemT = typename VecT::value_type;
-                    auto child_dbmap_vec = this->dbmap.getChildDbMap();
-                    DbMap<ElemT> *child_dbmap = 
-                        static_cast<DbMap<ElemT> *>(child_dbmap_vec.at(vidx++));
-                    assert(child_dbmap != nullptr);
-
-                    // trans vector<ElemT>* to vector<ElemT*> to call insertVector
-                    std::vector<ElemT *> vec_elem;
-                    for (auto &v : *ptr) 
-                        vec_elem.push_back(&v);
-
-                    typename DbMap<ElemT>::Writer child_writer(*child_dbmap);
-                    ok = ok && child_writer.insertVector(vec_elem, obj);
+                    ok = ok && this->bindChildVector(obj, vidx, ptr);
                 } // lambda function
             ); // boost::fusion::for_each
         } // if constexpr SqlType::CompositeVector
@@ -617,6 +615,46 @@ protected:
         return ok;
     } // bindObject
 
+
+    template <typename VecPtr>
+    bool bindChildVector(T *obj, size_t &vidx, VecPtr ptr) {
+        bool ok = true;
+        using PtrT = decltype(ptr);
+        using VecT = std::remove_const_t<std::remove_pointer_t<PtrT>>;
+        using ElemT= typename VecT::value_type;
+        if constexpr (std::is_pointer_v<ElemT>) {
+            // ElemT is a pointer type, use the pointed type
+            using OrgType = std::remove_pointer_t<ElemT>;
+            static_assert(!std::is_pointer_v<OrgType>,
+                "DbMap::bindObject: ElemT must not be a high dimension pointer type");
+    
+            auto child_dbmap_vec = this->dbmap.getChildDbMap();
+            DbMap<OrgType> *child_dbmap = 
+                static_cast<DbMap<OrgType> *>(child_dbmap_vec.at(vidx++));
+            assert(child_dbmap != nullptr);
+
+            // ptr is pointer to vector<ElemT*>, use it directly
+            typename DbMap<OrgType>::Writer child_writer(*child_dbmap);
+            ok = ok && child_writer.insertVector(*ptr, obj);
+        } else {
+            // ElemT is not a pointer type
+            using OrgType = ElemT;
+
+            auto child_dbmap_vec = this->dbmap.getChildDbMap();
+            DbMap<OrgType> *child_dbmap = 
+                static_cast<DbMap<OrgType> *>(child_dbmap_vec.at(vidx++));
+            assert(child_dbmap != nullptr);
+
+            // trans vector<OrgType>* to vector<OrgType*> to call insertVector
+            std::vector<OrgType *> vec_elem;
+            for (auto &v : *ptr) 
+                vec_elem.push_back(&v);
+            typename DbMap<OrgType>::Writer child_writer(*child_dbmap);
+            ok = ok && child_writer.insertVector(vec_elem, obj);
+        } // if constexpr
+
+        return ok;
+    } // bindChildVector
 }; // DbStmtOp
 
 
@@ -786,7 +824,8 @@ public: // update API: using place holder update statement
 private:
     bool update(T *obj) {
         return this->template executeImpl<DbMapOperation::UPDATE>([&]() {
-////            // Discard this ASSERT: T should not be CompositeVector type,
+////            // Discard this ASSERT: Only update SqlType::CompositeVector tuple 
+////            // T should not be CompositeVector type,
 ////            //   which means there is only one tuple to update
 ////            static_assert(Cpp2SqlType<T>::sqlType != SqlType::CompositeVector,
 ////                "T is CompositeVector, use deleteOne and insertOne instead");
@@ -1000,24 +1039,34 @@ protected:
         using PtrT = decltype(ptr);
         using VecT = std::remove_const_t<std::remove_pointer_t<PtrT>>;
         using ElemT= typename VecT::value_type;
+        using OrgType = std::conditional_t<
+            std::is_pointer_v<ElemT>, std::remove_pointer_t<ElemT>, ElemT
+        >;
+        static_assert(!std::is_pointer_v<OrgType>,
+            "DbMap::Reader::fetchChildVector: ElemT must not be a high dimension pointer type");
+
         auto child_dbmap_vec = this->dbmap.getChildDbMap();
         assert(!child_dbmap_vec.empty());
 
-        DbMap<ElemT> *child_dbmap =
-            static_cast<DbMap<ElemT> *>(child_dbmap_vec.at(vidx++));
+        DbMap<OrgType> *child_dbmap =
+            static_cast<DbMap<OrgType> *>(child_dbmap_vec.at(vidx++));
         assert(child_dbmap != nullptr);
 
         // create reader to read the child object
-        typename DbMap<ElemT>::Reader child_reader(*child_dbmap);
+        typename DbMap<OrgType>::Reader child_reader(*child_dbmap);
         if (!child_reader.prepareByForeignKey(obj)) {
             std::cerr << "DbMap::Reader::fetchChildVector: prepareByForeignKey failed" << std::endl;
             return false;
         }
 
-        ElemT child_obj;
+        OrgType child_obj;
         while (child_reader.read(&child_obj)) {
-            // push the child object to the vector
-            ptr->push_back(child_obj);
+            if constexpr (std::is_pointer_v<ElemT>)
+                // ptr point to vector<ElemT*>
+                ptr->push_back(new OrgType(child_obj));
+            else
+                // ptr point to vector<ElemT>
+                ptr->push_back(child_obj); 
         } // while
 
         if (!child_reader.finalize()) {
