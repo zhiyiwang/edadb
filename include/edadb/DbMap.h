@@ -629,6 +629,8 @@ protected:
                 "DbMap::bindObject: ElemT must not be a high dimension pointer type");
     
             auto child_dbmap_vec = this->dbmap.getChildDbMap();
+            assert(!child_dbmap_vec.empty());
+
             DbMap<OrgType> *child_dbmap = 
                 static_cast<DbMap<OrgType> *>(child_dbmap_vec.at(vidx++));
             assert(child_dbmap != nullptr);
@@ -641,6 +643,8 @@ protected:
             using OrgType = ElemT;
 
             auto child_dbmap_vec = this->dbmap.getChildDbMap();
+            assert(!child_dbmap_vec.empty());
+
             DbMap<OrgType> *child_dbmap = 
                 static_cast<DbMap<OrgType> *>(child_dbmap_vec.at(vidx++));
             assert(child_dbmap != nullptr);
