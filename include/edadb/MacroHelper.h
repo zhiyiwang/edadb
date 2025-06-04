@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <type_traits>
 #include <iostream> 
 #include <boost/type_index.hpp>
 #include <boost/fusion/include/for_each.hpp>
@@ -51,5 +52,21 @@ void print_type() {
     //    to get the human-readable name
     std::cout << boost::typeindex::type_id_with_cvr<T>().pretty_name();
 }
+
+/**
+ * @brief VecTypeTrait: A type trait to extract vector element and original type from a vector pointer.
+ * @tparam VecPtr The vector pointer type.
+ */
+template<typename VecPtr>
+struct VecTypeTrait {
+    using VecType = std::remove_const_t<std::remove_pointer_t<VecPtr>>;
+    using ElemType= typename VecType::value_type;
+    using OrgType = std::conditional_t<
+        std::is_pointer_v<ElemType>, std::remove_pointer_t<ElemType>, ElemType
+    >;
+
+    static_assert(!std::is_pointer_v<OrgType>,
+        "VecTypeTrait: ElemT must not be a high dimension pointer type");
+}; // VecTypeTrait
 
 } // namespace edadb

@@ -147,16 +147,10 @@ public:
             VecElem seq{}; // only need type, ignore value
             boost::fusion::for_each(seq, [&](auto ptr){ 
                 using PtrT = decltype(ptr);
-                using VecT  = std::remove_const_t<std::remove_pointer_t<PtrT>>;
-                using ElemT = typename VecT::value_type;
-                using OrgType = std::conditional_t<
-                    std::is_pointer_v<ElemT>, std::remove_pointer_t<ElemT>, ElemT
-                >;
-                static_assert(!std::is_pointer_v<OrgType>,
-                    "DbMap::createTable: ElemT must not be a high dimension pointer type");
-
-                // ElemT is not a pointer type, create child table directly
-                crt_tab = (crt_tab && createChildTable<OrgType>());
+                using Trait = VecTypeTrait<PtrT>;
+                using OrgType = typename Trait::OrgType;
+                if (crt_tab)
+                    crt_tab = createChildTable<OrgType>();
             }); // for_each
         } // if 
 
@@ -618,43 +612,28 @@ protected:
 
     template <typename VecPtr>
     bool bindChildVector(T *obj, size_t &vidx, VecPtr ptr) {
-        bool ok = true;
         using PtrT = decltype(ptr);
-        using VecT = std::remove_const_t<std::remove_pointer_t<PtrT>>;
-        using ElemT= typename VecT::value_type;
-        if constexpr (std::is_pointer_v<ElemT>) {
-            // ElemT is a pointer type, use the pointed type
-            using OrgType = std::remove_pointer_t<ElemT>;
-            static_assert(!std::is_pointer_v<OrgType>,
-                "DbMap::bindObject: ElemT must not be a high dimension pointer type");
-    
-            auto child_dbmap_vec = this->dbmap.getChildDbMap();
-            assert(!child_dbmap_vec.empty());
+        using Trait = VecTypeTrait<PtrT>;
+        using ElemType = typename Trait::ElemType;
+        using OrgType  = typename Trait::OrgType;
 
-            DbMap<OrgType> *child_dbmap = 
-                static_cast<DbMap<OrgType> *>(child_dbmap_vec.at(vidx++));
-            assert(child_dbmap != nullptr);
+        auto child_dbmap_vec = this->dbmap.getChildDbMap();
+        DbMap<OrgType> *child_dbmap = 
+            static_cast<DbMap<OrgType> *>(child_dbmap_vec.at(vidx++));
+        assert(!child_dbmap_vec.empty());
+        assert(child_dbmap != nullptr);
 
+        bool ok = true;
+        typename DbMap<OrgType>::Writer child_writer(*child_dbmap);
+        if constexpr (std::is_pointer_v<ElemType>) {
             // ptr is pointer to vector<ElemT*>, use it directly
-            typename DbMap<OrgType>::Writer child_writer(*child_dbmap);
-            ok = ok && child_writer.insertVector(*ptr, obj);
+            ok = child_writer.insertVector(*ptr, obj);
         } else {
-            // ElemT is not a pointer type
-            using OrgType = ElemT;
-
-            auto child_dbmap_vec = this->dbmap.getChildDbMap();
-            assert(!child_dbmap_vec.empty());
-
-            DbMap<OrgType> *child_dbmap = 
-                static_cast<DbMap<OrgType> *>(child_dbmap_vec.at(vidx++));
-            assert(child_dbmap != nullptr);
-
             // trans vector<OrgType>* to vector<OrgType*> to call insertVector
             std::vector<OrgType *> vec_elem;
             for (auto &v : *ptr) 
                 vec_elem.push_back(&v);
-            typename DbMap<OrgType>::Writer child_writer(*child_dbmap);
-            ok = ok && child_writer.insertVector(vec_elem, obj);
+            ok = child_writer.insertVector(vec_elem, obj);
         } // if constexpr
 
         return ok;
@@ -1041,19 +1020,14 @@ protected:
     template <typename VecPtr>
     bool fetchChildVector(T *obj, size_t &vidx, VecPtr ptr) {
         using PtrT = decltype(ptr);
-        using VecT = std::remove_const_t<std::remove_pointer_t<PtrT>>;
-        using ElemT= typename VecT::value_type;
-        using OrgType = std::conditional_t<
-            std::is_pointer_v<ElemT>, std::remove_pointer_t<ElemT>, ElemT
-        >;
-        static_assert(!std::is_pointer_v<OrgType>,
-            "DbMap::Reader::fetchChildVector: ElemT must not be a high dimension pointer type");
+        using Trait = VecTypeTrait<PtrT>;
+        using ElemType = typename Trait::ElemType;
+        using OrgType  = typename Trait::OrgType;
 
         auto child_dbmap_vec = this->dbmap.getChildDbMap();
-        assert(!child_dbmap_vec.empty());
-
         DbMap<OrgType> *child_dbmap =
             static_cast<DbMap<OrgType> *>(child_dbmap_vec.at(vidx++));
+        assert(!child_dbmap_vec.empty());
         assert(child_dbmap != nullptr);
 
         // create reader to read the child object
@@ -1065,7 +1039,7 @@ protected:
 
         OrgType child_obj;
         while (child_reader.read(&child_obj)) {
-            if constexpr (std::is_pointer_v<ElemT>)
+            if constexpr (std::is_pointer_v<ElemType>)
                 // ptr point to vector<ElemT*>
                 ptr->push_back(new OrgType(child_obj));
             else
@@ -1081,7 +1055,6 @@ protected:
         return true;
     } // fetchChildVector
 }; // DbMap::Reader
-
 
 
 } // namespace edadb

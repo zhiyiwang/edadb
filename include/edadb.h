@@ -76,14 +76,18 @@ bool commitTransaction() {
 
 
 template<typename T>
-bool createTable(DbMap<T> &dbmap) {
-    return beginTransaction() && dbmap.createTable() && commitTransaction();
+bool createTable(DbMap<T> &dbmap, bool self_txn = true) {
+    if (self_txn) {
+        return beginTransaction() && dbmap.createTable() && commitTransaction();
+    } else {
+        return dbmap.createTable();
+    }
 }// createTable
 
 template<typename T>
 bool dropTable() {
     return DbMap<T>::i().dropTable();
-}
+} 
 
 /**
  * @brief Insert the object into the database.
@@ -91,25 +95,33 @@ bool dropTable() {
  * @return use decltype to return the type of the insert function, which is bool.
  */
 template <typename T>
-bool insertObject(DbMap<T> &dbmap, T* obj) {
-    bool ok = beginTransaction();
+bool insertObject(DbMap<T> &dbmap, T* obj, bool self_txn = true) {
     typename DbMap<T>::Writer writer(dbmap);
-    ok = ok && writer.insertOne(obj);
-    return ok && commitTransaction();
-}
+    if (self_txn) {
+        return beginTransaction() 
+            && writer.insertOne(obj) 
+            && commitTransaction();
+    } else {
+        return writer.insertOne(obj);
+    }
+} // insertObject
 
 /**
  * @brief Insert the object vector into the database.
- * @param obj_ptr_vec The object pointer vector to insert.
+ * @param obj_vec The object pointer vector to insert.
  * @return use decltype to return the type of the insert function, which is bool.
  */
 template <typename T>
-bool insertVector(DbMap<T> &dbmap, std::vector<T*>& obj_ptr_vec) {
-    bool ok = beginTransaction();
+bool insertVector(DbMap<T> &dbmap, std::vector<T*>& obj_vec, bool self_txn = true) {
     typename DbMap<T>::Writer writer(dbmap); 
-    ok = ok && writer.insertVector(obj_ptr_vec);
-    return ok && commitTransaction();
-}
+    if (self_txn) {
+        return beginTransaction() 
+            && writer.insertVector(obj_vec) 
+            && commitTransaction();
+    } else {
+        return writer.insertVector(obj_vec);
+    }
+} // insertVector
 
 
 /**
@@ -119,36 +131,55 @@ bool insertVector(DbMap<T> &dbmap, std::vector<T*>& obj_ptr_vec) {
 template <typename T>
 using DbMapWriter = typename edadb::DbMap<T>::Writer;
 
+/**
+ * @fn updateObject
+ * @brief Update the object in the database.
+ * @param dbmap The database map to update the object.
+ * @param obj The object pointer to update.
+ * @param self_txn If true, the function will begin a transaction and commit it after the update.
+ * @return int Returns 1 if update successfully, 0 if no more row, -1 if error.
+ */
+template <typename T>
+int updateObject(DbMap<T> &dbmap, T* obj, bool self_txn = true) { 
+    typename DbMap<T>::Writer writer(dbmap);
+    if (self_txn) {
+        return beginTransaction() 
+            && writer.updateOne(obj) 
+            && commitTransaction();
+    } else {
+        return writer.updateOne(obj);
+    }
+} // updateObject
 
 template <typename T>
-int updateObject(DbMap<T> &dbmap, T* obj) {
-    bool ok = beginTransaction();
+bool updateVector(DbMap<T> &dbmap, std::vector<T*>& objs, bool self_txn = true) {
     typename DbMap<T>::Writer writer(dbmap);
-    ok = ok && writer.updateOne(obj); 
-    return ok && commitTransaction();
-}
-
-template <typename T>
-bool updateVector(DbMap<T> &dbmap, std::vector<T*>& objs) {
-    bool ok = beginTransaction();
-    typename DbMap<T>::Writer writer(dbmap);
-    ok = ok && writer.updateVector(objs);
-    return ok && commitTransaction();
-}
+    if (self_txn) {
+        return beginTransaction() 
+            && writer.updateVector(objs) 
+            && commitTransaction();
+    } else {
+        return writer.updateVector(objs);
+    } 
+} // updateVector 
 
 
 /**
  * @brief Delete the object from the database.
- * @param obj_ptr The object pointer to delete.
+ * @param obj The object pointer to delete.
  * @return use decltype to return the type of the delete function, which is bool.
  */
 template <typename T>
-bool deleteObject(DbMap<T> &dbmap, T* obj_ptr) {
-    bool ok = beginTransaction();
+bool deleteObject(DbMap<T> &dbmap, T* obj, bool self_txn = true) {
     typename DbMap<T>::Writer writer(dbmap);
-    ok = ok &&writer.deleteOne(obj_ptr);
-    return ok && commitTransaction();
-}
+    if (self_txn) {
+        return beginTransaction() 
+            && writer.deleteOne(obj) 
+            && commitTransaction();
+    } else {
+        return writer.deleteOne(obj);
+    }
+} // deleteObject
 
   
 
