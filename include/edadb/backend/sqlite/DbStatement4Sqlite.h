@@ -59,7 +59,7 @@ public:
         bool prepared = (rc == SQLITE_OK);
         if (!prepared) {
             std::cerr << "DbStatementImpl::prepare: sqlite3_prepare_v2 failed!" << std::endl;
-            SQLITE_LOG_ERROR(rc, db, "Failed to prepare SQL: " + sql);
+            EDADB_SQLITE_LOG_ERROR(rc, db, "Failed to prepare SQL: " + sql);
         }
         return prepared;
     }
@@ -73,7 +73,7 @@ public:
         bool reseted = (rc == SQLITE_OK);
         if (!reseted) {
             std::cerr << "DbStatementImpl::reset: sqlite3_reset failed!" << std::endl;
-            SQLITE_LOG_ERROR(rc, db, "Failed to reset SQL statement");
+            EDADB_SQLITE_LOG_ERROR(rc, db, "Failed to reset SQL statement");
         }
         return reseted;
     }
@@ -87,7 +87,7 @@ public:
         bool finalized = (rc == SQLITE_OK);
         if (!finalized) {
             std::cerr << "DbStatementImpl::finalize: sqlite3_finalize failed!" << std::endl;
-            SQLITE_LOG_ERROR(rc, db, "Failed to finalize SQL statement");
+            EDADB_SQLITE_LOG_ERROR(rc, db, "Failed to finalize SQL statement");
         }
 
         stmt = nullptr;
@@ -109,7 +109,7 @@ public: // insert column
         int rc = sqlite3_bind_int(stmt, index, *value);
         if (rc != SQLITE_OK) {
             std::cerr << "DbStatementImpl::bindColumn: sqlite3_bind_int failed!" << std::endl;
-            SQLITE_LOG_ERROR(rc, db, "Failed to bind column at index " + std::to_string(index));
+            EDADB_SQLITE_LOG_ERROR(rc, db, "Failed to bind column at index " + std::to_string(index));
         }
         return (rc == SQLITE_OK);
     }
@@ -126,7 +126,7 @@ public: // insert column
         int rc = sqlite3_bind_int64(stmt, index, *value);
         if (rc != SQLITE_OK) {
             std::cerr << "DbStatementImpl::bindColumn: sqlite3_bind_int64 failed!" << std::endl;
-            SQLITE_LOG_ERROR(rc, db, "Failed to bind column at index " + std::to_string(index));
+            EDADB_SQLITE_LOG_ERROR(rc, db, "Failed to bind column at index " + std::to_string(index));
         }
         return (rc == SQLITE_OK);
     }
@@ -142,7 +142,7 @@ public: // insert column
         int rc = sqlite3_bind_double(stmt, index, *value);
         if (rc != SQLITE_OK) {
             std::cerr << "DbStatementImpl::bindColumn: sqlite3_bind_double failed!" << std::endl;
-            SQLITE_LOG_ERROR(rc, db, "Failed to bind column at index " + std::to_string(index));
+            EDADB_SQLITE_LOG_ERROR(rc, db, "Failed to bind column at index " + std::to_string(index));
         }
         return (rc == SQLITE_OK);
     }
@@ -158,7 +158,7 @@ public: // insert column
         int rc = sqlite3_bind_text(stmt, index, value, -1, SQLITE_STATIC);
         if (rc != SQLITE_OK) {
             std::cerr << "DbStatementImpl::bindColumn: sqlite3_bind_text failed!" << std::endl;
-            SQLITE_LOG_ERROR(rc, db, "Failed to bind column at index " + std::to_string(index));
+            EDADB_SQLITE_LOG_ERROR(rc, db, "Failed to bind column at index " + std::to_string(index));
         }
         return (rc == SQLITE_OK);
     }
@@ -174,7 +174,7 @@ public: // insert column
         int rc = sqlite3_bind_text16(stmt, index, value, -1, SQLITE_STATIC);
         if (rc != SQLITE_OK) {
             std::cerr << "DbStatementImpl::bindColumn: sqlite3_bind_text16 failed!" << std::endl;
-            SQLITE_LOG_ERROR(rc, db, "Failed to bind column at index " + std::to_string(index));
+            EDADB_SQLITE_LOG_ERROR(rc, db, "Failed to bind column at index " + std::to_string(index));
         }
         return (rc == SQLITE_OK);
     }
@@ -189,7 +189,7 @@ public: // insert column
         bool stepped = (rc == SQLITE_DONE);
         if (!stepped) {
             std::cerr << "DbStatementImpl::bindStep: sqlite3_step failed!" << std::endl;
-            SQLITE_LOG_ERROR(rc, db, "Failed to step SQL statement");
+            EDADB_SQLITE_LOG_ERROR(rc, db, "Failed to step SQL statement");
         }
 
         #if _DEADB_DEBUG_TRACE_SQL_STMT_
@@ -246,7 +246,7 @@ public: // fetch column
         // get one row or read done
         if ((rc != SQLITE_ROW) && (rc != SQLITE_DONE)) {
             std::cerr << "DbStatementImpl::fetchStep: sqlite3_step failed!" << std::endl;
-            SQLITE_LOG_ERROR(rc, db, "Failed to fetch step SQL statement");
+            EDADB_SQLITE_LOG_ERROR(rc, db, "Failed to fetch step SQL statement");
         }
         return (rc == SQLITE_ROW);
     }

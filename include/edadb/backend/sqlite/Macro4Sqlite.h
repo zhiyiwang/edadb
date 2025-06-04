@@ -10,14 +10,14 @@
 #include <sqlite3.h>
 
 /**
- * @macro SQLITE_LOG_ERROR
+ * @macro EDADB_SQLITE_LOG_ERROR
  * @brief Macro to log SQLite errors with error code and message
  * @param rc The return code from SQLite operation
  * @param db_handle The SQLite database handle
  * @param msg The custom message to log
  * @note This macro will print the error code, error string, and custom message to std::cerr
  */
-#define SQLITE_LOG_ERROR(rc, db_handle, msg)                        \
+#define EDADB_SQLITE_LOG_ERROR(rc, db_handle, msg)                        \
     do {                                                            \
         std::cerr << "SQLite Error (" << (rc) << " "                \
                   << sqlite3_errstr(rc) << "): "                    \

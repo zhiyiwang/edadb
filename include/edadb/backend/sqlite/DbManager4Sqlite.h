@@ -89,7 +89,7 @@ public: // database operation
         int rc = sqlite3_open(connect_param.c_str(), &db);
         if (rc != SQLITE_OK) {
             std::cerr << "DbManager4Sqlite::connect[sqlite3_open] failed!" << std::endl;
-            SQLITE_LOG_ERROR(rc, db, "Failed to open database using param: " + c);
+            EDADB_SQLITE_LOG_ERROR(rc, db, "Failed to open database using param: " + c);
             return false;
         }
 
@@ -130,7 +130,7 @@ public: // database operation
             std::cerr << "DbManager4Sqlite::exec[sqlite3_exec] failed!" << std::endl;
             std::cerr << "Error: " << (zErrMsg ? zErrMsg : "Unknown error") << std::endl;
             sqlite3_free(zErrMsg); // free the error message
-            SQLITE_LOG_ERROR(rc, db, "Failed to execute SQL: " + sql);
+            EDADB_SQLITE_LOG_ERROR(rc, db, "Failed to execute SQL: " + sql);
         } // if 
         return executed;
     } // exec
@@ -150,7 +150,7 @@ public: // database operation
         bool closed = (rc == SQLITE_OK);
         if (!closed) {
             std::cerr << "DbManager4Sqlite::close[sqlite3_close] failed!" << std::endl;
-            SQLITE_LOG_ERROR(rc, db, "Failed to close database: " + connect_param);
+            EDADB_SQLITE_LOG_ERROR(rc, db, "Failed to close database: " + connect_param);
         }
         connect_param.clear();
         db = nullptr;
@@ -193,7 +193,7 @@ private:
         int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr);
         if (rc != SQLITE_OK) {
             std::cerr << "DbManager4Sqlite::checkForeignKeyEnabled: sqlite3_prepare_v2 failed!" << std::endl;
-            SQLITE_LOG_ERROR(rc, db, "Failed to prepare PRAGMA foreign_keys statement");
+            EDADB_SQLITE_LOG_ERROR(rc, db, "Failed to prepare PRAGMA foreign_keys statement");
             return false;
         }
 
