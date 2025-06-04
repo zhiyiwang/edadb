@@ -1,6 +1,12 @@
 /**
  * @file DbMap.hpp
  * @brief DbMap.hpp provides a way to map objects to relations.
+ * @note We do have the following assumptions:
+ *    1. ok = ok && func(); if ok = false, then func() will not be called.
+ *    2. if class T want to persist vector<ElemT> member variable:
+ *       a. ElemT could be a type T or a pointer to type T, no multi-level pointer allowed.
+ *       b. ElemT must have define default/copy constructor and assignment operator.
+ *       c. each ElemT object must have a unique primary key, even for different T object.
  */
 
 #pragma once
@@ -175,15 +181,15 @@ public:
 
 
 private:
-    template <typename OrgT>
+    template <typename OrgType>
     bool createChildTable(void) {
-        // assert OrgT is not pointer type
-        static_assert(!std::is_pointer<OrgT>::value,
-            "createChildTable: OrgT must not be a pointer type");
+        // assert OrgType is not pointer type
+        static_assert(!std::is_pointer<OrgType>::value,
+            "createChildTable: OrgType must not be a pointer type");
 
         // "this table name" + "_" + "child defined table name"
         std::string child_table_name = 
-            table_name + "_" + TypeMetaData<OrgT>::table_name();
+            table_name + "_" + TypeMetaData<OrgType>::table_name();
 
         // create constraint for foreign key
         ForeignKey fk;
@@ -202,7 +208,7 @@ private:
 
 
         // create child dbmap and table
-        DbMap<OrgT> *child_dbmap = new DbMap<OrgT>(child_table_name, fk);
+        DbMap<OrgType> *child_dbmap = new DbMap<OrgType>(child_table_name, fk);
         child_dbmap_vec.push_back(child_dbmap);
         return child_dbmap->createTable();
     } // createChildTable

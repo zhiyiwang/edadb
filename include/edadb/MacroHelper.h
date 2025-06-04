@@ -66,7 +66,7 @@ struct VecTypeTrait {
     >;
 
     static_assert(!std::is_pointer_v<OrgType>,
-        "VecTypeTrait: ElemT must not be a high dimension pointer type");
+        "VecTypeTrait: ElemT must not be a multilevel pointer type");
 }; // VecTypeTrait
 
 } // namespace edadb
