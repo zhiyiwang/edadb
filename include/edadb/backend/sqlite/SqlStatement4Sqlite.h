@@ -36,9 +36,11 @@ public:
      * @param fk The foreign key constraint.
      * @return The create table statement.
      */
-    static std::string createTableStatement(const ForeignKey& fk) {
+    static std::string createTableStatement(
+                const std::string& table_name, const ForeignKey& fk) {
+
         std::string sql;
-        sql = "CREATE TABLE IF NOT EXISTS \"{}\" (";
+        sql = "CREATE TABLE IF NOT EXISTS \""+ table_name +"\" (";
 
         /*
          * get column name and type from TypeMetaData<T>::tuple_type_pair()
@@ -92,9 +94,11 @@ public:
      * @brief Generate the insert statement with place holders.
      * @return The insert statement.
      */
-    static std::string insertPlaceHolderStatement(const ForeignKey& fk) {
+    static std::string insertPlaceHolderStatement(
+                const std::string& table_name, const ForeignKey& fk) {
+
         std::string sql;
-        sql = "INSERT INTO \"{}\" (";
+        sql = "INSERT INTO \"" + table_name + "\" (";
 
         // get column and nested name
         std::vector<std::string> name, type;
@@ -139,9 +143,11 @@ public:
      * @brief Generate the update statement with place holders.
      * @return The update statement.
      */
-    static std::string updatePlaceHolderStatement(const ForeignKey& fk) {
+    static std::string updatePlaceHolderStatement(
+                const std::string& table_name, const ForeignKey& fk) {
+
         std::string sql;
-        sql = "UPDATE \"{}\" SET ";
+        sql = "UPDATE \"" + table_name + "\" SET ";
 
         std::vector<std::string> name, type;
         const auto vecs = TypeMetaData<T>::tuple_type_pair();
@@ -170,13 +176,11 @@ public:
      *          Only need to delete the record by primary key, which is the first column
      * @return The delete statement.
      */
-    static std::string deletePlaceHolderStatement() {
-        static std::string sql;
-        if (sql.empty()) {
-            sql = "DELETE FROM \"{}\" WHERE ";
-            auto name = TypeMetaData<T>::column_names();
-            sql += name[0] + " = ?;";
-        }
+    static std::string deletePlaceHolderStatement(const std::string& table_name) {
+        std::string sql;
+        sql = "DELETE FROM \"" + table_name + "\" WHERE ";
+        auto name = TypeMetaData<T>::column_names();
+        sql += name[0] + " = ?;";
         return sql;
     }
 
@@ -186,7 +190,9 @@ public:
      * @param fk The foreign key columns
      * @return The project statement with all column names, also include the foreign key columns
      */ 
-    static std::string projectAllStatement(const ForeignKey& fk) {
+    static std::string projectAllStatement(
+                const std::string& table_name, const ForeignKey& fk) {
+
         // select col1, col2, ... from table_name;
         // colx is defined in TypeMetaData<T>::column_names() by TABLE4CLASS
         std::string sql;
@@ -213,7 +219,7 @@ public:
             } // for
         } 
 
-        sql += " FROM \"{}\" "; // NO ";" at the end
+        sql += " FROM \"" + table_name + "\""; // NO ";" at the end
         return sql;
     } // projectAllStatement
 
@@ -223,8 +229,8 @@ public:
      * @param fk The foreign key columns
      * @return The scan statement with all column names
      */
-    static std::string scanStatement(const ForeignKey& fk) {
-        std::string sql = projectAllStatement(fk);
+    static std::string scanStatement(const std::string& table_name, const ForeignKey& fk) {
+        std::string sql = projectAllStatement(table_name, fk);
         return sql += ";"; 
     } // scanStatement
 
@@ -235,8 +241,9 @@ public:
      * @param pred The predicate text
      * @return The query statement
      */
-    static std::string queryPredicateStatement(const ForeignKey& fk, const std::string& pred) {
-        std::string sql = projectAllStatement(fk);
+    static std::string queryPredicateStatement(const std::string& table_name,
+                const ForeignKey& fk, const std::string& pred) {
+        std::string sql = projectAllStatement(table_name, fk);
         sql += (pred.empty() ? "" : (" WHERE " + pred));
         return sql += ";";
     } // queryPredicateStatement 
@@ -247,8 +254,9 @@ public:
      * @param fk The foreign key columns
      * @return The query statement using primary key
     */
-    static std::string queryPrimaryKeyStatement(const ForeignKey& fk) {
-        std::string sql = projectAllStatement(fk);
+    static std::string queryPrimaryKeyStatement(const std::string& table_name,
+                const ForeignKey& fk) {
+        std::string sql = projectAllStatement(table_name, fk);
 
         // get the first as the primary key to query
         auto pk_name = TypeMetaData<T>::column_names()[Config::fk_ref_pk_col_index];
@@ -263,8 +271,9 @@ public:
      * @param fk The foreign key columns
      * @return The query statement using foreign key
      */
-    static std::string queryForeignKeyStatement(const ForeignKey& fk) {
-        std::string sql = projectAllStatement(fk);
+    static std::string queryForeignKeyStatement(const std::string& table_name,
+                const ForeignKey& fk) {
+        std::string sql = projectAllStatement(table_name, fk);
 
         // get foreign key column name
         std::string fk_name = fk.table + "_" + fk.column[0];
@@ -275,24 +284,26 @@ public:
 
 
 public: // debug
-    void print(T* obj1, T* obj2) {
+    void print(T* obj1, T* obj2, const std::string &tn = "SqlStatementTestTable",
+            const ForeignKey &fk = ForeignKey()) const {
+
         std::cout << "======== " << "SqlStatement <" << typeid(T).name() << "> ========" << std::endl;
         std::cout << "-------- Standard SQL statements --------" << std::endl;
         std::cout << "Create Table SQL: " << std::endl << "\t" 
-            << createTableStatement(ForeignKey()) << std::endl;
+            << createTableStatement(tn, fk) << std::endl;
         std::cout << "-------- SQL statements with Place Holder --------" << std::endl;
         std::cout << "Insert Place Holder SQL: " << std::endl << "\t" 
-            << insertPlaceHolderStatement(ForeignKey()) << std::endl;
+            << insertPlaceHolderStatement(tn, fk) << std::endl;
         std::cout << "ScanStatement SQL: " << std::endl << "\t"
-            << scanStatement(ForeignKey()) << std::endl;
+            << scanStatement(tn, fk) << std::endl;
         std::cout << "Query Primary Key SQL: " << std::endl << "\t"
-            << queryPrimaryKeyStatement(ForeignKey()) << std::endl;
+            << queryPrimaryKeyStatement(tn, fk) << std::endl;
         std::cout << "Query Predicate SQL: " << std::endl << "\t"
-            << queryPredicateStatement(ForeignKey(), "col1 = ?") << std::endl;
+            << queryPredicateStatement(tn, fk, "col1 = ?") << std::endl;
         std::cout << "Update Place Holder SQL: " << std::endl << "\t"
-            << updatePlaceHolderStatement(ForeignKey()) << std::endl;
+            << updatePlaceHolderStatement(tn, fk) << std::endl;
         std::cout << "Delete Place Holder SQL: " << std::endl << "\t"
-            << deletePlaceHolderStatement() << std::endl;
+            << deletePlaceHolderStatement(tn) << std::endl;
     } // print
 }; // SqlStatementImpl
 

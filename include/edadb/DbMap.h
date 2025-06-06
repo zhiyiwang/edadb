@@ -11,7 +11,6 @@
 
 #pragma once
 
-#include <fmt/format.h>
 #include <string>
 #include <stdint.h>
 #include <string>
@@ -137,8 +136,8 @@ public:
         }
 
         // create this table by SqlStatement<T> using this table_name
-        const std::string sql = fmt::format(
-            SqlStatement<T>::createTableStatement(foreign_key), table_name);
+        const std::string sql = 
+            SqlStatement<T>::createTableStatement(table_name, foreign_key);
         if (!manager.exec(sql)) {
             std::cerr << "DbMap::createTable: create table failed" << std::endl;
             return false;
@@ -174,8 +173,7 @@ public:
             return false;
         }
 
-        const std::string sql =
-            fmt::format("DROP TABLE IF EXISTS \"{}\";", table_name);
+        const std::string sql = "DROP TABLE IF EXISTS \"" + table_name + "\";";
         return manager.exec(sql);
     }
 
@@ -249,7 +247,8 @@ struct OpTraits<T, DbMapOperation::INSERT> {
         return "Insert";
     }
     static std::string getSQL(DbMap<T> &dbmap) {
-        return SqlStatement<T>::insertPlaceHolderStatement(dbmap.getForeignKey());
+        return SqlStatement<T>::insertPlaceHolderStatement(
+            dbmap.getTableName(), dbmap.getForeignKey());
     }
     static DbMapOperation op() {
         return DbMapOperation::INSERT;
@@ -263,7 +262,8 @@ struct OpTraits<T, DbMapOperation::UPDATE> {
         return "Update";
     }
     static std::string getSQL(DbMap<T> &dbmap) {
-        return SqlStatement<T>::updatePlaceHolderStatement(dbmap.getForeignKey());
+        return SqlStatement<T>::updatePlaceHolderStatement(
+            dbmap.getTableName(), dbmap.getForeignKey());
     }
     static DbMapOperation op() {
         return DbMapOperation::UPDATE;
@@ -277,7 +277,7 @@ struct OpTraits<T, DbMapOperation::DELETE> {
         return "Delete";
     }
     static std::string getSQL(DbMap<T> &dbmap) {
-        return SqlStatement<T>::deletePlaceHolderStatement();
+        return SqlStatement<T>::deletePlaceHolderStatement(dbmap.getTableName());
     }
     static DbMapOperation op() {
         return DbMapOperation::DELETE;
@@ -291,7 +291,8 @@ struct OpTraits<T, DbMapOperation::SCAN> {
         return "Scan";
     }
     static std::string getSQL(DbMap<T> &dbmap) {
-        return SqlStatement<T>::scanStatement(dbmap.getForeignKey());
+        return SqlStatement<T>::scanStatement(
+            dbmap.getTableName(), dbmap.getForeignKey());
     }
     static DbMapOperation op() {
         return DbMapOperation::SCAN;
@@ -305,7 +306,8 @@ struct OpTraits<T, DbMapOperation::QUERY_PREDICATE> {
         return "QueryPredicate";
     }
     static std::string getSQL(DbMap<T> &dbmap, const std::string &pred) {
-        return SqlStatement<T>::queryPredicateStatement(dbmap.getForeignKey(), pred);
+        return SqlStatement<T>::queryPredicateStatement(
+            dbmap.getTableName(), dbmap.getForeignKey(), pred);
     }
     static DbMapOperation op() {
         return DbMapOperation::QUERY_PREDICATE;
@@ -319,7 +321,8 @@ struct OpTraits<T, DbMapOperation::QUERY_PRIMARY_KEY> {
         return "QueryPrimaryKey";
     }
     static std::string getSQL(DbMap<T> &dbmap) {
-        return SqlStatement<T>::queryPrimaryKeyStatement(dbmap.getForeignKey());
+        return SqlStatement<T>::queryPrimaryKeyStatement(
+            dbmap.getTableName(), dbmap.getForeignKey());
     }
     static DbMapOperation op() {
         return DbMapOperation::QUERY_PRIMARY_KEY;
@@ -333,7 +336,8 @@ struct OpTraits<T, DbMapOperation::QUEYR_FOREIGN_KEY> {
         return "QueryForeignKey";
     }
     static std::string getSQL(DbMap<T> &dbmap) {
-        return SqlStatement<T>::queryForeignKeyStatement(dbmap.getForeignKey());
+        return SqlStatement<T>::queryForeignKeyStatement(
+            dbmap.getTableName(), dbmap.getForeignKey());
     }
     static DbMapOperation op() {
         return DbMapOperation::QUEYR_FOREIGN_KEY;
@@ -395,7 +399,7 @@ public: // utility
     template <DbMapOperation OP>
     bool prepareImpl(void) {
         return prepareImpl<OP>([&] {
-            return fmt::format(OpTraits<T, OP>::getSQL(dbmap), dbmap.getTableName());
+            return OpTraits<T, OP>::getSQL(dbmap);
         });
     } // prepareImpl
 
@@ -869,9 +873,10 @@ public:
         // call prepareImpl with lambda function
         return this->template prepareImpl<DbMapOperation::QUERY_PREDICATE>(
             [&]() {
-                return fmt::format(
-                    SqlStatement<T>::queryPredicateStatement(this->dbmap.getForeignKey(), pred),
-                    this->dbmap.getTableName()
+                return SqlStatement<T>::queryPredicateStatement(
+                    this->dbmap.getTableName(),
+                    this->dbmap.getForeignKey(),
+                    pred
                 );
             }
         );

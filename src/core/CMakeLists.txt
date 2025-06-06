@@ -15,8 +15,7 @@ target_include_directories(edadb PRIVATE
 )
 
 # link libraries
-target_link_libraries(edadb PUBLIC
-    sqlite3 fmt::fmt)
+target_link_libraries(edadb PUBLIC sqlite3)
 
 
 add_subdirectory(backend)
