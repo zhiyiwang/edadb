@@ -26,12 +26,19 @@ struct Cpp2SqlTypeTrait {
     static constexpr SqlType sqlType = SqlType::Unknown;
 };
 
-// template specialization mapping
+// template specialization mapping from C++ types to SQL types
+// Note:
+// For the std c++ type pointer, we also map it to the same SQL type as the non-pointer type.
 #define MAP_CPP_TO_SQL_TYPE(CPP_TYPE, SQL_TYPE) \
     template<> \
     struct Cpp2SqlTypeTrait<CPP_TYPE> { \
         static constexpr SqlType sqlType = SQL_TYPE; \
-    };
+    }; \
+    template<> \
+    struct Cpp2SqlTypeTrait<CPP_TYPE*> { \
+        static constexpr SqlType sqlType = Cpp2SqlTypeTrait<CPP_TYPE>::sqlType; \
+    }; 
+
 
 
 MAP_CPP_TO_SQL_TYPE(std::string   , SqlType::Text)
@@ -68,5 +75,4 @@ inline std::string const &getSqlTypeString() {
 } // getSqlTypeString
 
  
-
 } // namespace edadb

@@ -5,6 +5,8 @@
 
 #pragma once
 
+#include <vector>
+
 #include "TraitUtils.h"
 #include "SqlType.h"
 #include "Cpp2SqlTypeTrait.h"
@@ -35,22 +37,38 @@ struct ScalarTypeInfo {
     //   but defined here to avoid compilation error
     using VecElemType = void; // no vector element type
     using VecElemInfo = void; // no vector element type information
+    using VecCppType  = void; // no vector element type information
     static constexpr bool elemIsPointer = false;
     static constexpr SqlType elemSqlType = SqlType::Unknown;
 
 public:
     /**
-     * @brief Get the CppType value pointer from the given object.
+     * @brief Get the CppType value pointer from the given object to bind to the database.
      * @param obj The object of type T.
-     * @return CppType* Returns a pointer to the CppType Value.
+     * @return CppType* Returns a pointer to the CppType Value binding.
      */
-    static CppType* getCppPtr2Value(T* obj) {
+    static CppType* getCppPtr2Bind(T* obj) {
         if constexpr (is_pointer) {
             return *obj; // T* is CppType**
         } else {
             return  obj; // T* is CppType*
         }
-    } // getCppTypePtr
+    } // getCppPtr2Bind 
+
+    /**
+     * @brief Get the CppType value pointer from the given object to fetch from the database.
+     * @param obj The object of type T.
+     * @return CppType* Returns a pointer to the CppType Value fetching.
+     */
+    static CppType* getCppPtr2Fetch(T* obj) {
+        if constexpr (is_pointer) {
+            // T* is CppType**:
+            //   we need to allocate a new CppType object to fetch the value
+            return (*obj = new CppType()); 
+        } else {
+            return obj; // T* is CppType*
+        }
+    } // getCppPtr2Fetch
 }; // ScalarTypeInfo
 
 
@@ -69,12 +87,13 @@ struct VectorTypeInfo {
     using Raw = std::remove_pointer_t<T>;
     static_assert(!std::is_pointer<Raw>::value,
         "VectorTypeInfo do not support multilevel pointer type pointing to vector type");
-    static_assert(!is_vector<Raw>::value,
+    static_assert(is_vector<Raw>::value,
         "VectorTypeInfo only supports std::vector<T> or std::vector<T>*");
 
-    using CppType = Raw; // vector<VecElemType> 
+    using CppType = Raw; // always vector<VecElemType> 
     using VecElemType = typename Raw::value_type;
     using VecElemInfo = ScalarTypeInfo<VecElemType>;
+    using VecCppType = typename VecElemInfo::CppType;
     static constexpr SqlType sqlType = VecElemInfo::sqlType;
 
     // vector element type information
@@ -87,13 +106,28 @@ public:
      * @param obj The object of type T.
      * @return CppType* Returns a pointer to the CppType Value.
      */
-    static CppType* getCppPtr2Value(T* obj) {
+    static CppType* getCppPtr2Bind(T* obj) {
         if constexpr (is_pointer) {
             return *obj; // T* is vector<Elem>**
         } else {
             return  obj; // T* is vector<Elem>*
         }
-    } // getCppPtr2Value
+    } // getCppPtr2Bind
+
+    /**
+     * @brief Get the CppType value pointer from the given object to fetch from the database.
+     * @param obj The object of type T.
+     * @return CppType* Returns a pointer to the CppType Value fetching.
+     */
+    static CppType* getCppPtr2Fetch(T* obj) {
+        if constexpr (is_pointer) {
+            // T* is vector<Elem>**
+            //   we need to allocate a new CppType object to fetch the value
+            return *obj = new std::vector<VecElemType>();
+        } else {
+            return obj; // T* is vector<Elem>*
+        }
+    } // getCppPtr2Fetch
 }; // VectorTypeInfo
 
 
@@ -119,6 +153,7 @@ struct TypeInfoTrait {
     // vector element type information
     using VecElemType = typename Info::VecElemType;
     using VecElemInfo = typename Info::VecElemInfo;
+    using VecCppType  = typename Info::VecCppType;
     static constexpr bool  elemIsPointer = Info::elemIsPointer;
     static constexpr SqlType elemSqlType = Info::elemSqlType;
 
@@ -128,9 +163,13 @@ public:
      * @param obj The object of type T.
      * @return CppType* Returns a pointer to the CppType Value.
      */
-    static CppType* getCppPtr2Value(T* obj) {
-        return Info::getCppPtr2Value(obj);
-    } // getCppPtr2Value
+    static CppType* getCppPtr2Bind(T* obj) {
+        return Info::getCppPtr2Bind(obj);
+    } // getCppPtr2Bind
+
+    static CppType* getCppPtr2Fetch(T* obj) {
+        return Info::getCppPtr2Fetch(obj);
+    } // getCppPtr2Fetch
 }; // TypeInfoTrait
 
 

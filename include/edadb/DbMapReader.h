@@ -140,7 +140,7 @@ protected:
 
         // 4. CompositeVector type: use this obj as primary key tuple to read the child
         // constexpr to avoid compile time error
-        if constexpr (Cpp2SqlType<T>::sqlType == SqlType::CompositeVector) {
+        if constexpr (TypeInfoTrait<T>::sqlType == SqlType::CompositeVector) {
             std::size_t vidx = 0;
             bool ok = true;
             auto ve = VecMetaData<T>::getVecElem(obj);
@@ -163,72 +163,86 @@ protected:
      */
     template <typename ElemType>
     void fetchFromColumn(ElemType &elem) {
-        using DefType = typename
-            std::remove_const<typename std::remove_pointer<ElemType>::type>::type;
-        using CppType = typename CppTypeTrait<DefType>::CppType;
+        using DefType = typename remove_const_and_pointer<ElemType>::type;
+        using CppType = typename TypeInfoTrait<DefType>::CppType;
+        CppType *cpp_val_ptr = TypeInfoTrait<DefType>::getCppPtr2Fetch(elem);
+        if constexpr (TypeInfoTrait<DefType>::is_pointer) {
+            // if elem is a pointer, we need to let elem point to the cpp_val_ptr
+            // ElemType &elem is DefType* or CppType**
+            *elem = cpp_val_ptr; // set object pointer member to the cpp_val_ptr
+        } // if 
 
-        if constexpr (Cpp2SqlType<DefType>::sqlType == SqlType::Composite) {
+        if constexpr (TypeInfoTrait<DefType>::sqlType == SqlType::Composite) {
             assert((read_idx > 0) &&
                    "DbMap<T>::Reader::fetchFromColumn: composite type should not be the first element");
 
             // @see DbMap<T>::Writer::fetchFromColumn for the recursive calling
-            auto values = TypeMetaData<CppType>::getVal(elem);
+            auto values = TypeMetaData<CppType>::getVal(cpp_val_ptr);
             boost::fusion::for_each(values,
                                     [this](auto const &ne)
                                     { this->fetchFromColumn(ne); });
         }
-        else if constexpr (Cpp2SqlType<DefType>::sqlType == SqlType::External) {
+        else if constexpr (TypeInfoTrait<DefType>::sqlType == SqlType::External) {
             assert((read_idx > 0) &&
                    "DbMap<T>::Reader::fetchFromColumn: external type should not be the first element");
 
             Shadow<CppType> shadow;
-            auto values = TypeMetaData<edadb::Shadow<CppType>>::getVal(&shadow);
+            auto values = TypeMetaData<Shadow<CppType>>::getVal(&shadow);
             boost::fusion::for_each(values,
                                     [this](auto const &ne)
                                     { this->fetchFromColumn(ne); });
 
             // transform the object of Shadow type to original type
-            shadow.fromShadow(elem);
+            shadow.fromShadow(cpp_val_ptr);
         }
         else if constexpr (std::is_enum_v<CppType>) {
             using U = std::underlying_type_t<CppType>; // underlying type of enum
             U tmp;
             this->dbstmt.fetchColumn(read_idx++, &tmp);
-            *elem = static_cast<CppType>(tmp);
+            *cpp_val_ptr = static_cast<CppType>(tmp);
         }
         else {
             // read the element from the database
             // only base type needs to be read
-            this->dbstmt.fetchColumn(read_idx++, elem);
+            this->dbstmt.fetchColumn(read_idx++, cpp_val_ptr);
         }
     } // fetchFromColumn
 
 
-    template <typename VecType>
-    bool fetchChildVector(T *obj, size_t &vidx, VecType ptr) {
-        using PtrT = decltype(ptr);
-        using Trait = VecTypeTrait<PtrT>;
-        using ElemType = typename Trait::ElemType;
-        using CppType  = typename Trait::CppType;
+    template <typename DefVecPtr>
+    bool fetchChildVector(T *obj, size_t &vidx, DefVecPtr ptr) {
+//        using PtrT = decltype(ptr);
+//        using Trait = VecTypeTrait<PtrT>;
+//        using ElemType = typename Trait::ElemType;
+//        using CppType  = typename Trait::CppType;
 
+        using DefType = typename remove_const_and_pointer<DefVecPtr>::type; 
+        using TypeTrait = TypeInfoTrait<DefType>;
+        using CppType = typename TypeTrait::CppType; // always be vector<ElemT>
+        static_assert(is_vector<CppType>::value,
+            "DbMap::Reader::fetchChildVector: DefVecPtr must be a vector type");
+        
+        // always be vector<ElemT>*
+        CppType *vec_ptr = TypeTrait::getCppPtr2Bind(ptr);
+        using VecCppType = typename TypeTrait::VecCppType;
         auto child_dbmap_vec = this->dbmap.getChildDbMap();
-        DbMap<CppType> *child_dbmap =
-            static_cast<DbMap<CppType> *>(child_dbmap_vec.at(vidx++));
+        DbMap<VecCppType> *child_dbmap =
+            static_cast<DbMap<VecCppType> *>(child_dbmap_vec.at(vidx++));
         assert(!child_dbmap_vec.empty());
         assert(child_dbmap != nullptr);
 
         // create reader to read the child object
-        typename DbMap<CppType>::Reader child_reader(*child_dbmap);
+        typename DbMap<VecCppType>::Reader child_reader(*child_dbmap);
         if (!child_reader.prepareByForeignKey(obj)) {
             std::cerr << "DbMap::Reader::fetchChildVector: prepareByForeignKey failed" << std::endl;
             return false;
         }
 
-        CppType child_obj;
+        VecCppType child_obj;
         while (child_reader.read(&child_obj)) {
-            if constexpr (std::is_pointer_v<ElemType>)
+            if constexpr (TypeTrait::elemIsPointer) 
                 // ptr point to vector<ElemT*>
-                ptr->push_back(new CppType(child_obj));
+                ptr->push_back(new VecCppType(child_obj));
             else
                 // ptr point to vector<ElemT>
                 ptr->push_back(child_obj); 

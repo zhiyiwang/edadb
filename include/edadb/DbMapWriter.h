@@ -134,7 +134,7 @@ public: // update API: using place holder update statement
      */
     bool updateOne(T *obj, bool updateChild = true) {
         // compile time check for the object type
-        if constexpr (Cpp2SqlType<T>::sqlType == SqlType::CompositeVector) {
+        if constexpr (TypeInfoTrait<T>::sqlType == SqlType::CompositeVector) {
             // update composite vector type vector children
             if (updateChild) {
                 // Update MULTIPLE objects in MULTIPLE tables:
@@ -158,7 +158,7 @@ public: // update API: using place holder update statement
             return false;
         }
 
-        if constexpr (Cpp2SqlType<T>::sqlType == SqlType::CompositeVector) {
+        if constexpr (TypeInfoTrait<T>::sqlType == SqlType::CompositeVector) {
             if (updateChild) {
                 return deleteVector(objs) && insertVector(objs); 
             }
@@ -181,7 +181,7 @@ private:
 ////            // Discard this ASSERT: Only update SqlType::CompositeVector tuple 
 ////            // T should not be CompositeVector type,
 ////            //   which means there is only one tuple to update
-////            static_assert(Cpp2SqlType<T>::sqlType != SqlType::CompositeVector,
+////            static_assert(TypeInfoTrait<T>::sqlType != SqlType::CompositeVector,
 ////                "T is CompositeVector, use deleteOne and insertOne instead");
 
             // bind obj to the database, params are:

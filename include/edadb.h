@@ -37,7 +37,7 @@
 #include "DbStatement4Sqlite.h"
 #include "DbManager.h"
 #include "DbManager4Sqlite.h"
-#include "DbMap.h"
+#include "DbMapAll.h"
 
 
 namespace edadb {

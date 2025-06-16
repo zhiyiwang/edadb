@@ -85,10 +85,19 @@ public:
             VecElem seq{}; // only need type, ignore value
             boost::fusion::for_each(seq, [&](auto ptr){ 
                 using DefVecPtr = decltype(ptr);
+
+                // DefType is is a vector<VecElemType> or vector<VecElemType>*
                 using DefVec = typename remove_const_and_pointer<DefVecPtr>::type;
-                using CppType= typename TypeInfoTrait<DefVec>::CppType;
+                static_assert(
+                    TypeInfoTrait<DefVec>::is_vector,
+                    "DbMap::createTable: DefVecPtr must be a vector type"
+                );
+
+                // VecElemType: VecCppType or VecCppType* as defined in Class 
+                // VecCppType is non-pointer type
+                using VecCppType = typename TypeInfoTrait<DefVec>::VecCppType;
                 if (crt_tab) {
-                    crt_tab = createChildTable<CppType>();
+                    crt_tab = createChildTable<VecCppType>();
                 } // if
             }); // for_each
         } // if 

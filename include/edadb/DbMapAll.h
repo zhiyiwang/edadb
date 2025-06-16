@@ -10,7 +10,7 @@
  */
 
 
-#progma once
+#pragma once
 
 #include "DbMapOperation.h"
 #include "DbMapBase.h"

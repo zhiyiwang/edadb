@@ -188,10 +188,10 @@ protected:
         using TypeTrait = TypeInfoTrait<DefType>;
         using CppType = typename TypeTrait::CppType;
         constexpr SqlType sqlType = TypeTrait::sqlType;
-        CppType *cpp_val_ptr = TypeTrait::getCppPtr2Value(elem);
+        CppType *cpp_val_ptr = TypeTrait::getCppPtr2Bind(elem);
         if constexpr (sqlType == SqlType::Composite) {
             assert((bind_idx > 0) &&
-                "DbMap<T>::Writer::bindToColumn: composite type should not be the first element");
+                "DbMakkk>::Writer::bindToColumn: composite type should not be the first element");
 
             auto values = TypeMetaData<CppType>::getVal(cpp_val_ptr);
             boost::fusion::for_each(
@@ -233,7 +233,7 @@ protected:
             U tmp = static_cast<U>(*cpp_val_ptr); // type safe cast during compile time
             ok = ok && dbstmt.bindColumn(bind_idx++, &tmp);
         }
-        else kkk
+        else {
             // bind the element to the database
             // only base type needs to be bound
             ok = ok && dbstmt.bindColumn(bind_idx++, cpp_val_ptr);
@@ -288,7 +288,7 @@ protected:
 
         // CompositeVector type: use obj as primary key to bind the child
         // constexpr to avoid compile time error
-        if constexpr (Cpp2SqlType<T>::sqlType == SqlType::CompositeVector) {
+        if constexpr (TypeInfoTrait<T>::sqlType == SqlType::CompositeVector) {
             auto ve = VecMetaData<T>::getVecElem(obj); // boost::fusion::vector<...>
             std::size_t vidx = 0;
             boost::fusion::for_each(
@@ -307,32 +307,28 @@ protected:
     bool bindChildVector(T *obj, size_t &vidx, DefVecPtr ptr) {
         using DefType = typename remove_const_and_pointer<DefVecPtr>::type;
         using TypeTrait = TypeInfoTrait<DefType>;
-        using CppType = typename TypeTrait::CppType; 
-        static_assert(std::is_vector<CppType>, 
+        using CppType = typename TypeTrait::CppType; // always be vector<ElemT>
+        static_assert(is_vector<CppType>::value,
             "DbMap::DbStmtOp::bindChildVector: DefVecPtr must be a vector type");
 
-        CppType *vec_ptr = TypeTrait::getCppPtr2Value(ptr);
-
-
-        using VecElemType      = typename TypeTrait::VecElemType;
-        using VecElemTypeTrait = typename TypeTrait::VecElemInfo;
-        using VecElemCppType = typename VecElemTypeTrait::CppType;
-
+        // always be vector<ElemT>* 
+        CppType *vec_ptr = TypeTrait::getCppPtr2Bind(ptr);
+        using VecCppType = typename TypeTrait::VecCppType;
         auto child_dbmap_vec = this->dbmap.getChildDbMap();
-        DbMap<VecElemCppType> *child_dbmap = 
-            static_cast<DbMap<VecElemCppType> *>(child_dbmap_vec.at(vidx++));
+        DbMap<VecCppType> *child_dbmap = 
+            static_cast<DbMap<VecCppType> *>(child_dbmap_vec.at(vidx++));
         assert(!child_dbmap_vec.empty());
         assert(child_dbmap != nullptr);
 
         bool ok = true;
-        typename DbMap<VecElemCppType>::Writer child_writer(*child_dbmap);
-        if constexpr (VecElemTypeTrait::is_pointer) {
-            // vec_val_ptr is pointer to vector<ElemT*>, use it directly
-            ok = child_writer.insertVector(*vec_val_ptr, obj);
+        typename DbMap<VecCppType>::Writer child_writer(*child_dbmap);
+        if constexpr (TypeTrait::elemIsPointer) {
+            // vec_ptr is pointer to vector<ElemT*>, use it directly
+            ok = child_writer.insertVector(*vec_ptr, obj);
         } else {
-            // trans vector<VecElemCppType>* to vector<VecElemCppType*> to call insertVector
-            std::vector<VecElemCppType *> vec_elem;
-            for (auto &v : *vec_val_ptr) 
+            // trans vector<VecCppType>* to vector<VecCppType*> to call insertVector
+            std::vector<VecCppType *> vec_elem;
+            for (auto &v : *vec_ptr) 
                 vec_elem.push_back(&v);
             ok = child_writer.insertVector(vec_elem, obj);
         } // if constexpr
