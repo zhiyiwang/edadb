@@ -1,6 +1,6 @@
 /**
- * @file TypeMetaData.hpp
- * @brief TypeMetaData.hpp provides a way to get the meta data of a class.
+ * @file TypeMetaData.h
+ * @brief TypeMetaData.h provides a way to get the meta data of a class.
  */
 
 #pragma once
@@ -8,11 +8,13 @@
 #include <string>
 #include <iostream>
 
+#include "TraitUtils.h"
+
 namespace edadb {
 
 /**
  * @brief TypeMetaData provides a way to get the meta data of a class.
- *      Here we only declare the template class, and the specialization will be defined in Table4Class.h.
+ *   Here we only declare the template class, and the specialization will be defined in Table4Class.h.
  * @tparam T The class type.
  */
 template<typename T>
@@ -22,7 +24,7 @@ struct TypeMetaData {
 
     inline static auto tuple_type_pair() -> TupTypePairType const& {
         /* Dierectly use this class will cause error during linking */
-        static_assert(always_false_v<T>,
+        static_assert(always_false<T>::value,
             "TypeMetaData<T> must be specialized by macro _EDADB_DEFINE_TABLE_BY_CLASS_ or _EDADB_DEFINE_TABLE_BY_COLUMN_ "
         );
 
@@ -32,7 +34,7 @@ struct TypeMetaData {
 
     inline static std::string const& class_name() {
         /* Dierectly use this class will cause error during linking */
-        static_assert(always_false_v<T>,
+        static_assert(always_false<T>::value,
             "TypeMetaData<T> must be specialized by macro _EDADB_DEFINE_TABLE_BY_CLASS_ or _EDADB_DEFINE_TABLE_BY_COLUMN_ "
         );
 
@@ -42,7 +44,7 @@ struct TypeMetaData {
 
     inline static std::string const& table_name() {
         /* Dierectly use this class will cause error during linking */
-        static_assert(always_false_v<T>,
+        static_assert(always_false<T>::value,
             "TypeMetaData<T> must be specialized by macro _EDADB_DEFINE_TABLE_BY_CLASS_ or _EDADB_DEFINE_TABLE_BY_COLUMN_ "
         );
 
@@ -52,7 +54,7 @@ struct TypeMetaData {
 
     inline static const std::vector<std::string>& member_names() {
         /* Dierectly use this class will cause error during linking */
-        static_assert(always_false_v<T>,
+        static_assert(always_false<T>::value,
             "TypeMetaData<T> must be specialized by macro _EDADB_DEFINE_TABLE_BY_CLASS_ or _EDADB_DEFINE_TABLE_BY_COLUMN_ "
         );
 
@@ -62,7 +64,7 @@ struct TypeMetaData {
 
     inline static const std::vector<std::string>& column_names() {
         /* Dierectly use this class will cause error during linking */
-        static_assert(always_false_v<T>,
+        static_assert(always_false<T>::value,
             "TypeMetaData<T> must be specialized by macro _EDADB_DEFINE_TABLE_BY_CLASS_ or _EDADB_DEFINE_TABLE_BY_COLUMN_ "
         );
 
@@ -72,7 +74,7 @@ struct TypeMetaData {
 
     inline static TupType getVal(T* /*obj*/) {
         /* Dierectly use this class will cause error during linking */
-        static_assert(always_false_v<T>,
+        static_assert(always_false<T>::value,
             "TypeMetaData<T> must be specialized by macro _EDADB_DEFINE_TABLE_BY_CLASS_ or _EDADB_DEFINE_TABLE_BY_COLUMN_ "
         );
 

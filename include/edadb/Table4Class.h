@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "MacroHelper.h"
+#include "TraitUtils.h"
 #include "TypeMetaData.h"
 #include "VecMetaData.h"
 
@@ -68,8 +68,8 @@
 #define GENERATE_CLASS_TYPEMETADATA(CLASSNAME, TABLENAME, CLASS_ELEMS_TUP, COLNAME_TUP, SQLTYPE) \
 BOOST_FUSION_ADAPT_STRUCT(CLASSNAME, BOOST_PP_TUPLE_REM_CTOR(CLASS_ELEMS_TUP) ) \
 namespace edadb{\
-template<>\
-struct Cpp2SqlType<CLASSNAME>{\
+template<> \
+struct Cpp2SqlTypeTrait<CLASSNAME>{\
     static constexpr SqlType sqlType = SQLTYPE; \
 };\
 template<> struct TypeMetaData<CLASSNAME>{\
@@ -102,6 +102,7 @@ template<> struct TypeMetaData<CLASSNAME>{\
     }\
 };\
 }
+// namespace edadb for Macro GENERATE_CLASS_TYPEMETADATA
 
 
 
@@ -137,7 +138,7 @@ GENERATE_CLASS_TYPEMETADATA(CLASSNAME, TABLENAME, CLASS_ELEMS_TUP, (EXPAND_membe
 #define TABLE4EXTERNALCLASS(CLASSNAME, CLASS_ELEMS_TUP) \
 namespace edadb{\
 template<>\
-struct Cpp2SqlType<CLASSNAME>{\
+struct Cpp2SqlTypeTrait<CLASSNAME>{\
     static constexpr SqlType sqlType = SqlType::External; \
 };\
 }\
@@ -155,57 +156,56 @@ TABLE4CLASS(edadb::Shadow<CLASSNAME>, "#shadow_table_for_external_class", CLASS_
  * @param VECTOR_ELEMS_TUP The tuple of vector elements.
  */
 #define TABLE4CLASS_WVEC_COLNAME(CLASSNAME, TABLENAME, CLASS_ELEMS_TUP, COLNAME_TUP, VECTOR_ELEMS_TUP) \
-  GENERATE_CLASS_TYPEMETADATA(CLASSNAME, TABLENAME, CLASS_ELEMS_TUP, COLNAME_TUP, SqlType::CompositeVector); \
-  namespace edadb { \
-    template<> struct VecMetaData<CLASSNAME> { \
-      using VecElem = boost::fusion::vector< \
-        GENERATE_TupType(BOOST_PP_TUPLE_PUSH_FRONT(VECTOR_ELEMS_TUP, CLASSNAME)) \
-      >; \
-      using TupTypePairType = boost::fusion::vector< \
-        GENERATE_TupTypePair(BOOST_PP_TUPLE_PUSH_FRONT(VECTOR_ELEMS_TUP, CLASSNAME)) \
-      >; \
-      \
-      inline static auto tuple_type_pair() -> TupTypePairType const& { \
-        static const TupTypePairType t{ \
-          GENERATE_TupTypePairObj(BOOST_PP_TUPLE_PUSH_FRONT(VECTOR_ELEMS_TUP, CLASSNAME)) \
-        }; \
-        return t; \
-      } \
-      inline static VecElem getVecElem(CLASSNAME* obj) { \
-        return VecElem( \
-          GENERATE_ObjVal(BOOST_PP_TUPLE_PUSH_FRONT(VECTOR_ELEMS_TUP, CLASSNAME)) \
-        ); \
-      } \
-      inline static const std::vector<std::string>& vec_field_names() { \
-        static const std::vector<std::string> names = { \
-          EXPAND_member_names(VECTOR_ELEMS_TUP) \
-        }; \
-        return names; \
-      } \
-      enum VecId { \
-        /* if VECTOR_ELEMS_TUP not empty, enum the VECTOR_ELEMS_TUP tuples */ \
-        BOOST_PP_IF( \
-          BOOST_PP_TUPLE_SIZE(VECTOR_ELEMS_TUP), \
-          BOOST_PP_TUPLE_ENUM, \
-          BOOST_PP_EMPTY \
-        )(VECTOR_ELEMS_TUP) \
-        /* if VECTOR_ELEMS_TUP not empty, append an extra comma */ \
-        BOOST_PP_IF( \
-          BOOST_PP_TUPLE_SIZE(VECTOR_ELEMS_TUP), \
-          BOOST_PP_COMMA, \
-          BOOST_PP_EMPTY \
-        )() \
-        /* append an extra enum value MAX */ \
-        MAX = BOOST_PP_IF( \
-          BOOST_PP_TUPLE_SIZE(VECTOR_ELEMS_TUP), \
-          BOOST_PP_TUPLE_SIZE(VECTOR_ELEMS_TUP), \
-          0 \
-        ) \
+GENERATE_CLASS_TYPEMETADATA(CLASSNAME, TABLENAME, CLASS_ELEMS_TUP, COLNAME_TUP, SqlType::CompositeVector); \
+namespace edadb { \
+  template<> struct VecMetaData<CLASSNAME> { \
+    using VecElem = boost::fusion::vector< \
+      GENERATE_TupType(BOOST_PP_TUPLE_PUSH_FRONT(VECTOR_ELEMS_TUP, CLASSNAME)) \
+    >; \
+    using TupTypePairType = boost::fusion::vector< \
+      GENERATE_TupTypePair(BOOST_PP_TUPLE_PUSH_FRONT(VECTOR_ELEMS_TUP, CLASSNAME)) \
+    >; \
+    \
+    inline static auto tuple_type_pair() -> TupTypePairType const& { \
+      static const TupTypePairType t{ \
+        GENERATE_TupTypePairObj(BOOST_PP_TUPLE_PUSH_FRONT(VECTOR_ELEMS_TUP, CLASSNAME)) \
       }; \
+      return t; \
+    } \
+    inline static VecElem getVecElem(CLASSNAME* obj) { \
+      return VecElem( \
+        GENERATE_ObjVal(BOOST_PP_TUPLE_PUSH_FRONT(VECTOR_ELEMS_TUP, CLASSNAME)) \
+      ); \
+    } \
+    inline static const std::vector<std::string>& vec_field_names() { \
+      static const std::vector<std::string> names = { \
+        EXPAND_member_names(VECTOR_ELEMS_TUP) \
+      }; \
+      return names; \
+    } \
+    enum VecId { \
+      /* if VECTOR_ELEMS_TUP not empty, enum the VECTOR_ELEMS_TUP tuples */ \
+      BOOST_PP_IF( \
+        BOOST_PP_TUPLE_SIZE(VECTOR_ELEMS_TUP), \
+        BOOST_PP_TUPLE_ENUM, \
+        BOOST_PP_EMPTY \
+      )(VECTOR_ELEMS_TUP) \
+      /* if VECTOR_ELEMS_TUP not empty, append an extra comma */ \
+      BOOST_PP_IF( \
+        BOOST_PP_TUPLE_SIZE(VECTOR_ELEMS_TUP), \
+        BOOST_PP_COMMA, \
+        BOOST_PP_EMPTY \
+      )() \
+      /* append an extra enum value MAX */ \
+      MAX = BOOST_PP_IF( \
+        BOOST_PP_TUPLE_SIZE(VECTOR_ELEMS_TUP), \
+        BOOST_PP_TUPLE_SIZE(VECTOR_ELEMS_TUP), \
+        0 \
+      ) \
     }; \
-  }
-
-
+  }; \
+}
+// namespace edadb for Macro TABLE4CLASS_WVEC_COLNAME
 
 
 

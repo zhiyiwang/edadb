@@ -12,6 +12,7 @@
 
 #include "DbBackendType.h"
 #include "DbStatement.h"
+#include "Macro4Sqlite.h"
 
 
 namespace edadb {

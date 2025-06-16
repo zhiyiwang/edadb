@@ -16,7 +16,7 @@
 #include <boost/fusion/include/vector.hpp>
 
 #include "Config.h"
-#include "Cpp2SqlType.h"
+#include "Cpp2SqlTypeTrait.h"
 #include "TypeMetaData.h"
 #include "VecMetaData.h"    
 #include "SqlStatement.h"
@@ -43,7 +43,7 @@ public:
         sql = "CREATE TABLE IF NOT EXISTS \""+ table_name +"\" (";
 
         /*
-         * get column name and type from TypeMetaData<T>::tuple_type_pair()
+         * get column name and type from TypeMetaData<T>::tuk'kle_type_pair()
          * NOTE:
          * 1. column name: use user defined name
          * 2. type: is the SQL type name string, such as "INTEGER", "TEXT", etc.

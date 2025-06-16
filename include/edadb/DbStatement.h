@@ -20,7 +20,8 @@ namespace edadb {
  */
 template <DbBackendType DBType>
 struct DbStatementImpl {
-    static_assert(DBType != DBType, "DbStatement is not implemented for this backend type.");
+    static_assert(DBType != DBType,
+        "DbStatement is not implemented for this backend type.");
 };
 
 

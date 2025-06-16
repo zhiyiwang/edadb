@@ -17,7 +17,7 @@
 
 #include "Shadow.h"
 #include "DbBackendType.h"
-#include "Cpp2SqlType.h"
+#include "TypeInfoTrait.h"
 #include "TypeMetaData.h"
 
 namespace edadb {
@@ -64,7 +64,6 @@ public:
  * @details This class provides the basic functionality for generating SQL statements.
  */
 struct SqlStatementBase {
-
 protected:  // some utility functions
 
 //////// Trans Binary Value to String ////////////////////////////////////
@@ -101,9 +100,8 @@ protected:  // some utility functions
         uint32_t index = 0;
 
     public:
-        ColumnNameType(
-            std::vector<std::string>& n, std::vector<std::string>& t, std::string p = "")
-            : name(n), type(t), prefix(p), index(0) {}
+        ColumnNameType(std::vector<std::string>& n, std::vector<std::string>& t,
+            std::string p = "") : name(n), type(t), prefix(p), index(0) {}
 
         /**
          * @brief Appender for column names to the vector.
@@ -113,16 +111,20 @@ protected:  // some utility functions
          */
         template <typename TuplePair>
         void operator()(TuplePair const& x) {
-            // use the type of the first element as cppType
-            using ElemType = typename TuplePair::first_type;
-            using CppType  = typename std::remove_const<typename std::remove_pointer<ElemType>::type>::type;
+            // ElemType is the pointer type pointing to DefType defined in class T
+            using ElemType= typename TuplePair::first_type;
+            using DefType = typename remove_const_and_pointer<ElemType>::type;
+            using CppType = typename TypeInfoTrait<DefType>::CppType;
+            static_assert(TypeInfoTrait<DefType>::is_vector == false,
+                "SqlStatementBase::ColumnNameType: ElemType cannot be a vector type");
 
             // use variable's sql type decides the column type
             const std::vector<std::string>& cnames = TypeMetaData<T>::column_names();
             std::string column_name = cnames[index++];
 
-            if constexpr (edadb::Cpp2SqlType<CppType>::sqlType == edadb::SqlType::Composite) {
-                assert ((index > 0) &&
+            static constexpr SqlType sqlType = TypeInfoTrait<DefType>::sqlType;
+            if constexpr (sqlType == SqlType::Composite) {
+                assert((index > 0) &&
                     "SqlStatementBase::ColumnNameType::operator(): composite type should not be the first element");
 
                 const auto vecs = TypeMetaData<CppType>::tuple_type_pair();
@@ -130,23 +132,23 @@ protected:  // some utility functions
                 boost::fusion::for_each(vecs,
                     ColumnNameType<CppType>(name, type, next_pref));
             }
-            else if constexpr (edadb::Cpp2SqlType<CppType>::sqlType == edadb::SqlType::External) {
+            else if constexpr (sqlType == SqlType::External) {
                 assert ((index > 0) &&
                     "SqlStatementBase::ColumnNameType::operator(): external type should not be the first element");
 
-                const auto vecs = TypeMetaData<edadb::Shadow<CppType>>::tuple_type_pair();
+                const auto vecs = TypeMetaData<Shadow<CppType>>::tuple_type_pair();
                 const std::string next_pref = prefix + "_" + column_name + "_";
                 boost::fusion::for_each(vecs,
-                    ColumnNameType<edadb::Shadow<CppType>>(name, type, next_pref));
+                    ColumnNameType<Shadow<CppType>>(name, type, next_pref));
             }
             else {
-                std::string sqlTypeString = edadb::getSqlTypeString<CppType>();
+                std::string sqlTypeString = getSqlTypeString<CppType>();
                 type.push_back(sqlTypeString);
 
                 // use the user defined column name
                 name.push_back(prefix + column_name);
 //                name.push_back(x.second); // x.second is the name of the member variable
-            }
+            } // if constexpr sqlType
         } // operator()
     }; // ColumnNameType
 
@@ -168,21 +170,24 @@ protected:  // some utility functions
          */
         template <typename ValueType>
         void operator()(ValueType& v) {
-            // extract the CppType from the ValueType pointer
-            using CppType = typename std::remove_const<typename std::remove_pointer<ValueType>::type>::type;
+            // ValueType is the pointer type pointing to DefType defined in class T
+            using DefType = typename remove_const_and_pointer<ValueType>::type;
+            using CppType = typename TypeInfoTrait<DefType>::cppType;
+            static_assert(TypeInfoTrait<DefType>::is_vector == false,
+                "SqlStatementBase::ColumnValues: ValueType cannot be a vector type");
 
-            if constexpr (edadb::Cpp2SqlType<CppType>::sqlType == edadb::SqlType::Composite) {
+            static constexpr SqlType sqlType = TypeInfoTrait<DefType>::sqlType;
+            if constexpr (sqlType == SqlType::Composite) {
                 // transform the object of composite type to string:
                 //   expand the composite type's member variables to the vector
-                boost::fusion::for_each(TypeMetaData<CppType>::getVal(v), ColumnValues(values));
+                boost::fusion::for_each(
+                    TypeMetaData<CppType>::getVal(v), ColumnValues(values));
             }
-            else if constexpr (edadb::Cpp2SqlType<CppType>::sqlType == edadb::SqlType::External) {
+            else if constexpr (sqlType == SqlType::External) {
                 // transform the object of external type to string:
                 //   expand the external type's member variables to the vector
                 boost::fusion::for_each(
-                    TypeMetaData<edadb::Shadow<CppType>>::getVal(v),
-                    ColumnValues(values)
-                );
+                    TypeMetaData<Shadow<CppType>>::getVal(v), ColumnValues(values));
             }
             else {
                 // transform the value of basic type to string:
@@ -202,7 +207,7 @@ protected:  // some utility functions
 */
 template <DbBackendType DBType, typename T>
 struct SqlStatementImpl : public SqlStatementBase {
-    static_assert(DBType != DBType, "DbBackendType is not supported");
+    static_assert(always_false<T>::value, "DbBackendType is not supported");
 };
 
 

@@ -1,15 +1,18 @@
 /**
- * @file Cpp2SqlType.h
- * @brief Cpp2SqlType.h provides a way to convert C++ types to SQL type.
+ * @file SqlType.h
+ * @brief SqlType.h provides a way to define SQL types.
  *      https://en.wikipedia.org/wiki/SQL#SQL_data_types
  */
 
 #pragma once
 
-#include <cstdint>
-#include <cstdlib>
+#include <stdint.h>
+#include <stdlib.h>
 #include <string>
 #include <vector>
+
+#include "TraitUtils.h"
+
 
 namespace edadb {
 
@@ -39,7 +42,7 @@ enum class SqlType : std::uint32_t {
 
     // SQL binary types
     Binary,     // fixed-length binary string
-    Varbinary,  // variable-length binary string
+    VarBinary,  // variable-length binary string
     Blob,       // variable-length binary string
 
     // SQL boolean types
@@ -69,62 +72,11 @@ enum class SqlType : std::uint32_t {
 
     Max
 };
- 
- 
-////////////////////////////////////////////////////////////////////////////////
- 
- 
-/**
- * @struct Cpp2SqlType
- * @brief This is a meta function that converts C++ types to SQL types.
- */
-template<typename T>
-struct Cpp2SqlType {
-    using cppType = T;
-    static constexpr SqlType sqlType = SqlType::Unknown; // constexpr: no need to define
-};
-
-template<typename T>
-struct Cpp2SqlType<T*> {
-    // T cannot be pointer type
-    static_assert(!std::is_pointer<T>::value, "Cpp2SqlType<T*>: T cannot be pointer type");
-
-    using cppType = T;
-    static constexpr SqlType sqlType = Cpp2SqlType<T>::sqlType;
-};
-
-
-// template specialization mapping
-#define CPP_TO_SQL_TYPE(CPP_TYPE, SQL_TYPE) \
-    template<> \
-    struct Cpp2SqlType<CPP_TYPE> { \
-        using cppType = CPP_TYPE; \
-        static constexpr SqlType sqlType = SQL_TYPE; \
-    };
-
-CPP_TO_SQL_TYPE(bool          , SqlType::Boolean)
-CPP_TO_SQL_TYPE(char          , SqlType::TinyInt)
-CPP_TO_SQL_TYPE(unsigned char , SqlType::TinyInt)
-CPP_TO_SQL_TYPE(short         , SqlType::SmallInt)
-CPP_TO_SQL_TYPE(unsigned short, SqlType::SmallInt)
-CPP_TO_SQL_TYPE(int           , SqlType::Integer)
-CPP_TO_SQL_TYPE(unsigned int  , SqlType::Integer)
-CPP_TO_SQL_TYPE(long          , SqlType::BigInt)
-CPP_TO_SQL_TYPE(unsigned long , SqlType::BigInt)
-CPP_TO_SQL_TYPE(long long     , SqlType::BigInt)
-CPP_TO_SQL_TYPE(unsigned long long, SqlType::BigInt)
-
-CPP_TO_SQL_TYPE(float         , SqlType::Real)
-CPP_TO_SQL_TYPE(double        , SqlType::Double)
-CPP_TO_SQL_TYPE(long double   , SqlType::Double)
-
-CPP_TO_SQL_TYPE(std::string   , SqlType::Text)
-CPP_TO_SQL_TYPE(const char*   , SqlType::Text)
 
 
 ////////////////////////////////////////////////////////////////////////////////
  
- 
+
 /**
  * @fn sqlTypeString: template specialization for each SQL type
  * @brief get SQL type string for the given SQL type.
@@ -132,11 +84,20 @@ CPP_TO_SQL_TYPE(const char*   , SqlType::Text)
  */
 template<SqlType N = SqlType::Unknown>
 inline std::string const& sqlTypeString() {
+    static_assert(N == SqlType::Unknown,
+        "sqlTypeString: SqlType must be specialized for each SQL type");
+
     const static std::string ret = "UNKNOWN";
     return ret;
-}
+} // sqlTypeString
 
 
+/**
+ * @macro SQL_TYPE_STRING
+ * @brief Macro to define the SQL type string for each SqlType.
+ * @param SQL_TYPE The SqlType enum value.
+ * @param TYPE_STRING The corresponding SQL type string.
+ */
 #define SQL_TYPE_STRING(SQL_TYPE, TYPE_STRING) \
     template<> \
     inline std::string const &sqlTypeString<SQL_TYPE>() { \
@@ -154,7 +115,7 @@ SQL_TYPE_STRING(SqlType::Integer  , "INTEGER")
 SQL_TYPE_STRING(SqlType::BigInt   , "BIGINT")
 
 SQL_TYPE_STRING(SqlType::Binary   , "BINARY")
-SQL_TYPE_STRING(SqlType::Varbinary, "VARBINARY")
+SQL_TYPE_STRING(SqlType::VarBinary, "VARBINARY")
 SQL_TYPE_STRING(SqlType::Blob     , "BLOB")
 
 SQL_TYPE_STRING(SqlType::Float    , "FLOAT")
@@ -164,25 +125,8 @@ SQL_TYPE_STRING(SqlType::Decimal  , "DECIMAL")
 
 SQL_TYPE_STRING(SqlType::Boolean  , "BOOLEAN")
 
-SQL_TYPE_STRING(SqlType::Composite, "__COMPOSITE__")
+SQL_TYPE_STRING(SqlType::Composite      , "__COMPOSITE__")
+SQL_TYPE_STRING(SqlType::External       , "__EXTERNAL__" )
+SQL_TYPE_STRING(SqlType::CompositeVector, "__COMPOSITE_VECTOR__")
 
-
-////////////////////////////////////////////////////////////////////////////////
- 
- 
-/**
- * @fn getSqlTypeString
- * @brief get the SQL type string for the given C++ type.
- * @return std::string Returns the SQL Type equivalent.
- */
-template<typename T>
-inline std::string const &getSqlTypeString() {
-    // use SqlType to get the SQL type string
-    return sqlTypeString< Cpp2SqlType<T>::sqlType >();
-}
- 
- 
- ////////////////////////////////////////////////////////////////////////////////
- 
- 
- } // namespace edadb
+} // namespace edadb

@@ -1,5 +1,5 @@
 /**
- * @file DbManager
+ * @file DbManager4Sqlite.h
  * @brief DbManager.hpp provides a way to manage the Sqlite3.
  *      This class is a child class of DatabaseManager.
  */
@@ -16,7 +16,6 @@
 
 #include "Config.h"
 #include "Singleton.h"
-#include "Cpp2SqlType.h"
 
 #include "DbBackendType.h"
 #include "DbStatement.h"
@@ -44,8 +43,11 @@ protected:
     sqlite3     *db = nullptr; // database handler
 
 public:
-    static const uint32_t s_bind_column_begin_index = 1; // sqlite3 bind column index starts from 1
-    static const uint32_t s_read_column_begin_index = 0; // sqlite3 fetch column index starts from 0
+    // sqlite3 bind column index starts from 1
+    static const uint32_t s_bind_column_begin_index = 1; 
+
+    // sqlite3 fetch column index starts from 0
+    static const uint32_t s_read_column_begin_index = 0; 
 
 protected:
     /**

@@ -9,7 +9,7 @@
 #include <iostream>
 #include <vector>
 
-#include "MacroHelper.h"
+#include "TraitUtils.h"
 
 namespace edadb {
 
@@ -24,7 +24,7 @@ struct VecMetaData {
   
     inline static auto tuple_type_pair() -> TupTypePairType const& {
         /* Dierectly use this class will cause error during link */
-        static_assert(always_false_v<T>,
+        static_assert(always_false<T>::value,
             "TypeMetaData<T> must be specialized by macro _EDADB_DEFINE_TABLE_BY_CLASS_WITH_VECTOR_ "
         );
     
@@ -33,14 +33,14 @@ struct VecMetaData {
     }
     inline static VecElem getVecElem(T*) {
         /* Dierectly use this class will cause error during link. */
-        static_assert(always_false_v<T>,
+        static_assert(always_false<T>::value,
             "TypeMetaData<T> must be specialized by macro _EDADB_DEFINE_TABLE_BY_CLASS_WITH_VECTOR_ "
         );
         return VecElem{};
     }
     inline static const std::vector<std::string>& vec_field_names() {
         /* Dierectly use this class will cause error during link. */
-        static_assert(always_false_v<T>,
+        static_assert(always_false<T>::value,
             "TypeMetaData<T> must be specialized by macro _EDADB_DEFINE_TABLE_BY_CLASS_WITH_VECTOR_ "
         );
         static const std::vector<std::string> v{};
