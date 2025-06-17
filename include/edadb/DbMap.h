@@ -9,6 +9,10 @@
 #include <string>
 #include <vector>
 
+#include <boost/fusion/include/pair.hpp> 
+#include <boost/fusion/include/at_c.hpp> 
+#include <boost/fusion/include/for_each.hpp>
+
 #include "TraitUtils.h"
 #include "DbMapBase.h"
 #include "SqlStatement.h"
@@ -77,28 +81,31 @@ public:
         // create child table for composite vector type 
         bool crt_tab = true;
         if constexpr (TypeInfoTrait<T>::sqlType == SqlType::CompositeVector) {
-            // VecElem = boost::fusion::vector<DefVecPtr1, DefVecPtr2, ...>
-            // DefVecPtrX = vector<ElemT>* or vector<ElemT>**, pointing to DefVec
-            //   DefVec is defined as vector<T> or vector<T>* in class
-            // ElemT =  T or T*
-            using VecElem = typename VecMetaData<T>::VecElem;
-            VecElem seq{}; // only need type, ignore value
-            boost::fusion::for_each(seq, [&](auto ptr){ 
-                using DefVecPtr = decltype(ptr);
+            // seq: TupTypePairType=boost::fusion::vector<BoostFusionPair1, BoostFusionPair2,...>
+            // BoostFusionPairX = boost::fusion::pair<ElemType, ElemName>
+            // ElemType = T** or T* (defined T* or T in class)
+            // ElemName = string, the name of the element
+            auto seq = VecMetaData<T>::tuple_type_pair(); 
+            boost::fusion::for_each(seq, [&](auto elem){ // elem is BoostFusionPair
+                using DefVecPtr = typename decltype(elem)::first_type;
 
-                // DefType is is a vector<VecElemType> or vector<VecElemType>*
+                // DefVec is is a vector<VecElemType> or vector<VecElemType>*
                 using DefVec = typename remove_const_and_pointer<DefVecPtr>::type;
                 static_assert(
                     TypeInfoTrait<DefVec>::is_vector,
                     "DbMap::createTable: DefVecPtr must be a vector type"
                 );
 
+                // elem.second is the name of the member variable
+                const std::string &colName = elem.second; 
+
                 // VecElemType: VecCppType or VecCppType* as defined in Class 
                 // VecCppType is non-pointer type
                 using VecCppType = typename TypeInfoTrait<DefVec>::VecCppType;
                 if (crt_tab) {
-                    crt_tab = createChildTable<VecCppType>();
+                    crt_tab = createChildTable<VecCppType>(colName);
                 } // if
+
             }); // for_each
         } // if 
 
@@ -123,14 +130,14 @@ public:
 
 private:
     template <typename CppType>
-    bool createChildTable(void) {
+    bool createChildTable(const std::string &colName) {
         // assert CppType is not pointer type
         static_assert(!std::is_pointer_v<CppType>,
             "DbMap::createChildTable: CppType cannot be a pointer type");
 
         // "this table name" + "_" + "child defined table name"
         std::string child_table_name = 
-            table_name + "_" + TypeMetaData<CppType>::table_name();
+            table_name + "_" + TypeMetaData<CppType>::table_name() + "_" + colName;
 
         // create constraint for foreign key
         ForeignKey fk;
