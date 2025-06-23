@@ -25,7 +25,7 @@ struct ScalarTypeInfo {
 
     // Raw is the type without pointer:
     //   If T is not a pointer, Raw is T.
-    using Raw = std::remove_pointer_t<T>;
+    using Raw = std::remove_const_t<std::remove_pointer_t<T>>;
     static_assert(!std::is_pointer<Raw>::value,
         "ScalarTypeInfo do not support multilevel pointer type pointing to scalar type");
 
@@ -84,7 +84,7 @@ struct VectorTypeInfo {
 
     // Row is vector<VecElemType>:
     //   If T is vector<VecElemType>, Raw is also vector<VecElemType>.
-    using Raw = std::remove_pointer_t<T>;
+    using Raw = std::remove_const_t<std::remove_pointer_t<T>>;
     static_assert(!std::is_pointer<Raw>::value,
         "VectorTypeInfo do not support multilevel pointer type pointing to vector type");
     static_assert(is_vector<Raw>::value,
