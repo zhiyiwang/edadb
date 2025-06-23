@@ -64,6 +64,7 @@ MAP_CPP_TO_SQL_TYPE(bool          , SqlType::Boolean)
 
 ////////////////////////////////////////////////////////////////////////////////
  
+
  /**
  * @fn getSqlTypeString
  * @brief get the SQL type string for the given C++ type.

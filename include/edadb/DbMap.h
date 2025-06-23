@@ -55,9 +55,7 @@ public:
     const std::string       &getTableName () { return table_name;  }
     ForeignKey              &getForeignKey() { return foreign_key; }
     std::vector<DbMapBase*> &getChildDbMap() { return child_dbmap_vec; }
-    DbMapBase* getChild(size_t i) {
-        return (i < child_dbmap_vec.size()) ? child_dbmap_vec[i] : nullptr;
-    }
+    DbMapBase*getChild(size_t i) { return child_dbmap_vec.at(i); }
 
 public:
     /**
@@ -89,7 +87,7 @@ public:
             boost::fusion::for_each(seq, [&](auto elem){ // elem is BoostFusionPair
                 using DefVecPtr = typename decltype(elem)::first_type;
 
-                // DefVec is is a vector<VecElemType> or vector<VecElemType>*
+                // DefVec is vector<VecElemType> or vector<VecElemType>* defined in class
                 using DefVec = typename remove_const_and_pointer<DefVecPtr>::type;
                 static_assert(
                     TypeInfoTrait<DefVec>::is_vector,

@@ -52,7 +52,6 @@ struct remove_cvref {
  */
 template<typename T>
 struct remove_const_and_pointer {
-//struct removeConstAndPointer {
     using type = std::remove_const_t<std::remove_pointer_t<T>>;
 }; // remove_const_and_pointer
 
@@ -62,7 +61,6 @@ struct remove_const_and_pointer {
  */
 template<typename T>
 struct remove_cvref_and_make_pointer {
-//struct StripQualifiersAndMakePointer {
     using type = typename std::add_pointer<typename remove_cvref<T>::type>::type;
 }; // remove_cvref_and_make_pointer
 

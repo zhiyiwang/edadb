@@ -173,6 +173,7 @@ protected:
     /**
      * @brief bind the element to the database.
      * @param elem The element pointer to bind, which is defined as a cpp type pointer.
+     *     elem = nullptr only if the member (or its parent) is a pointer type and nullptr
      * @return true if success; otherwise, false.
      */
     template <typename ElemType>
@@ -187,56 +188,107 @@ protected:
         using DefType = typename remove_const_and_pointer<ElemType>::type;
         using TypeTrait = TypeInfoTrait<DefType>;
         using CppType = typename TypeTrait::CppType;
-        constexpr SqlType sqlType = TypeTrait::sqlType;
+
+        // ElemType = &DefType, DefType = CppType* or CppType
+        // No matter DefType is CppType* or CppType,
+        //     we always use CppType* cpp_val_ptr bind the column
         CppType *cpp_val_ptr = TypeTrait::getCppPtr2Bind(elem);
+        bool is_nullptr = (cpp_val_ptr == nullptr);
+
+        constexpr SqlType sqlType = TypeTrait::sqlType;
         if constexpr (sqlType == SqlType::Composite) {
             assert((bind_idx > 0) &&
-                "DbMakkk>::Writer::bindToColumn: composite type should not be the first element");
+                "DbMap<T>::Writer::bindToColumn: composite type should not be the first element");
 
-            auto values = TypeMetaData<CppType>::getVal(cpp_val_ptr);
-            boost::fusion::for_each(
-                /** param 1: Fusion Sequence, a tuple of values */
-                values,
+            if (is_nullptr) {
+                auto values = TypeMetaData<CppType>::getVal(cpp_val_ptr);
+                boost::fusion::for_each(
+                    values,
+                    [this, &ok](auto const &ne) {
+                        using SubElemType = decltype(ne);
+                        static_assert(std::is_pointer_v<SubElemType>,
+                            "DbMap::Writer::bindToColumn: Composite type must be a pointer type"
+                        ); 
 
-                /**
-                 * param 2: Lambda function (closure) to bind the element
-                 *   [this](auto const& elem): use the current class instance and the element
-                 *   this->bindToColumn(elem): call bindToColumn func using current instance
-                 *   hence, the bindToColumn function will be called recursively and
-                 *       always use this->bind_idx to bind the element
-                 */
-                [this, &ok](auto const &ne) {
-                    ok = ok && this->bindToColumn(ne);
-                }
-            ); // boost::fusion::for_each
+                        // bind value pointer to nullptr using bindToColumn
+                        SubElemType set = static_cast<SubElemType>(nullptr);
+                        ok = ok && this->bindToColumn(set);
+                    }
+                ); // boost::fusion::for_each
+            } else {
+                auto values = TypeMetaData<CppType>::getVal(cpp_val_ptr);
+                boost::fusion::for_each(
+                    /** param 1: Fusion Sequence, a tuple of values */
+                    values,
+                
+                    /**
+                     * param 2: Lambda function (closure) to bind the element
+                     *   [this](auto const& elem): use the current class instance and the element
+                     *   this->bindToColumn(elem): call bindToColumn func using current instance
+                     *   hence, the bindToColumn function will be called recursively and
+                     *       always use this->bind_idx to bind the element
+                     */
+                    [this, &ok](auto const &ne) {
+                        ok = ok && this->bindToColumn(ne);
+                    }
+                ); // boost::fusion::for_each
+            }
         }
         else if constexpr (sqlType == SqlType::External) {
             assert((bind_idx > 0) &&
                    "DbMap<T>::Writer::bindToColumn: external type should not be the first element");
 
-            // transform the object of external type to Shadow
             Shadow<CppType> shadow;
-            shadow.toShadow(cpp_val_ptr);
+            if (is_nullptr) {
+                auto values = TypeMetaData<Shadow<CppType>>::getVal(&shadow);
+                boost::fusion::for_each(
+                    values,
+                    [this, &ok](auto const &ne) {
+                        using SubElemType = decltype(ne);
+                        static_assert(std::is_pointer_v<SubElemType>,
+                            "DbMap::Writer::bindToColumn: External type must be a pointer type"
+                        );
 
-            auto values = TypeMetaData<edadb::Shadow<CppType>>::getVal(&shadow);
-            boost::fusion::for_each(
-                values,
-                [this, &ok](auto const &ne) {
-                    ok = ok && this->bindToColumn(ne);
-                }
-            ); // boost::fusion::for_each
+                        // bind value pointer to nullptr using bindToColumn
+                        SubElemType set = static_cast<SubElemType>(nullptr);
+                        ok = ok && this->bindToColumn(set); 
+                    }
+                ); // boost::fusion::for_each
+            } else {
+                // transform the object of external type to Shadow
+                shadow.toShadow(cpp_val_ptr);
+
+                auto values = TypeMetaData<Shadow<CppType>>::getVal(&shadow);
+                boost::fusion::for_each(
+                    values,
+                    [this, &ok](auto const &ne) { ok = ok && this->bindToColumn(ne); }
+                ); // boost::fusion::for_each
+            } // if is_nullptr 
         }
         else if constexpr (std::is_enum_v<CppType>) {
-            // bind the enum member to underlying type:
-            //   Default underlying type is int, also can be user defined
-            using U = std::underlying_type_t<CppType>;
-            U tmp = static_cast<U>(*cpp_val_ptr); // type safe cast during compile time
-            ok = ok && dbstmt.bindColumn(bind_idx++, &tmp);
+            if (is_nullptr) {
+                // bind nullptr to the column
+                ok = ok && dbstmt.bindNull(bind_idx++);
+            } else {
+                // bind the enum member to underlying type:
+                //   Default underlying type is int, also can be user defined
+                using U = std::underlying_type_t<CppType>;
+            
+                // type safe cast during compile time
+                U tmp = static_cast<U>(*cpp_val_ptr); 
+                ok = ok && dbstmt.bindColumn(bind_idx++, &tmp);
+            }
         }
         else {
             // bind the element to the database
             // only base type needs to be bound
-            ok = ok && dbstmt.bindColumn(bind_idx++, cpp_val_ptr);
+            if (is_nullptr) {
+                // bind nullptr to the column
+                ok = ok && dbstmt.bindNull(bind_idx++);
+            } else {
+                // bind the value to the column
+                ok = ok && dbstmt.bindColumn(bind_idx++, cpp_val_ptr);
+            }
         } // if constexpr SQLType::Composite
 
         return ok;
@@ -294,6 +346,7 @@ protected:
             boost::fusion::for_each(
                 ve,
                 [&](auto ptr) { // boost::fusion::vector<ElemT>* pointer
+                    // if ptr pointing to nullptr pointer, skip binding
                     ok = ok && this->bindChildVector(obj, vidx, ptr);
                 } // lambda function
             ); // boost::fusion::for_each
@@ -311,6 +364,13 @@ protected:
         static_assert(is_vector<CppType>::value,
             "DbMap::DbStmtOp::bindChildVector: DefVecPtr must be a vector type");
 
+        bool ok = true;
+        if (TypeTrait::getCppPtr2Bind(ptr) == nullptr) {
+            // if TypeTrait::is_pointer == false, ptr can never be nullptr,
+            //   since it is pointing to a vector<ElemT> member defined in class
+            return ok;
+        } // if 
+
         // always be vector<ElemT>* 
         CppType *vec_ptr = TypeTrait::getCppPtr2Bind(ptr);
         using VecCppType = typename TypeTrait::VecCppType;
@@ -320,7 +380,6 @@ protected:
         assert(!child_dbmap_vec.empty());
         assert(child_dbmap != nullptr);
 
-        bool ok = true;
         typename DbMap<VecCppType>::Writer child_writer(*child_dbmap);
         if constexpr (TypeTrait::elemIsPointer) {
             // vec_ptr is pointer to vector<ElemT*>, use it directly
