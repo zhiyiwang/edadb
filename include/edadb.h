@@ -266,7 +266,7 @@ template <typename T>
 int readByPrimaryKey(typename edadb::DbMap<T>::Reader*& reader, DbMap<T>& dbmap, T* obj) {
     return readGeneric(
         reader, dbmap, obj,
-        [&](auto& r) { return r.prepareByPrimaryKey(obj); }
+        [&](auto& r) { return r.prepareByPrimaryKey(); }
     );
 }
 
