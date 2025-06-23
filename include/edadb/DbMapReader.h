@@ -12,6 +12,8 @@
 #include "DbMap.h"
 #include "DbMapOperation.h"
 #include "DbMapDbStmtOp.h"
+#include "DbStatement.h"
+#include "DbStatement4Sqlite.h"
 #include "DbMapWriter.h"
 
 
@@ -160,17 +162,17 @@ protected:
     /**
      * @brief read the element from the database.
      * @param elem The element pointer to read, which is defined as a cpp type pointer.
+     * @return true if the fetched value is not null; otherwise, false.
      */
     template <typename ElemType>
-    void fetchFromColumn(ElemType &elem) {
+    bool fetchFromColumn(ElemType &elem) {
         using DefType = typename remove_const_and_pointer<ElemType>::type;
-        using CppType = typename TypeInfoTrait<DefType>::CppType;
-        CppType *cpp_val_ptr = TypeInfoTrait<DefType>::getCppPtr2Fetch(elem);
-        if constexpr (TypeInfoTrait<DefType>::is_pointer) {
-            // if elem is a pointer, we need to let elem point to the cpp_val_ptr
-            // ElemType &elem is DefType* or CppType**
-            *elem = cpp_val_ptr; // set object pointer member to the cpp_val_ptr
-        } // if 
+        using TypeTrait = TypeInfoTrait<DefType>;
+        using CppType = typename TypeTrait::CppType;
+
+        // use this template variable to fetch the value from the database
+        CppType *cpp_val_ptr = TypeTrait::getCppPtr2Fetch(elem);
+        bool not_null = false;
 
         if constexpr (TypeInfoTrait<DefType>::sqlType == SqlType::Composite) {
             assert((read_idx > 0) &&
@@ -178,9 +180,12 @@ protected:
 
             // @see DbMap<T>::Writer::fetchFromColumn for the recursive calling
             auto values = TypeMetaData<CppType>::getVal(cpp_val_ptr);
-            boost::fusion::for_each(values,
-                                    [this](auto const &ne)
-                                    { this->fetchFromColumn(ne); });
+            boost::fusion::for_each(
+                values,
+                [this, &not_null](auto const &ne) {
+                    not_null |= this->fetchFromColumn(ne);
+                }
+            ); // for_each
         }
         else if constexpr (TypeInfoTrait<DefType>::sqlType == SqlType::External) {
             assert((read_idx > 0) &&
@@ -188,24 +193,50 @@ protected:
 
             Shadow<CppType> shadow;
             auto values = TypeMetaData<Shadow<CppType>>::getVal(&shadow);
-            boost::fusion::for_each(values,
-                                    [this](auto const &ne)
-                                    { this->fetchFromColumn(ne); });
+            boost::fusion::for_each(
+                values,
+                [this, &not_null](auto const &ne) {
+                    not_null |= this->fetchFromColumn(ne);
+                }
+            ); // for_each
 
             // transform the object of Shadow type to original type
             shadow.fromShadow(cpp_val_ptr);
         }
         else if constexpr (std::is_enum_v<CppType>) {
-            using U = std::underlying_type_t<CppType>; // underlying type of enum
-            U tmp;
-            this->dbstmt.fetchColumn(read_idx++, &tmp);
-            *cpp_val_ptr = static_cast<CppType>(tmp);
+            if (not_null = !this->dbstmt.fetchNull(read_idx)) {
+                using U = std::underlying_type_t<CppType>; // underlying type of enum
+                U tmp;
+                this->dbstmt.fetchColumn(read_idx++, cpp_val_ptr);
+                *cpp_val_ptr = static_cast<CppType>(tmp);
+            }
         }
         else {
-            // read the element from the database
-            // only base type needs to be read
-            this->dbstmt.fetchColumn(read_idx++, cpp_val_ptr);
+            // if is nullptr, we need to bind the column to nullptr
+            if (not_null = !this->dbstmt.fetchNull(read_idx)) {
+                // read the element from the database
+                // only base type needs to be read
+                this->dbstmt.fetchColumn(read_idx, cpp_val_ptr);
+            }
+            ++read_idx; 
         }
+
+        if constexpr (TypeInfoTrait<DefType>::is_pointer) {
+            // DefType is CppType* 
+            if (not_null) {
+                *elem = cpp_val_ptr;
+            } else {
+                delete cpp_val_ptr;
+                *elem = nullptr;
+            }
+        } 
+        else {
+            // DefType is CppType
+            if (!not_null)
+                *cpp_val_ptr = CppType();
+        }
+
+        return not_null; 
     } // fetchFromColumn
 
 
