@@ -98,6 +98,19 @@ public:
 
 public: // insert column
     /**
+     * @brief bind null to the column
+     * @return true if binded; otherwise, false.
+     */
+    bool bindNull(int index) {
+        int rc = sqlite3_bind_null(stmt, index);
+        if (rc != SQLITE_OK) {
+            std::cerr << "DbStatementImpl::bindNull: sqlite3_bind_null failed!" << std::endl;
+            EDADB_SQLITE_LOG_ERROR(rc, db, "Failed to bind null at index " + std::to_string(index));
+        }
+        return (rc == SQLITE_OK);
+    }
+
+    /**
      * @brief bind to 32B integer type
      *   the size of T should be less than or equal to int
      *      bool, (unsigned) char, (unsigned) short, (unsigned) int
@@ -251,6 +264,15 @@ public: // fetch column
         }
         return (rc == SQLITE_ROW);
     }
+
+    /**
+     * @brief try to fetch null from the column using the column index.
+     * @param index The column index.
+     * @return true if fetched; otherwise, false.
+     */
+    bool fetchNull(int index) {
+        return  (sqlite3_column_type(stmt, index) == SQLITE_NULL);
+    } // fetchNull
 
     /**
      * @brief fetch from 32B integer type
