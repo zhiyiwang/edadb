@@ -62,11 +62,21 @@ public:
 
     /**
      * @brief prepare to read the object from the database by primary key
-     * @param obj The object to read.
+     * @param obj The object to get the primary key value.
      * @return true if prepared; otherwise, false.
      */
-    bool prepareByPrimaryKey(void) {
-        return this->template prepareImpl<DbMapOperation::QUERY_PRIMARY_KEY>();
+    bool prepareByPrimaryKey(T *obj) {
+        bool ok = this->template prepareImpl<DbMapOperation::QUERY_PRIMARY_KEY>();
+        if (!ok) {
+            std::cerr << "DbMap::Reader::prepareByPrimaryKey: prepare failed" << std::endl;
+            return false;
+        }
+
+        // get the primary key value from the object to query as primary key
+        auto pk_val_ptr = boost::fusion::at_c<0>(TypeMetaData<T>::getVal(obj));
+        ok = ok && this->dbstmt.bindColumn(this->bind_idx++, pk_val_ptr);
+
+        return ok;
     } // prepareByPrimaryKey
 
     /**
@@ -76,7 +86,7 @@ public:
      */
     template <typename ParentType>
     bool prepareByForeignKey(ParentType *p) {
-        bool ok =  this->template prepareImpl<DbMapOperation::QUEYR_FOREIGN_KEY>();
+        bool ok =  this->template prepareImpl<DbMapOperation::QUERY_FOREIGN_KEY>();
         if (!ok) {
             std::cerr << "DbMap::Reader::prepareByForeignKey: prepare failed" << std::endl;
             return false;

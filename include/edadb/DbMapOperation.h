@@ -24,7 +24,7 @@ enum class DbMapOperation {
     SCAN,
     QUERY_PREDICATE,
     QUERY_PRIMARY_KEY,
-    QUEYR_FOREIGN_KEY, 
+    QUERY_FOREIGN_KEY, 
     MAX
 }; // DbMapOperation
 
@@ -130,7 +130,7 @@ struct DbMapOpTrait<T, DbMapOperation::QUERY_PRIMARY_KEY> {
 
 
 template <typename T>
-struct DbMapOpTrait<T, DbMapOperation::QUEYR_FOREIGN_KEY> {
+struct DbMapOpTrait<T, DbMapOperation::QUERY_FOREIGN_KEY> {
     static constexpr const char *name() {
         return "QueryForeignKey";
     }
@@ -139,7 +139,7 @@ struct DbMapOpTrait<T, DbMapOperation::QUEYR_FOREIGN_KEY> {
             dbmap.getTableName(), dbmap.getForeignKey());
     }
     static DbMapOperation op() {
-        return DbMapOperation::QUEYR_FOREIGN_KEY;
+        return DbMapOperation::QUERY_FOREIGN_KEY;
     }
 };
 

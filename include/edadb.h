@@ -255,20 +255,6 @@ int readByPredicate(typename edadb::DbMap<T>::Reader*& reader, DbMap<T>& dbmap, 
     );
 }
 
-/**
- * @fn readByPrimaryKey: use readGeneric lambda function to read the object
- * @brief read the object from the database by primary key.
- * @param reader The reader to read the object.
- * @param obj The object to read.
- * @return int Returns 1 if read successfully, -1 if error.
- */
-template <typename T>
-int readByPrimaryKey(typename edadb::DbMap<T>::Reader*& reader, DbMap<T>& dbmap, T* obj) {
-    return readGeneric(
-        reader, dbmap, obj,
-        [&](auto& r) { return r.prepareByPrimaryKey(); }
-    );
-}
 
 /**
  * @fn readByPrimaryKey
@@ -283,7 +269,7 @@ int readByPrimaryKey(DbMap<T> &dbmap, T* obj) {
     typename edadb::DbMap<T>::Reader reader(dbmap);
     bool ok = false;
 
-    if (!(ok = reader.prepareByPrimaryKey())) {
+    if (!(ok = reader.prepareByPrimaryKey(obj))) {
         std::cerr << "DbMap::Reader::prepareByPrimaryKey: prepare failed" << std::endl;
     }
     
