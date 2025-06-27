@@ -115,7 +115,12 @@ private:
         return this->template executeImpl<DbMapOperation::DELETE>(
             [&]() {
                 // bind the primary key value in the where clause using obj
-                auto pk_val_ptr = boost::fusion::at_c<0>(TypeMetaData<T>::getVal(obj));
+                auto pk_def_ptr = boost::fusion::at_c<0>(TypeMetaData<T>::getVal(obj));
+                using DefTypePtr = decltype(pk_def_ptr);
+                using DefType = typename remove_const_and_pointer<DefTypePtr>::type;
+                using TypeTrait = TypeInfoTrait<DefType>;
+                using CppType = typename TypeTrait::CppType;
+                CppType *pk_val_ptr = TypeTrait::getCppPtr2Bind(pk_def_ptr);
                 this->dbstmt.bindColumn(this->bind_idx++, pk_val_ptr);
 
                 return this->dbstmt.bindStep();
@@ -191,7 +196,13 @@ private:
             this->bindObject(obj, static_cast<void*>(nullptr), false);
 
             // bind the primary key value in the where clause using obj first column
-            auto pk_val_ptr = boost::fusion::at_c<0>(TypeMetaData<T>::getVal(obj));
+            // point to the primary key value (defined as DefType) pointer 
+            auto pk_def_ptr = boost::fusion::at_c<0>(TypeMetaData<T>::getVal(obj));
+            using DefTypePtr = decltype(pk_def_ptr);
+            using DefType = typename remove_const_and_pointer<DefTypePtr>::type;
+            using TypeTrait = TypeInfoTrait<DefType>;
+            using CppType = typename TypeTrait::CppType;
+            CppType *pk_val_ptr = TypeTrait::getCppPtr2Bind(pk_def_ptr);
             this->dbstmt.bindColumn(this->bind_idx++, pk_val_ptr);
 
             return this->dbstmt.bindStep();
