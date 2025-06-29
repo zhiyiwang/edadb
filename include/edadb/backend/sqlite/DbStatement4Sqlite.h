@@ -66,6 +66,20 @@ public:
     }
 
     /**
+     * @brief clear all of the binding placeholder in the SQL statement
+     * @return true if cleared; otherwise, false.
+     */
+    bool clearBindings() {
+        int rc = sqlite3_clear_bindings(stmt);
+        bool cleared = (rc == SQLITE_OK);
+        if (!cleared) {
+            std::cerr << "DbStatementImpl::clearBindings: sqlite3_clear_bindings failed!" << std::endl;
+            EDADB_SQLITE_LOG_ERROR(rc, db, "Failed to clear bindings in SQL statement");
+        }
+        return cleared;
+    }
+
+    /**
      * @brief reset the SQL statement
      * @return true if reseted; otherwise, false.
      */

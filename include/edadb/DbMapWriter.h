@@ -111,7 +111,7 @@ public: // delete API: using place holder delete statement
     } // deleteVector
 
 private:
-    bool deleteOp(T *obj) {
+    int deleteOp(T *obj) {
         return this->template executeImpl<DbMapOperation::DELETE>(
             [&]() {
                 // bind the primary key value in the where clause using obj
@@ -121,9 +121,14 @@ private:
                 using TypeTrait = TypeInfoTrait<DefType>;
                 using CppType = typename TypeTrait::CppType;
                 CppType *pk_val_ptr = TypeTrait::getCppPtr2Bind(pk_def_ptr);
+                // primary key value pointer should not be null
+                // if it is null, then the object is not valid for update
+                if (pk_val_ptr == nullptr) { return 0; }  
+
                 this->dbstmt.bindColumn(this->bind_idx++, pk_val_ptr);
 
-                return this->dbstmt.bindStep();
+                return this->dbstmt.bindStep() ? 
+                    1 : -1; // return 1 if bind step success, otherwise -1
             } // lambda function
         ); // executeImpl
     } // deleteOp
@@ -203,9 +208,13 @@ private:
             using TypeTrait = TypeInfoTrait<DefType>;
             using CppType = typename TypeTrait::CppType;
             CppType *pk_val_ptr = TypeTrait::getCppPtr2Bind(pk_def_ptr);
-            this->dbstmt.bindColumn(this->bind_idx++, pk_val_ptr);
+            // primary key value pointer should not be null
+            // if it is null, then the object is not valid for update
+            if (pk_val_ptr == nullptr) { return 0; }  
 
-            return this->dbstmt.bindStep();
+            this->dbstmt.bindColumn(this->bind_idx++, pk_val_ptr);
+            return this->dbstmt.bindStep() ? 
+                1 : -1; // return 1 if bind step success, otherwise -1
         });
     } // update
 }; // DbMap::Writer

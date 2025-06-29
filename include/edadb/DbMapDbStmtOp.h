@@ -132,7 +132,7 @@ public: // utility
         /**
          * lamda function to bind the object and communicate with the database 
          */
-        if (!func()) {
+        if (func() < 0) {
             std::cerr << "DbMap::" << DbMapOpTrait<T, OP>::name()
                 << "::executeImpl: bind failed" << std::endl;
             return false;
@@ -174,11 +174,11 @@ protected:
      * @brief bind the element to the database.
      * @param elem The element pointer to bind, which is defined as a cpp type pointer.
      *     elem = nullptr only if the member (or its parent) is a pointer type and nullptr
-     * @return true if success; otherwise, false.
+     * @return >0 if success; 0 if the element is nullptr; -1 if error.
      */
     template <typename ElemType>
-    bool bindToColumn(const ElemType &elem) {
-        bool ok = true;
+    int bindToColumn(const ElemType &elem, bool* all_nullptr) {
+        int ok = 0;
 
         // extract the CppType from the ElemType:
         //   ElemType is a pointer type pointing to the member variable of T;
@@ -193,26 +193,39 @@ protected:
         // No matter DefType is CppType* or CppType,
         //     we always use CppType* cpp_val_ptr bind the column
         CppType *cpp_val_ptr = TypeTrait::getCppPtr2Bind(elem);
+
+        // need to check SqlType to determine how many columns to bind
         bool is_nullptr = (cpp_val_ptr == nullptr);
+        if ((!is_nullptr) && (all_nullptr != nullptr)) {
+            // at least one member is not nullptr
+            *all_nullptr = false;
+        }
+        
 
         constexpr SqlType sqlType = TypeTrait::sqlType;
         if constexpr (sqlType == SqlType::Composite) {
             assert((bind_idx > 0) &&
                 "DbMap<T>::Writer::bindToColumn: composite type should not be the first element");
-
+            
+            bool comp_all_nullptr = true;
             if (is_nullptr) {
                 auto values = TypeMetaData<CppType>::getVal(cpp_val_ptr);
                 boost::fusion::for_each(
                     values,
-                    [this, &ok](auto const &ne) {
+                    [this, &ok, &comp_all_nullptr](auto const &ne) {
+                        // bind value pointer to nullptr using bindToColumn
+                        // ne point to nullptr + offset, so we need to set to nullptr
                         using SubElemType = decltype(ne);
+                        SubElemType set = static_cast<SubElemType>(nullptr);
                         static_assert(std::is_pointer_v<SubElemType>,
                             "DbMap::Writer::bindToColumn: Composite type must be a pointer type"
                         ); 
 
-                        // bind value pointer to nullptr using bindToColumn
-                        SubElemType set = static_cast<SubElemType>(nullptr);
-                        ok = ok && this->bindToColumn(set);
+                        int got = 0;
+                        if (ok >= 0)
+                            got = this->bindToColumn(set, &comp_all_nullptr);
+                        
+                        ok = got < 0 ? got : ok;
                     }
                 ); // boost::fusion::for_each
             } else {
@@ -225,11 +238,15 @@ protected:
                      * param 2: Lambda function (closure) to bind the element
                      *   [this](auto const& elem): use the current class instance and the element
                      *   this->bindToColumn(elem): call bindToColumn func using current instance
-                     *   hence, the bindToColumn function will be called recursively and
+                     *   imence, the bindToColumn function will be called recursively and
                      *       always use this->bind_idx to bind the element
                      */
-                    [this, &ok](auto const &ne) {
-                        ok = ok && this->bindToColumn(ne);
+                    [this, &ok, &comp_all_nullptr](auto const &ne) {
+                        int got = 0;
+                        if (ok >= 0)
+                            got = this->bindToColumn(ne, &comp_all_nullptr);
+
+                        ok = got < 0 ? got : ok + got;
                     }
                 ); // boost::fusion::for_each
             }
@@ -238,20 +255,23 @@ protected:
             assert((bind_idx > 0) &&
                    "DbMap<T>::Writer::bindToColumn: external type should not be the first element");
 
+            bool ext_all_nullptr = true;
             Shadow<CppType> shadow;
             if (is_nullptr) {
                 auto values = TypeMetaData<Shadow<CppType>>::getVal(&shadow);
                 boost::fusion::for_each(
                     values,
-                    [this, &ok](auto const &ne) {
+                    [this, &ok, &ext_all_nullptr](auto const &ne) {
                         using SubElemType = decltype(ne);
+                        SubElemType set = static_cast<SubElemType>(nullptr);
                         static_assert(std::is_pointer_v<SubElemType>,
                             "DbMap::Writer::bindToColumn: External type must be a pointer type"
                         );
-
-                        // bind value pointer to nullptr using bindToColumn
-                        SubElemType set = static_cast<SubElemType>(nullptr);
-                        ok = ok && this->bindToColumn(set); 
+                        int got = 0;
+                        if (ok >= 0)
+                            got = this->bindToColumn(set, &ext_all_nullptr);
+                        
+                        ok = got < 0 ? got : ok;
                     }
                 ); // boost::fusion::for_each
             } else {
@@ -261,14 +281,21 @@ protected:
                 auto values = TypeMetaData<Shadow<CppType>>::getVal(&shadow);
                 boost::fusion::for_each(
                     values,
-                    [this, &ok](auto const &ne) { ok = ok && this->bindToColumn(ne); }
+                    [this, &ok, &ext_all_nullptr](auto const &ne) {
+                        int got = 0;
+                        if (ok >= 0)
+                            got = this->bindToColumn(ne, &ext_all_nullptr);
+
+                        ok = got < 0 ? got : ok + got;
+                    }
                 ); // boost::fusion::for_each
             } // if is_nullptr 
         }
         else if constexpr (std::is_enum_v<CppType>) {
             if (is_nullptr) {
                 // bind nullptr to the column
-                ok = ok && dbstmt.bindNull(bind_idx++);
+                int got = dbstmt.bindNull(bind_idx++);
+                ok = got < 0 ? got : ok;
             } else {
                 // bind the enum member to underlying type:
                 //   Default underlying type is int, also can be user defined
@@ -276,7 +303,8 @@ protected:
             
                 // type safe cast during compile time
                 U tmp = static_cast<U>(*cpp_val_ptr); 
-                ok = ok && dbstmt.bindColumn(bind_idx++, &tmp);
+                int got = dbstmt.bindColumn(bind_idx++, &tmp);
+                ok = got < 0 ? got : ok + got;
             }
         }
         else {
@@ -284,10 +312,12 @@ protected:
             // only base type needs to be bound
             if (is_nullptr) {
                 // bind nullptr to the column
-                ok = ok && dbstmt.bindNull(bind_idx++);
+                int got = dbstmt.bindNull(bind_idx++);
+                ok = got < 0 ? got : ok;
             } else {
                 // bind the value to the column
-                ok = ok && dbstmt.bindColumn(bind_idx++, cpp_val_ptr);
+                int got = dbstmt.bindColumn(bind_idx++, cpp_val_ptr);
+                ok = got < 0 ? got : ok + got;
             }
         } // if constexpr SQLType::Composite
 
@@ -300,11 +330,13 @@ protected:
      * @tparam ParentType The parent type, default is void.
      * @param obj The object to bind.
      * @param p The parent object, if any, to bind the foreign key value.
-     * @return true if success; otherwise, false.
+     * @return > 0 if success; 0 if all members are nullptr;
+     *         -1 if bind step failed.
      */
     template <typename ParentType = void>
-    bool bindObject(T *obj, ParentType *p = nullptr, bool autoStep = true) {
-        bool ok = true;
+    int bindObject(T *obj, ParentType *p = nullptr, bool autoStep = true) {
+        int ok = 0; 
+        bool all_nullptr = true;
 
         // reset bind_idx to begin to bind
         resetBindIndex();
@@ -314,10 +346,25 @@ protected:
         auto values = TypeMetaData<T>::getVal(obj);
         boost::fusion::for_each(
             values,
-            [this, &ok](auto const &ne) {
-                ok = ok && this->bindToColumn(ne);
+            [this, &ok, &all_nullptr](auto const &ne) {
+                int got = 0; 
+                if (ok >= 0)
+                    got = this->bindToColumn(ne, &all_nullptr);
+
+                // got < 0 means bind failed, skip the rest binding
+                // otherwise, accumulate the bind non-nullptr count
+                ok = got < 0 ? got : ok + got; 
             }
         );
+
+        // all members are nullptr, nothing to bind
+        // vector<ElemT>* members are also skipped since no primary key available
+        if (all_nullptr) {
+            dbstmt.clearBindings();
+            dbstmt.reset();
+            return 0; 
+        }
+
 
         // ignore no ParentType (= void) during compile time
         // Otherwise, bind DbMap<T> foreign key value from ParentType p
@@ -327,7 +374,8 @@ protected:
             // bind the foreign key value (1st column in parent)
             auto fk_val_ptr = boost::fusion::at_c<Config::fk_ref_pk_col_index>
                     (TypeMetaData<ParentType>::getVal(p));
-            ok = ok && dbstmt.bindColumn(bind_idx++, fk_val_ptr);
+            int got = dbstmt.bindColumn(bind_idx++, fk_val_ptr);
+            ok = got < 0 ? got : ok + got;
         } // if 
 
 
@@ -347,7 +395,8 @@ protected:
                 ve,
                 [&](auto ptr) { // boost::fusion::vector<ElemT>* pointer
                     // if ptr pointing to nullptr pointer, skip binding
-                    ok = ok && this->bindChildVector(obj, vidx, ptr);
+                    int got = this->bindChildVector(obj, vidx, ptr);
+                    got = got < 0 ? got : ok + got;
                 } // lambda function
             ); // boost::fusion::for_each
         } // if constexpr SqlType::CompositeVector
