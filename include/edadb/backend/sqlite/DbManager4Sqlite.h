@@ -141,7 +141,7 @@ public: // database operation
 
 
     /**
-     * @brief Close the database.
+     * @brief close the database.
      * @return true if closed; otherwise, false.
     */
     bool close() {

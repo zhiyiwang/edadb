@@ -41,8 +41,10 @@ struct Cpp2SqlTypeTrait {
 
 
 
-//TODO: do not support const char* currently: template specialization fails 
-//MAP_CPP_TO_SQL_TYPE(const char*   , SqlType::Text)
+//TODO:
+//  do not support const char* currently: template specialization fails 
+//  MAP_CPP_TO_SQL_TYPE(const char*   , SqlType::Text)
+
 MAP_CPP_TO_SQL_TYPE(std::string   , SqlType::Text)
 
 MAP_CPP_TO_SQL_TYPE(char          , SqlType::TinyInt)

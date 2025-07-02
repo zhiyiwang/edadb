@@ -252,11 +252,6 @@ protected:
 
     template <typename DefVecPtr>
     bool fetchChildVector(T *obj, size_t &vidx, DefVecPtr ptr) {
-//        using PtrT = decltype(ptr);
-//        using Trait = VecTypeTrait<PtrT>;
-//        using ElemType = typename Trait::ElemType;
-//        using CppType  = typename Trait::CppType;
-
         using DefType = typename remove_const_and_pointer<DefVecPtr>::type; 
         using TypeTrait = TypeInfoTrait<DefType>;
         using CppType = typename TypeTrait::CppType; // always be vector<ElemT>

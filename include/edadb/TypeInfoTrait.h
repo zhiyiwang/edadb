@@ -32,7 +32,6 @@ struct ScalarTypeInfo {
     using CppType = Raw;
     static constexpr SqlType sqlType = Cpp2SqlTypeTrait<CppType>::sqlType;
 
-
     // Only available for VectorTypeInfo, 
     //   but defined here to avoid compilation error
     using VecElemType = void; // no vector element type
@@ -93,7 +92,7 @@ struct VectorTypeInfo {
     using CppType = Raw; // always vector<VecElemType> 
     using VecElemType = typename Raw::value_type;
     using VecElemInfo = ScalarTypeInfo<VecElemType>;
-    using VecCppType = typename VecElemInfo::CppType;
+    using VecCppType  = typename VecElemInfo::CppType;
     static constexpr SqlType sqlType = VecElemInfo::sqlType;
 
     // vector element type information

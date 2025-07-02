@@ -12,11 +12,19 @@
 
 namespace edadb {
 
+enum struct TypeMetaDataTag : uint8_t {
+    UserDefined = 0, // user defined tag
+    OnlyPrimaryKey = 1, // only primary key
+    Max = 2 // Not available, used for enum size
+};
+
+
 /**
  * @brief TypeMetaData provides a way to get the meta data of a class.
  *   Here we only declare the template class, and the specialization will be defined in Table4Class.h.
  * @tparam T The class type.
  */
+//template<typename T, TypeMetaDataTag Tag = TypeMetaDataTag::Max>
 template<typename T>
 struct TypeMetaData {
     using TupType          = boost::fusion::vector<>;

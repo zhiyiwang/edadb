@@ -122,7 +122,7 @@ private:
                 using CppType = typename TypeTrait::CppType;
                 CppType *pk_val_ptr = TypeTrait::getCppPtr2Bind(pk_def_ptr);
                 // primary key value pointer should not be null
-                // if it is null, then the object is not valid for update
+                // if it is null, then the object is not valid for delete 
                 if (pk_val_ptr == nullptr) { return 0; }  
 
                 this->dbstmt.bindColumn(this->bind_idx++, pk_val_ptr);

@@ -259,7 +259,8 @@ public:
         std::string sql = projectAllStatement(table_name, fk);
 
         // get the first as the primary key to query
-        auto pk_name = TypeMetaData<T>::column_names()[Config::fk_ref_pk_col_index];
+        auto pk_name =
+            TypeMetaData<T>::column_names()[Config::fk_ref_pk_col_index];
         sql += " WHERE " + pk_name + " = ?";
 
         return sql += ";";

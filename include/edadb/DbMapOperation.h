@@ -18,13 +18,16 @@ namespace edadb {
 // enum for DbMap operation
 enum class DbMapOperation {
     NONE,
+
     INSERT,
     UPDATE,
     DELETE,
     SCAN,
+
     QUERY_PREDICATE,
     QUERY_PRIMARY_KEY,
     QUERY_FOREIGN_KEY, 
+
     MAX
 }; // DbMapOperation
 
