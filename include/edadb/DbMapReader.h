@@ -217,7 +217,7 @@ protected:
             if (not_null = !this->dbstmt.fetchNull(read_idx)) {
                 using U = std::underlying_type_t<CppType>; // underlying type of enum
                 U tmp;
-                this->dbstmt.fetchColumn(read_idx++, cpp_val_ptr);
+                this->dbstmt.fetchColumn(read_idx++, &tmp);
                 *cpp_val_ptr = static_cast<CppType>(tmp);
             }
         }
