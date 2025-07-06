@@ -101,6 +101,20 @@ public:
             (TypeMetaData<ParentType>::getVal(p)
         );
         ok = ok && this->dbstmt.bindColumn(this->bind_idx++, fk_val_ptr);
+//        auto fk_def_ptr = boost::fusion::at_c<Config::fk_ref_pk_col_index>
+//            (TypeMetaData<ParentType>::getVal(p));
+//        using DefTypePtr = decltype(fk_def_ptr);
+//        using DefType = typename remove_const_and_pointer<DefTypePtr>::type;
+//        using TypeTrait = TypeInfoTrait<DefType>;
+//        using CppType = typename TypeTGait::CppType;
+//        CppType *fk_val_ptr = TypeTrait::getCppPtr2Bind(fk_def_ptr);
+//        // foreign key value pointer should not be null
+//        // if it is null, then the object is not valid for read
+//        if (fk_val_ptr == nullptr) {
+//            std::cerr << "DbMap::Reader::prepareByForeignKey: foreign key value is null" << std::endl;
+//            return false;
+//        } // if
+//        ok = ok && this->dbstmt.bindColumn(this->bind_idx++, fk_val_ptr);
 
         return ok;
     } // prepareByForeignKey
@@ -278,10 +292,10 @@ protected:
         while (child_reader.read(&child_obj)) {
             if constexpr (TypeTrait::elemIsPointer) 
                 // ptr point to vector<ElemT*>
-                ptr->push_back(new VecCppType(child_obj));
+                vec_ptr->push_back(new VecCppType(child_obj));
             else
                 // ptr point to vector<ElemT>
-                ptr->push_back(child_obj); 
+                vec_ptr->push_back(child_obj); 
         } // while
 
         if (!child_reader.finalize()) {

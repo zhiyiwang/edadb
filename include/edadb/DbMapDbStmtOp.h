@@ -375,6 +375,20 @@ protected:
             auto fk_val_ptr = boost::fusion::at_c<Config::fk_ref_pk_col_index>
                     (TypeMetaData<ParentType>::getVal(p));
             int got = dbstmt.bindColumn(bind_idx++, fk_val_ptr);
+//            auto fk_def_ptr = boost::fusion::at_c<Config::fk_ref_pk_col_index>
+//                (TypeMetaData<ParentType>::getVal(p));
+//            using DefTypePtr = decltype(fk_def_ptr);
+//            using DefType = typename remove_const_and_pointer<DefTypePtr>::type;
+//            using TypeTrait = TypeInfoTrait<DefType>;
+//            using CppType = typename TypeTrait::CppType;
+//            CppType *fk_val_ptr = TypeTrait::getCppPtr2Bind(fk_def_ptr);
+//            // foreign key value pointer should not be null
+//            // if it is null, then the object is not valid for write
+//            if (fk_val_ptr == nullptr) {
+//                std::cerr << "DbMap::Writer::bindObject: foreign key value is null" << std::endl;
+//                return false;
+//            } // if
+//            int got = dbstmt.bindColumn(bind_idx++, fk_val_ptr);
             ok = got < 0 ? got : ok + got;
         } // if 
 
