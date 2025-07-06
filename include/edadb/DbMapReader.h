@@ -97,24 +97,19 @@ public:
         assert(this->dbmap.getForeignKey().valid());
 
         // get the foreign key from 1st column in parent
-        auto fk_val_ptr = boost::fusion::at_c<Config::fk_ref_pk_col_index>
-            (TypeMetaData<ParentType>::getVal(p)
-        );
-        ok = ok && this->dbstmt.bindColumn(this->bind_idx++, fk_val_ptr);
-//        auto fk_def_ptr = boost::fusion::at_c<Config::fk_ref_pk_col_index>
-//            (TypeMetaData<ParentType>::getVal(p));
-//        using DefTypePtr = decltype(fk_def_ptr);
-//        using DefType = typename remove_const_and_pointer<DefTypePtr>::type;
-//        using TypeTrait = TypeInfoTrait<DefType>;
-//        using CppType = typename TypeTGait::CppType;
-//        CppType *fk_val_ptr = TypeTrait::getCppPtr2Bind(fk_def_ptr);
-//        // foreign key value pointer should not be null
-//        // if it is null, then the object is not valid for read
-//        if (fk_val_ptr == nullptr) {
-//            std::cerr << "DbMap::Reader::prepareByForeignKey: foreign key value is null" << std::endl;
-//            return false;
-//        } // if
+//        auto fk_val_ptr = boost::fusion::at_c<Config::fk_ref_pk_col_index>
+//            (TypeMetaData<ParentType>::getVal(p)
+//        );
 //        ok = ok && this->dbstmt.bindColumn(this->bind_idx++, fk_val_ptr);
+        auto fk_def_ptr = boost::fusion::at_c<Config::fk_ref_pk_col_index>
+            (TypeMetaData<ParentType>::getVal(p));
+        using DefTypePtr = decltype(fk_def_ptr);
+        using DefType = typename remove_const_and_pointer<DefTypePtr>::type;
+        auto fk_val_ptr = TypeInfoTrait<DefType>::getCppPtr2Bind(fk_def_ptr);
+        assert(fk_val_ptr != nullptr &&
+               "DbMap::Reader::prepareByForeignKey: foreign key value pointer is null");
+        int got = this->dbstmt.bindColumn(this->bind_idx++, fk_val_ptr);
+        ok = got < 0 ? got : ok + got;
 
         return ok;
     } // prepareByForeignKey

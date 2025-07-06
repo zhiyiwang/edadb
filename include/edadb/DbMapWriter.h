@@ -46,7 +46,7 @@ public:
     template <typename ParentType = void>
     bool insertVector(std::vector<T *> &objs, ParentType *p = nullptr) {
         if (objs.empty()) {
-            std::cerr << "DbMap::insertVector: empty vector" << std::endl;
+//            std::cerr << "DbMap::insertVector: empty vector" << std::endl;
             return false;
         }
 

@@ -193,15 +193,13 @@ protected:
         // No matter DefType is CppType* or CppType,
         //     we always use CppType* cpp_val_ptr bind the column
         CppType *cpp_val_ptr = TypeTrait::getCppPtr2Bind(elem);
-
-        // need to check SqlType to determine how many columns to bind
         bool is_nullptr = (cpp_val_ptr == nullptr);
         if ((!is_nullptr) && (all_nullptr != nullptr)) {
             // at least one member is not nullptr
             *all_nullptr = false;
         }
         
-
+        // check SqlType to determine how many columns to bind
         constexpr SqlType sqlType = TypeTrait::sqlType;
         if constexpr (sqlType == SqlType::Composite) {
             assert((bind_idx > 0) &&
@@ -224,7 +222,6 @@ protected:
                         int got = 0;
                         if (ok >= 0)
                             got = this->bindToColumn(set, &comp_all_nullptr);
-                        
                         ok = got < 0 ? got : ok;
                     }
                 ); // boost::fusion::for_each
@@ -270,7 +267,6 @@ protected:
                         int got = 0;
                         if (ok >= 0)
                             got = this->bindToColumn(set, &ext_all_nullptr);
-                        
                         ok = got < 0 ? got : ok;
                     }
                 ); // boost::fusion::for_each
@@ -285,7 +281,6 @@ protected:
                         int got = 0;
                         if (ok >= 0)
                             got = this->bindToColumn(ne, &ext_all_nullptr);
-
                         ok = got < 0 ? got : ok + got;
                     }
                 ); // boost::fusion::for_each
@@ -372,23 +367,17 @@ protected:
             assert(this->dbmap.getForeignKey().valid());
 
             // bind the foreign key value (1st column in parent)
-            auto fk_val_ptr = boost::fusion::at_c<Config::fk_ref_pk_col_index>
-                    (TypeMetaData<ParentType>::getVal(p));
-            int got = dbstmt.bindColumn(bind_idx++, fk_val_ptr);
-//            auto fk_def_ptr = boost::fusion::at_c<Config::fk_ref_pk_col_index>
-//                (TypeMetaData<ParentType>::getVal(p));
-//            using DefTypePtr = decltype(fk_def_ptr);
-//            using DefType = typename remove_const_and_pointer<DefTypePtr>::type;
-//            using TypeTrait = TypeInfoTrait<DefType>;
-//            using CppType = typename TypeTrait::CppType;
-//            CppType *fk_val_ptr = TypeTrait::getCppPtr2Bind(fk_def_ptr);
-//            // foreign key value pointer should not be null
-//            // if it is null, then the object is not valid for write
-//            if (fk_val_ptr == nullptr) {
-//                std::cerr << "DbMap::Writer::bindObject: foreign key value is null" << std::endl;
-//                return false;
-//            } // if
+//            auto fk_val_ptr = boost::fusion::at_c<Config::fk_ref_pk_col_index>
+//                    (TypeMetaData<ParentType>::getVal(p));
 //            int got = dbstmt.bindColumn(bind_idx++, fk_val_ptr);
+            auto fk_def_ptr = boost::fusion::at_c<Config::fk_ref_pk_col_index>
+                (TypeMetaData<ParentType>::getVal(p));
+            using DefTypePtr = decltype(fk_def_ptr);
+            using DefType = typename remove_const_and_pointer<DefTypePtr>::type;
+            auto fk_val_ptr = TypeInfoTrait<DefType>::getCppPtr2Bind(fk_def_ptr);
+            assert(fk_val_ptr != nullptr &&
+                "DbMap::Writer::bindObject: foreign key value pointer is null");
+            int got = dbstmt.bindColumn(bind_idx++, fk_val_ptr);
             ok = got < 0 ? got : ok + got;
         } // if 
 
@@ -448,7 +437,7 @@ protected:
             // vec_ptr is pointer to vector<ElemT*>, use it directly
             ok = child_writer.insertVector(*vec_ptr, obj);
         } else {
-            // trans vector<VecCppType>* to vector<VecCppType*> to call insertVector
+            // trans vectorVec<CppType>* to vector<VecCppType*> to call insertVector
             std::vector<VecCppType *> vec_elem;
             for (auto &v : *vec_ptr) 
                 vec_elem.push_back(&v);

@@ -66,27 +66,6 @@ public:
 struct SqlStatementBase {
 protected:  // some utility functions
 
-//////// Trans Binary Value to String ////////////////////////////////////
-    /**
-     * @brief Convert binary value to string template.
-     * @param val The binary value.
-     * @return The string value.
-     */
-    template <typename ValueType>
-    static std::string binary2String(ValueType &val) {
-        return std::to_string(val);
-    }
-    
-    /**
-     * @brief Convert string value to string.
-     * @param val The binary value.
-     * @return The string value.
-     */
-    static std::string binary2String(std::string &val) {
-        return std::string("\'") + val + "\'";
-    }
-
-
 //////// Column Infos //////////////////////////////////////////////////////
     /**
      * @brief Appender for column names to the vector.
@@ -156,56 +135,6 @@ protected:  // some utility functions
             } // if constexpr sqlType
         } // operator()
     }; // ColumnNameType
-
-
-    /**
-     * @brief Appender for column names to the vector.
-     */
-    struct ColumnValues {
-    private:
-        std::vector<std::string>& values;
-    
-    public:
-        ColumnValues(std::vector<std::string>& v) : values(v) {}
-
-        /**
-         * @brief Appender for column values to the vector.
-         * @param v is TypeMetaData::TupType element:
-         *     v  - pointer to the member variable, such as obj->name
-         */
-        template <typename ValueType>
-        void operator()(ValueType& v) {
-            // ValueType is the pointer type pointing to DefType defined in class T
-            using DefType = typename remove_const_and_pointer<ValueType>::type;
-            using CppType = typename TypeInfoTrait<DefType>::cppType;
-            static_assert(TypeInfoTrait<DefType>::is_vector == false,
-                "SqlStatementBase::ColumnValues: ValueType cannot be a vector type");
-
-            static constexpr SqlType sqlType = TypeInfoTrait<DefType>::sqlType;
-            if constexpr (sqlType == SqlType::Composite) {
-                // transform the object of composite type to string:
-                //   expand the composite type's member variables to the vector
-                boost::fusion::for_each(
-                    TypeMetaData<CppType>::getVal(v), ColumnValues(values));
-            }
-            else if constexpr (sqlType == SqlType::External) {
-                // transform the object of external type to string:
-                //   expand the external type's member variables to the vector
-                boost::fusion::for_each(
-                    TypeMetaData<Shadow<CppType>>::getVal(v), ColumnValues(values));
-            }
-            else if constexpr ((!std::is_enum<CppType>::value /* SqlType::Unknown */) &&
-                 (sqlType == SqlType::CompositeVector || sqlType == SqlType::Unknown)) {
-                assert(false &&
-                    "SqlStatementBase::ColumnValues::operator(): SqlType::CompositeVector or SqlType::Unknown type should not be expanded");
-            }
-            else {
-                // transform the value of basic type to string:
-                //   append the value to the vector
-                values.push_back(binary2String(*v));
-            }
-        } // operator()
-    }; // ColumnValues
 }; // SqlStatementBase
 
 

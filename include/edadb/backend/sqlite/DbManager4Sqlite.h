@@ -22,7 +22,7 @@
 #include "DbStatement4Sqlite.h"
 #include "DbManager.h"
 
-#define _EDADB_DEBUG_TRACE_SQL_STMT_ 1
+#define _EDADB_DEBUG_TRACE_SQL_STMT_ 0
 
 namespace edadb {
 

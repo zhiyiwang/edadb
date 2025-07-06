@@ -148,8 +148,7 @@ private:
         const auto &cols = TypeMetaData<T>::column_names();
         fk.column.push_back( cols[primary_key_index] );
 
-        using PrimKeyType =
-            typename boost::fusion::result_of::value_at_c<
+        using PrimKeyType = typename boost::fusion::result_of::value_at_c<
                 typename TypeMetaData<T>::TupType, primary_key_index>::type;
         fk.type.push_back( getSqlTypeString<PrimKeyType>() );
 
