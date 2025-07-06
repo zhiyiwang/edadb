@@ -37,6 +37,7 @@ struct ScalarTypeInfo {
     using VecElemType = void; // no vector element type
     using VecElemInfo = void; // no vector element type information
     using VecCppType  = void; // no vector element type information
+
     static constexpr bool elemIsPointer = false;
     static constexpr SqlType elemSqlType = SqlType::Unknown;
 
@@ -90,10 +91,12 @@ struct VectorTypeInfo {
         "VectorTypeInfo only supports std::vector<T> or std::vector<T>*");
 
     using CppType = Raw; // always vector<VecElemType> 
+    static constexpr SqlType sqlType = SqlType::Unknown; // vector type is not a scalar type
+//    static constexpr SqlType sqlType = VecElemInfo::sqlType;
+
     using VecElemType = typename Raw::value_type;
     using VecElemInfo = ScalarTypeInfo<VecElemType>;
     using VecCppType  = typename VecElemInfo::CppType;
-    static constexpr SqlType sqlType = VecElemInfo::sqlType;
 
     // vector element type information
     static constexpr bool elemIsPointer = VecElemInfo::is_pointer;
@@ -138,7 +141,7 @@ public:
  */
 template<typename T>
 struct TypeInfoTrait {
-    using NoPtrT = std::remove_pointer_t<T>;
+    using NoPtrT = std::remove_const_t<std::remove_pointer_t<T>>; // remove const and pointer
     static constexpr bool is_vector = is_vector<NoPtrT>::value;
     using Info = std::conditional_t<
         is_vector, VectorTypeInfo<T>, ScalarTypeInfo<T>
@@ -153,7 +156,8 @@ struct TypeInfoTrait {
     using VecElemType = typename Info::VecElemType;
     using VecElemInfo = typename Info::VecElemInfo;
     using VecCppType  = typename Info::VecCppType;
-    static constexpr bool  elemIsPointer = Info::elemIsPointer;
+
+    static constexpr bool elemIsPointer = Info::elemIsPointer;
     static constexpr SqlType elemSqlType = Info::elemSqlType;
 
 public:

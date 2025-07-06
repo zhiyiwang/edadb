@@ -28,7 +28,6 @@
 #include <boost/iterator/iterator_facade.hpp>
 
 #include "Shadow.h"
-#include "TypeInfoTrait.h"
 #include "Table4Class.h"
 #include "SqlStatement.h"
 #include "SqlStatement4Sqlite.h"

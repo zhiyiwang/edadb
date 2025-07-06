@@ -42,7 +42,7 @@ public:
 
 public:
     bool valid() const {
-        return !table.empty() && column.size() > 0 && type.size() > 0;
+        return (!table.empty()) && (column.size() > 0) && (type.size() > 0);
     }
 
 public:
@@ -129,8 +129,8 @@ protected:  // some utility functions
 
                 const auto vecs = TypeMetaData<CppType>::tuple_type_pair();
                 const std::string next_pref = prefix + "_" + column_name + "_";
-                boost::fusion::for_each(vecs,
-                    ColumnNameType<CppType>(name, type, next_pref));
+                boost::fusion::for_each(
+                    vecs, ColumnNameType<CppType>(name, type, next_pref));
             }
             else if constexpr (sqlType == SqlType::External) {
                 assert ((index > 0) &&
@@ -138,9 +138,14 @@ protected:  // some utility functions
 
                 const auto vecs = TypeMetaData<Shadow<CppType>>::tuple_type_pair();
                 const std::string next_pref = prefix + "_" + column_name + "_";
-                boost::fusion::for_each(vecs,
-                    ColumnNameType<Shadow<CppType>>(name, type, next_pref));
+                boost::fusion::for_each(
+                    vecs, ColumnNameType<Shadow<CppType>>(name, type, next_pref));
             }
+            else if constexpr ((!std::is_enum<CppType>::value /* SqlType::Unknown */) &&
+                ((sqlType == SqlType::CompositeVector) || (sqlType == SqlType::Unknown))) {
+                assert(false &&
+                    "SqlStatementBase::ColumnNameType::operator(): SqlType::CompositeVector or SqlType::Unknown type should not be expanded");
+            }  
             else {
                 std::string sqlTypeString = getSqlTypeString<CppType>();
                 type.push_back(sqlTypeString);
@@ -188,6 +193,11 @@ protected:  // some utility functions
                 //   expand the external type's member variables to the vector
                 boost::fusion::for_each(
                     TypeMetaData<Shadow<CppType>>::getVal(v), ColumnValues(values));
+            }
+            else if constexpr ((!std::is_enum<CppType>::value /* SqlType::Unknown */) &&
+                 (sqlType == SqlType::CompositeVector || sqlType == SqlType::Unknown)) {
+                assert(false &&
+                    "SqlStatementBase::ColumnValues::operator(): SqlType::CompositeVector or SqlType::Unknown type should not be expanded");
             }
             else {
                 // transform the value of basic type to string:
