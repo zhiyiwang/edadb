@@ -5,6 +5,10 @@
 
 #pragma once
 
+#include <boost/preprocessor.hpp>
+#include <boost/fusion/include/vector.hpp>
+#include <boost/variant.hpp>
+
 #include "TraitUtils.h"
 #include "TypeMetaData.h"
 #include "VecMetaData.h"
@@ -26,6 +30,7 @@
 #define GENERATE_TupType_I(z, n, CLASS_ELEMS) BOOST_PP_IF(n, BOOST_PP_COMMA, BOOST_PP_EMPTY)() std::add_pointer<std::remove_reference<std::remove_cv<decltype(BOOST_PP_TUPLE_ELEM(0, CLASS_ELEMS) :: BOOST_PP_TUPLE_ELEM(BOOST_PP_ADD(1, n), CLASS_ELEMS))>::type>::type>::type
 #define GENERATE_TupType(CLASS_ELEMS) BOOST_PP_REPEAT(BOOST_PP_SUB(BOOST_PP_TUPLE_SIZE(CLASS_ELEMS), 1), GENERATE_TupType_I, CLASS_ELEMS)
 
+
 // macro expansion result:
 //   boost::fusion::pair<std::string*, std::string>,
 //   boost::fusion::pair<int*, std::string>,
@@ -40,47 +45,44 @@
 #define GENERATE_TupTypePairObj_I(z, n, CLASS_ELEMS) BOOST_PP_IF(n, BOOST_PP_COMMA, BOOST_PP_EMPTY)() boost::fusion::make_pair<edadb::remove_cvref_and_make_pointer<decltype(BOOST_PP_TUPLE_ELEM(0, CLASS_ELEMS) :: BOOST_PP_TUPLE_ELEM(BOOST_PP_ADD(1, n), CLASS_ELEMS))>::type>(BOOST_STRINGIZE(BOOST_PP_TUPLE_ELEM(BOOST_PP_ADD(1, n), CLASS_ELEMS)))
 #define GENERATE_TupTypePairObj(CLASS_ELEMS) BOOST_PP_REPEAT(BOOST_PP_SUB(BOOST_PP_TUPLE_SIZE(CLASS_ELEMS), 1), GENERATE_TupTypePairObj_I, CLASS_ELEMS)
 
+
 // macro expansion result:
 //   "name", "width", "height"
 #define EXPAND_member_names_I(z, n, ELEMS_TUP) BOOST_PP_IF(n, BOOST_PP_COMMA, BOOST_PP_EMPTY)() BOOST_STRINGIZE(BOOST_PP_TUPLE_ELEM(n, ELEMS_TUP))
 #define EXPAND_member_names(ELEMS_TUP) BOOST_PP_REPEAT(BOOST_PP_TUPLE_SIZE(ELEMS_TUP), EXPAND_member_names_I, ELEMS_TUP)
 
 
-#define GET_first_member(ELEMS_TUP) BOOST_PP_TUPLE_ELEM(0,ELEMS_TUP)
-
 // macro expansion result:
 //   &(obj->name), &(obj->width), &(obj->height)
 #define GENERATE_ObjVal_I(z, n, CLASS_ELEMS) BOOST_PP_IF(n, BOOST_PP_COMMA, BOOST_PP_EMPTY)() &obj->BOOST_PP_TUPLE_ELEM(BOOST_PP_ADD(1, n), CLASS_ELEMS)
 #define GENERATE_ObjVal(CLASS_ELEMS) BOOST_PP_REPEAT(BOOST_PP_SUB(BOOST_PP_TUPLE_SIZE(CLASS_ELEMS), 1), GENERATE_ObjVal_I, CLASS_ELEMS)
 
-
-
 ///////////////////////////////////////////////////////////////////////////////
 /// Helper Macros End
 ///////////////////////////////////////////////////////////////////////////////
 
+
+
 // Example:
 //   GENERATE_CLASS_TYPEMETADATA(IdbSite, "table_name",
-//      (name, width, height), ("iname","iwidth","iheight"))
+//      (name, width, height), ("iname","iwidth","iheight"),
+//      (TypeMetaTag::INVD, TypeMetaTag::UDEF, TypeMetaTag::PKEY), SqlType::Composite)
 // Explain:
 //   Create TypeMetaData class for IdbSite for the member varibles (name, width, height),
 //   use ("iname","iwidth","iheight")) as name instead
-#define GENERATE_CLASS_TYPEMETADATA(CLASSNAME, TABLENAME, CLASS_ELEMS, COLNAMES, SQLTYPE) \
-BOOST_FUSION_ADAPT_STRUCT(CLASSNAME, BOOST_PP_TUPLE_REM_CTOR(CLASS_ELEMS) ) \
-namespace edadb{\
+#define GENERATE_CLASS_TYPEMETADATA(CLASSNAME, TABLENAME, CLASS_ELEMS, COLNAMES, COLTAGS, SQLTYPE) \
+BOOST_FUSION_ADAPT_STRUCT(CLASSNAME, BOOST_PP_TUPLE_REM_CTOR(CLASS_ELEMS)) ; \
+namespace edadb { \
 template<> \
 struct Cpp2SqlTypeTrait<CLASSNAME>{\
     static constexpr SqlType sqlType = SQLTYPE; \
 };\
-template<> struct TypeMetaData<CLASSNAME>{\
-    using TupType = boost::fusion::vector<GENERATE_TupType(BOOST_PP_TUPLE_PUSH_FRONT(CLASS_ELEMS, CLASSNAME))>;\
-    using TupTypePairType = boost::fusion::vector<GENERATE_TupTypePair(BOOST_PP_TUPLE_PUSH_FRONT(CLASS_ELEMS, CLASSNAME))>;\
-    using T = CLASSNAME;\
+template<> struct TypeMetaData<CLASSNAME>{ \
+    using T = CLASSNAME; \
+    /* parse COLTAGS to init vector for each class elem */ \
+    std::vector<TypeMetaTag> col_tags = {BOOST_PP_TUPLE_REM_CTOR(COLTAGS)}; \
     \
-    inline static auto tuple_type_pair()->TupTypePairType const&{\
-        static const TupTypePairType t{GENERATE_TupTypePairObj(BOOST_PP_TUPLE_PUSH_FRONT(CLASS_ELEMS, CLASSNAME))};\
-        return t;\
-    }\
+    /* class and table name */ \
     inline static std::string const& class_name(){\
         static std::string const class_name = BOOST_STRINGIZE(CLASSNAME);\
         return class_name;\
@@ -89,20 +91,143 @@ template<> struct TypeMetaData<CLASSNAME>{\
         static std::string const table_name = TABLENAME;\
         return table_name;\
     }\
-    inline static const std::vector<std::string>& member_names(){\
-        static const std::vector<std::string> names = {EXPAND_member_names(CLASS_ELEMS)};\
-        return names;\
-    }\
-    inline static const std::vector<std::string>& column_names(){\
-        static const std::vector<std::string> names = {BOOST_PP_TUPLE_REM_CTOR(COLNAMES)};\
-        return names;\
-    }\
-    inline static TupType getVal(CLASSNAME * obj){\
-        return TupType(GENERATE_ObjVal(BOOST_PP_TUPLE_PUSH_FRONT(CLASS_ELEMS, CLASSNAME)));\
-    }\
-};\
-}
+    \
+    /* member names */ \
+    inline static const std::vector<std::string>& member_names(TypeMetaTag tag) { \
+        switch (tag) { \
+            case TypeMetaTag::UDEF: {\
+                static const std::vector<std::string> names = {EXPAND_member_names(CLASS_ELEMS)}; \
+                return names; \
+            } \
+            case TypeMetaTag::PKEY: {\
+                static const std::vector<std::string> names = { \
+                    BOOST_STRINGIZE(BOOST_PP_TUPLE_ELEM(0, CLASS_ELEMS)) \
+                }; \
+                return names; \
+            } \
+            default: { \
+                std::cerr << "TypeMetaData::member_names: unknown tag" << std::endl; \
+                assert(false); \
+                static const std::vector<std::string> empty_names; \
+                return empty_names; \
+            } \
+        } \
+    } \
+    \
+    /* column names */ \
+    inline static const std::vector<std::string>& column_names(TypeMetaTag tag) { \
+        switch (tag) { \
+            case TypeMetaTag::UDEF: { \
+                static const std::vector<std::string> names = {BOOST_PP_TUPLE_REM_CTOR(COLNAMES)}; \
+                return names; \
+            } \
+            case TypeMetaTag::PKEY: { \
+                static const std::vector<std::string> names = { \
+                    BOOST_STRINGIZE(BOOST_PP_TUPLE_ELEM(0, COLNAMES)) \
+                }; \
+                return names; \
+            } \
+            default: { \
+                std::cerr << "TypeMetaData::column_names: unknown tag" << std::endl; \
+                assert(false); \
+                static const std::vector<std::string> empty_names; \
+                return empty_names; \
+            } \
+        } \
+    } \
+    \
+    /* TupType for getVal */ \
+    template<TypeMetaTag Tag> struct TupTypeStruct { \
+        using type = boost::fusion::vector<>; \
+    }; \
+    template<TypeMetaTag Tag> \
+    using TupType = typename TupTypeStruct<Tag>::type; \
+    using TupTypeVariant = boost::variant<TupType<TypeMetaTag::UDEF>, TupType<TypeMetaTag::PKEY>>;\
+    \
+    inline static TupTypeVariant getVal(CLASSNAME* obj, TypeMetaTag tag) ; \
+    \
+    /* TupTypePair for */ \
+    template<TypeMetaTag Tag> struct TupTypePairStruct { \
+        using type = boost::fusion::vector<>; \
+    }; \
+    template<TypeMetaTag Tag> \
+    using TupTypePairType = typename TupTypePairStruct<Tag>::type; \
+    using TupTypePairVariant = boost::variant<TupTypePairType<TypeMetaTag::UDEF>, TupTypePairType<TypeMetaTag::PKEY>>;\
+    \
+    inline static TupTypePairVariant tuple_type_pair(TypeMetaTag tag) ; \
+}; \
+\
+template<> /* CLASSNAME */ \
+template<> /* TypeMetaTag::UDEF */ \
+struct TypeMetaData<CLASSNAME>::TupTypeStruct<TypeMetaTag::UDEF> { \
+    using type = boost::fusion::vector< /* all columns in CLASS_ELEMS */ \
+        GENERATE_TupType(BOOST_PP_TUPLE_PUSH_FRONT(CLASS_ELEMS, CLASSNAME)) \
+    >; \
+}; \
+template<> /* CLASSNAME */ \
+template<> /* TypeMetaTag::PKEY */ \
+struct TypeMetaData<CLASSNAME>::TupTypeStruct<TypeMetaTag::PKEY> { \
+    using type = boost::fusion::vector< /* only first column in CLASS_ELEMS */ \
+        GENERATE_TupType(BOOST_PP_TUPLE_PUSH_FRONT( \
+            (BOOST_PP_TUPLE_ELEM(0, CLASS_ELEMS)), CLASSNAME)) \
+    >; \
+}; \
+\
+template<> /* CLASSNAME */ \
+template<> /* TypeMetaTag::UDEF */ \
+struct TypeMetaData<CLASSNAME>::TupTypePairStruct<TypeMetaTag::UDEF> { \
+    using type = boost::fusion::vector< /* all columns in CLASS_ELEMS */ \
+        GENERATE_TupTypePair(BOOST_PP_TUPLE_PUSH_FRONT(CLASS_ELEMS, CLASSNAME)) \
+    >; \
+}; \
+template<> /* CLASSNAME */ \
+template<> /* TypeMetaTag::PKEY */ \
+struct TypeMetaData<CLASSNAME>::TupTypePairStruct<TypeMetaTag::PKEY> { \
+    using type = boost::fusion::vector< /* only first column in CLASS_ELEMS */ \
+        GENERATE_TupTypePair(BOOST_PP_TUPLE_PUSH_FRONT( \
+            (BOOST_PP_TUPLE_ELEM(0, CLASS_ELEMS)), CLASSNAME)) \
+    >; \
+\
+\
+inline typename TypeMetaData<CLASSNAME>::TupTypeVariant \
+    TypeMetaData<CLASSNAME>::TgetVal(CLASSNAME* obj, TypeMetaTag tag) { \
+    switch (tag) { \
+        case TypeMetaTag::UDEF: \
+            return TupType<TypeMetaTag::UDEF>{ \
+                GENERATE_ObjVal(BOOST_PP_TUPLE_PUSH_FRONT(CLASS_ELEMS, CLASSNAME)) \
+            }; \
+        case TypeMetaTag::PKEY: \
+            return TupType<TypeMetaTag::PKEY>{ \
+                GENERATE_ObjVal(BOOST_PP_TUPLE_PUSH_FRONT( \
+                    (BOOST_PP_TUPLE_ELEM(0, CLASS_ELEMS)), CLASSNAME)) \
+            }; \
+        default: \
+            assert(false); \
+            return TupTypeVariant{}; \
+    } \
+} \
+\
+inline typename TypeMetaData<CLASSNAME>::TupTypePairVariant \
+    TypeMetaData<CLASSNAME>::tuple_type_pair(TypeMetaTag tag) { \
+    switch (tag) { \
+        case TypeMetaTag::UDEF: \
+            return TupTypePair<TypeMetaTag::UDEF>{ \
+                GENERATE_TupTypePairObj(BOOST_PP_TUPLE_PUSH_FRONT(CLASS_ELEMS, CLASSNAME)) \
+            }; \
+        case TypeMetaTag::PKEY: \
+            return TupTypePair<TypeMetaTag::PKEY>{ \
+                GENERATE_TupTypePairObj(BOOST_PP_TUPLE_PUSH_FRONT( \
+                    (BOOST_PP_TUPLE_ELEM(0, CLASS_ELEMS)), CLASSNAME)) \
+            }; \
+        default: \
+            assert(false); \
+            return TupTypePairVariant{}; \
+    } \
+} \
+}; \
+} /* namespace edadb */
 // namespace edadb for Macro GENERATE_CLASS_TYPEMETADATA
+
 
 
 
@@ -114,8 +239,8 @@ template<> struct TypeMetaData<CLASSNAME>{\
  * @param CLASS_ELEMS The tuple of class elements.
  * @param COLNAMES The tuple of column names.
  */
-#define TABLE4CLASS_COLNAME(CLASSNAME, TABLENAME, CLASS_ELEMS, COLNAMES) \
-GENERATE_CLASS_TYPEMETADATA(CLASSNAME, TABLENAME, CLASS_ELEMS, COLNAMES, SqlType::Composite) 
+#define TABLE4CLASS_COLNAME(CLASSNAME, TABLENAME, CLASS_ELEMS, COLNAMES, COLTAGS) \
+GENERATE_CLASS_TYPEMETADATA(CLASSNAME, TABLENAME, CLASS_ELEMS, COLNAMES, COLTAGS, SqlType::Composite) 
 
 /**
  * @fn TABLE4CLASS
@@ -124,8 +249,10 @@ GENERATE_CLASS_TYPEMETADATA(CLASSNAME, TABLENAME, CLASS_ELEMS, COLNAMES, SqlType
  * @param TABLENAME The name of the table.
  * @param CLASS_ELEMS The tuple of class elements.
  */
-#define TABLE4CLASS(CLASSNAME, TABLENAME, CLASS_ELEMS) \
-GENERATE_CLASS_TYPEMETADATA(CLASSNAME, TABLENAME, CLASS_ELEMS, (EXPAND_member_names(CLASS_ELEMS)), SqlType::Composite)
+//TODO: params: (CLASSNAME, TABLENAME, CLASS_ELEMS_UDEF, CLASS_ELEMS_PKEY) \
+#define TABLE4CLASS(CLASSNAME, TABLENAME, CLASS_ELEMS, COLTAGS) \
+GENERATE_CLASS_TYPEMETADATA(CLASSNAME, TABLENAME, CLASS_ELEMS, \
+    (EXPAND_member_names(CLASS_ELEMS)), COLTAGS, SqlType::Composite)
 
 /**
  * @fn Table4ExternalClass
@@ -153,53 +280,53 @@ TABLE4CLASS(edadb::Shadow<CLASSNAME>, "#shadow_table_for_external_class", CLASS_
  * @param TABLENAME The name of the table.
  * @param CLASS_ELEMS The tuple of class elements.
  * @param COLNAMES The tuple of column names.
- * @param VECTOR_ELEMS_TUP The tuple of vector elements.
+ * @param VECTOR_ELEMS The tuple of vector elements.
  */
-#define TABLE4CLASS_WVEC_COLNAME(CLASSNAME, TABLENAME, CLASS_ELEMS, COLNAMES, VECTOR_ELEMS_TUP) \
+#define TABLE4CLASS_WVEC_COLNAME(CLASSNAME, TABLENAME, CLASS_ELEMS, COLNAMES, VECTOR_ELEMS) \
 GENERATE_CLASS_TYPEMETADATA(CLASSNAME, TABLENAME, CLASS_ELEMS, COLNAMES, SqlType::CompositeVector); \
 namespace edadb { \
-  template<> struct VecMetaData<CLASSNAME> { \
+template<> struct VecMetaData<CLASSNAME> { \
     using VecElem = boost::fusion::vector< \
-      GENERATE_TupType(BOOST_PP_TUPLE_PUSH_FRONT(VECTOR_ELEMS_TUP, CLASSNAME)) \
+        GENERATE_TupType(BOOST_PP_TUPLE_PUSH_FRONT(VECTOR_ELEMS, CLASSNAME)) \
     >; \
     using TupTypePairType = boost::fusion::vector< \
-      GENERATE_TupTypePair(BOOST_PP_TUPLE_PUSH_FRONT(VECTOR_ELEMS_TUP, CLASSNAME)) \
+        GENERATE_TupTypePair(BOOST_PP_TUPLE_PUSH_FRONT(VECTOR_ELEMS, CLASSNAME)) \
     >; \
     \
-    inline static auto tuple_type_pair() -> TupTypePairType const& { \
-      static const TupTypePairType t{ \
-        GENERATE_TupTypePairObj(BOOST_PP_TUPLE_PUSH_FRONT(VECTOR_ELEMS_TUP, CLASSNAME)) \
-      }; \
-      return t; \
+    inline static auto tuple_type_pair()->TupTypePairType const& { \
+        static const TupTypePairType t{ \
+            GENERATE_TupTypePairObj(BOOST_PP_TUPLE_PUSH_FRONT(VECTOR_ELEMS, CLASSNAME)) \
+        }; \
+        return t; \
     } \
     inline static VecElem getVecElem(CLASSNAME* obj) { \
       return VecElem( \
-        GENERATE_ObjVal(BOOST_PP_TUPLE_PUSH_FRONT(VECTOR_ELEMS_TUP, CLASSNAME)) \
+        GENERATE_ObjVal(BOOST_PP_TUPLE_PUSH_FRONT(VECTOR_ELEMS, CLASSNAME)) \
       ); \
     } \
     inline static const std::vector<std::string>& vec_field_names() { \
       static const std::vector<std::string> names = { \
-        EXPAND_member_names(VECTOR_ELEMS_TUP) \
+        EXPAND_member_names(VECTOR_ELEMS) \
       }; \
       return names; \
     } \
     enum VecId { \
-      /* if VECTOR_ELEMS_TUP not empty, enum the VECTOR_ELEMS_TUP tuples */ \
+      /* if VECTOR_ELEMS not empty, enum the VECTOR_ELEMS tuples */ \
       BOOST_PP_IF( \
-        BOOST_PP_TUPLE_SIZE(VECTOR_ELEMS_TUP), \
+        BOOST_PP_TUPLE_SIZE(VECTOR_ELEMS), \
         BOOST_PP_TUPLE_ENUM, \
         BOOST_PP_EMPTY \
-      )(VECTOR_ELEMS_TUP) \
-      /* if VECTOR_ELEMS_TUP not empty, append an extra comma */ \
+      )(VECTOR_ELEMS) \
+      /* if VECTOR_ELEMS not empty, append an extra comma */ \
       BOOST_PP_IF( \
-        BOOST_PP_TUPLE_SIZE(VECTOR_ELEMS_TUP), \
+        BOOST_PP_TUPLE_SIZE(VECTOR_ELEMS), \
         BOOST_PP_COMMA, \
         BOOST_PP_EMPTY \
       )() \
       /* append an extra enum value MAX */ \
       MAX = BOOST_PP_IF( \
-        BOOST_PP_TUPLE_SIZE(VECTOR_ELEMS_TUP), \
-        BOOST_PP_TUPLE_SIZE(VECTOR_ELEMS_TUP), \
+        BOOST_PP_TUPLE_SIZE(VECTOR_ELEMS), \
+        BOOST_PP_TUPLE_SIZE(VECTOR_ELEMS), \
         0 \
       ) \
     }; \
@@ -215,7 +342,7 @@ namespace edadb { \
  * @param CLASSNAME class name defined by cpp
  * @param TABLENAME table name in the database
  * @param CLASS_ELEMS non-vector class elements, which is a tuple(cpp type or class object)
- * @param VECTOR_ELEMS_TUP vector class elements, which is a tuple(class object)
+ * @param VECTOR_ELEMS vector class elements, which is a tuple(class object)
  */
-#define TABLE4CLASS_WVEC(CLASS_NAME, TABLE_NAME, CLASS_ELEMS, VECTOR_ELEMS_TUP) \
-TABLE4CLASS_WVEC_COLNAME(CLASS_NAME, TABLE_NAME, CLASS_ELEMS, (EXPAND_member_names(CLASS_ELEMS)), VECTOR_ELEMS_TUP)
+#define TABLE4CLASS_WVEC(CLASS_NAME, TABLE_NAME, CLASS_ELEMS, VECTOR_ELEMS) \
+TABLE4CLASS_WVEC_COLNAME(CLASS_NAME, TABLE_NAME, CLASS_ELEMS, (EXPAND_member_names(CLASS_ELEMS)), VECTOR_ELEMS)

@@ -11,9 +11,9 @@ foreach(DEMO_SRC ${DEMO_SOURCES})
     get_filename_component(DEMO_NAME ${DEMO_SRC} NAME_WE)
     add_executable(${DEMO_NAME} ${DEMO_SRC})
 
-    target_compile_definitions(${DEMO_NAME} PUBLIC
-        "_EDADB_DEBUG_TRACE_SQL_STMT_=1"
-    )   
+#    target_compile_definitions(${DEMO_NAME} PUBLIC
+#        "_EDADB_DEBUG_TRACE_SQL_STMT_=1"
+#    )   
     
     # include header files
     target_include_directories(${DEMO_NAME} PRIVATE

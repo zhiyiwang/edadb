@@ -367,9 +367,6 @@ protected:
             assert(this->dbmap.getForeignKey().valid());
 
             // bind the foreign key value (1st column in parent)
-//            auto fk_val_ptr = boost::fusion::at_c<Config::fk_ref_pk_col_index>
-//                    (TypeMetaData<ParentType>::getVal(p));
-//            int got = dbstmt.bindColumn(bind_idx++, fk_val_ptr);
             auto fk_def_ptr = boost::fusion::at_c<Config::fk_ref_pk_col_index>
                 (TypeMetaData<ParentType>::getVal(p));
             using DefTypePtr = decltype(fk_def_ptr);

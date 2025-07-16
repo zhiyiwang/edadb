@@ -19,29 +19,52 @@ namespace edadb {
  */
 template<typename T>
 struct VecMetaData {
+    /**
+     * @brief VecElem is a boost::fusion::vector<T>,
+     *   T is pointer type to vector member defined in the class.
+     */
     using VecElem = boost::fusion::vector<>;
+
+    /**
+     * @brief TupTypePairType is a boost::fusion::vector<pair<T, std::string>>
+     *   T is pointer type to vector member defined in the class.
+     *   std::string is the field name of the vector member.
+     */
     using TupTypePairType = boost::fusion::vector<>;
   
+    /**
+     * @brief get the tuple type pair of the vector member.
+     *   This function returns a boost::fusion::vector<pair<T, std::string>>
+     *   where T is pointer type to vector member defined in the class,
+     */
     inline static auto tuple_type_pair() -> TupTypePairType const& {
-        /* Dierectly use this class will cause error during link */
+        /* Directly use this class will cause error during link */
         static_assert(always_false<T>::value,
-            "TypeMetaData<T> must be specialized by macro _EDADB_DEFINE_TABLE_BY_CLASS_WITH_VECTOR_ "
+            "TypeMetaData<T> must be specialized by macro TABLE4CLASS_WVEC_COLNAME"
         );
     
         static const TupTypePairType t{};
         return t;
     }
+
+    /**
+     * @brief get the vector element of the class.
+     */
     inline static VecElem getVecElem(T*) {
         /* Dierectly use this class will cause error during link. */
         static_assert(always_false<T>::value,
-            "TypeMetaData<T> must be specialized by macro _EDADB_DEFINE_TABLE_BY_CLASS_WITH_VECTOR_ "
+            "TypeMetaData<T> must be specialized by macro TABLE4CLASS_WVEC_COLNAME"
         );
         return VecElem{};
     }
+
+    /**
+     * @brief get the vector field names of the class.
+     */
     inline static const std::vector<std::string>& vec_field_names() {
         /* Dierectly use this class will cause error during link. */
         static_assert(always_false<T>::value,
-            "TypeMetaData<T> must be specialized by macro _EDADB_DEFINE_TABLE_BY_CLASS_WITH_VECTOR_ "
+            "TypeMetaData<T> must be specialized by macro TABLE4CLASS_WVEC_COLNAME"
         );
         static const std::vector<std::string> v{};
         return v;
@@ -49,6 +72,7 @@ struct VecMetaData {
   
     enum VecId { MAX = 0 };
 };
+
 
 /**
  * @brief VecMetaDataPrinter provides a way to print the values of a class with vector
@@ -121,5 +145,6 @@ public:
         }
     } // printStatic
 }; // VecMetaDataPrinter
+
 
 } // namespace edadb 

@@ -118,11 +118,11 @@ public:
 }; // IdbPort
 
 
-TABLE4CLASS(IdbRect, "rect_table", (_x))
-TABLE4CLASS(IdbRect2, "rect2_table", (_y))
-
-TABLE4CLASS_WVEC(IdbLayerShape, "layer_shape_table", (_name, _layer), (_rects, _rect2s))
-TABLE4CLASS_WVEC(IdbPort, "port_table", (_name), (_layer_shapes, _rects))
+TABLE4CLASS(IdbRect, "rect_table", (_x), (edadb::TypeMetaTag::UDEF))
+//TABLE4CLASS(IdbRect2, "rect2_table", (_y))
+//
+//TABLE4CLASS_WVEC(IdbLayerShape, "layer_shape_table", (_name, _layer), (_rects, _rect2s))
+//TABLE4CLASS_WVEC(IdbPort, "port_table", (_name), (_layer_shapes, _rects))
 
 
 
@@ -250,7 +250,7 @@ int main(void) {
 #endif
 
 
-#if 1
+#if 0
     // IdbPort ////////////////////////////////////////////
 
     // Define DbMap instance to operate the database table
