@@ -77,10 +77,12 @@ protected:  // some utility functions
         std::vector<std::string>& type;
         std::string prefix;
         uint32_t index = 0;
+        TypeMetaTag meta_tag = TypeMetaTag::INVD; // default tag
 
     public:
-        ColumnNameType(std::vector<std::string>& n, std::vector<std::string>& t,
-            std::string p = "") : name(n), type(t), prefix(p), index(0) {}
+        ColumnNameType(std::vector<std::string>& n, std::vector<std::string>& t, 
+            TypeMetaTag tag = TypeMetaTag::INVD, std::string p = "") :
+            name(n), type(t), prefix(p), index(0), meta_tag(tag) {}
 
         /**
          * @brief Appender for column names to the vector.
@@ -97,28 +99,28 @@ protected:  // some utility functions
             static_assert(TypeInfoTrait<DefType>::is_vector == false,
                 "SqlStatementBase::ColumnNameType: ElemType cannot be a vector type");
 
-            // use variable's sql type decides the column type
-            const std::vector<std::string>& cnames = TypeMetaData<T>::column_names();
-            std::string column_name = cnames[index++];
+            const std::vector<std::string>& cnames = TypeMetaData<T>::column_names(meta_tag);
+            std::string column_name = cnames[index];
+            TypeMetaTag elem_tag = TypeMetaData<T>::col_tags[index]; 
 
             static constexpr SqlType sqlType = TypeInfoTrait<DefType>::sqlType;
             if constexpr (sqlType == SqlType::Composite) {
                 assert((index > 0) &&
                     "SqlStatementBase::ColumnNameType::operator(): composite type should not be the first element");
 
-                const auto vecs = TypeMetaData<CppType>::tuple_type_pair();
+                const auto vecs = TypeMetaData<CppType>::tuple_type_pair(meta_tag);
                 const std::string next_pref = prefix + "_" + column_name + "_";
                 boost::fusion::for_each(
-                    vecs, ColumnNameType<CppType>(name, type, next_pref));
+                    vecs, ColumnNameType<CppType>(name, type, next_pref, elem_tag));
             }
             else if constexpr (sqlType == SqlType::External) {
                 assert ((index > 0) &&
                     "SqlStatementBase::ColumnNameType::operator(): external type should not be the first element");
 
-                const auto vecs = TypeMetaData<Shadow<CppType>>::tuple_type_pair();
+                const auto vecs = TypeMetaData<Shadow<CppType>>::tuple_type_pair(meta_tag);
                 const std::string next_pref = prefix + "_" + column_name + "_";
                 boost::fusion::for_each(
-                    vecs, ColumnNameType<Shadow<CppType>>(name, type, next_pref));
+                    vecs, ColumnNameType<Shadow<CppType>>(name, type, next_pref, elem_tag));
             }
             else if constexpr ((!std::is_enum<CppType>::value /* SqlType::Unknown */) &&
                 ((sqlType == SqlType::CompositeVector) || (sqlType == SqlType::Unknown))) {
@@ -133,6 +135,8 @@ protected:  // some utility functions
                 name.push_back(prefix + column_name);
 //                name.push_back(x.second); // x.second is the name of the member variable
             } // if constexpr sqlType
+
+            ++index;
         } // operator()
     }; // ColumnNameType
 }; // SqlStatementBase

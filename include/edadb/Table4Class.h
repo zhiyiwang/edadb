@@ -65,11 +65,12 @@
 
 // Example:
 //   GENERATE_CLASS_TYPEMETADATA(IdbSite, "table_name",
-//      (name, width, height), ("iname","iwidth","iheight"))
+//      (name, width, height), ("iname","iwidth","iheight"),
+//      (TypeMetaTag::INVD, TypeMetaTag::UDEF, TypeMetaTag::PKEY), SqlType::Composite)
 // Explain:
 //   Create TypeMetaData class for IdbSite for the member varibles (name, width, height),
 //   use ("iname","iwidth","iheight")) as name instead
-#define GENERATE_CLASS_TYPEMETADATA(CLASSNAME, TABLENAME, CLASS_ELEMS, COLNAMES, SQLTYPE) \
+#define GENERATE_CLASS_TYPEMETADATA(CLASSNAME, TABLENAME, CLASS_ELEMS, COLNAMES, COLTAGS, SQLTYPE) \
 BOOST_FUSION_ADAPT_STRUCT(CLASSNAME, BOOST_PP_TUPLE_REM_CTOR(CLASS_ELEMS)) ; \
 namespace edadb { \
 template<> \
@@ -78,6 +79,8 @@ struct Cpp2SqlTypeTrait<CLASSNAME>{\
 };\
 template<> struct TypeMetaData<CLASSNAME>{ \
     using T = CLASSNAME; \
+    /* parse COLTAGS to init vector for each class elem */ \
+    std::vector<TypeMetaTag> col_tags = {BOOST_PP_TUPLE_REM_CTOR(COLTAGS)}; \
     \
     /* class and table name */ \
     inline static std::string const& class_name(){\
@@ -92,149 +95,135 @@ template<> struct TypeMetaData<CLASSNAME>{ \
     /* member names */ \
     inline static const std::vector<std::string>& member_names(TypeMetaTag tag) { \
         switch (tag) { \
-            case TypeMetaTag::UDEF: \
-                return member_names_impl<TypeMetaTag::UDEF>(); \
-            case TypeMetaTag::PKEY: \
-                return member_names_impl<TypeMetaTag::PKEY>(); \
-            default: \
-                static_assert(always_false<T>::value, "TypeMetaTag must be either UDEF or PKEY"); \
-                return std::vector<std::string>{}; \
-    } \
-    template<TypeMetaTag Tag> \
-    inline static const std::vector<std::string>& member_names_impl()  { \
-        if constexpr (Tag == TypeMetaTag::UDEF) { \
-            static const std::vector<std::string> names = {EXPAND_member_names(CLASS_ELEMS)}; \
-            return names; \
-        } else if constexpr (Tag == TypeMetaTag::PKEY) { \
-            static const std::vector<std::string> names = { \
-                BOOST_STRINGIZE(BOOST_PP_TUPLE_ELEM(0, CLASS_ELEMS)) \
-            }; \
-            return names; \
-        } else { \
-            static_assert(always_false<T>::value, "TypeMetaTag must be either UDEF or PKEY"); \
-            return std::vector<std::string>{}; \
+            case TypeMetaTag::UDEF: {\
+                static const std::vector<std::string> names = {EXPAND_member_names(CLASS_ELEMS)}; \
+                return names; \
+            } \
+            case TypeMetaTag::PKEY: {\
+                static const std::vector<std::string> names = { \
+                    BOOST_STRINGIZE(BOOST_PP_TUPLE_ELEM(0, CLASS_ELEMS)) \
+                }; \
+                return names; \
+            } \
+            default: { \
+                std::cerr << "TypeMetaData::member_names: unknown tag" << std::endl; \
+                assert(false); \
+                static const std::vector<std::string> empty_names; \
+                return empty_names; \
+            } \
         } \
     } \
     \
     /* column names */ \
     inline static const std::vector<std::string>& column_names(TypeMetaTag tag) { \
         switch (tag) { \
-            case TypeMetaTag::UDEF: \
-                return column_names_impl<TypeMetaTag::UDEF>(); \
-            case TypeMetaTag::PKEY: \
-                return column_names_impl<TypeMetaTag::PKEY>(); \
-            default: \
-                static_assert(always_false<T>::value, "TypeMetaTag must be either UDEF or PKEY"); \
-                return std::vector<std::string>{}; \
-        } \
-    } \
-    template<TypeMetaTag Tag> \
-    inline static const std::vector<std::string>& column_names_impl() { \
-        if constexpr (Tag == TypeMetaTag::UDEF) { \
-            static const std::vector<std::string> names = {BOOST_PP_TUPLE_REM_CTOR(COLNAMES)}; \
-            return names; \
-        } else if constexpr (Tag == TypeMetaTag::PKEY) { \
-            static const std::vector<std::string> names = { \
-                BOOST_STRINGIZE(BOOST_PP_TUPLE_ELEM(0, COLNAMES)) \
-            }; \
-            return names; \
-        } else { \
-            static_assert(always_false<T>::value, "TypeMetaTag must be either UDEF or PKEY"); \
-            return std::vector<std::string>{}; \
+            case TypeMetaTag::UDEF: { \
+                static const std::vector<std::string> names = {BOOST_PP_TUPLE_REM_CTOR(COLNAMES)}; \
+                return names; \
+            } \
+            case TypeMetaTag::PKEY: { \
+                static const std::vector<std::string> names = { \
+                    BOOST_STRINGIZE(BOOST_PP_TUPLE_ELEM(0, COLNAMES)) \
+                }; \
+                return names; \
+            } \
+            default: { \
+                std::cerr << "TypeMetaData::column_names: unknown tag" << std::endl; \
+                assert(false); \
+                static const std::vector<std::string> empty_names; \
+                return empty_names; \
+            } \
         } \
     } \
     \
     /* TupType for getVal */ \
-    template<TypeMetaTag Tag> struct TupTypeStruct; \
+    template<TypeMetaTag Tag> struct TupTypeStruct { \
+        using type = boost::fusion::vector<>; \
+    }; \
     template<TypeMetaTag Tag> \
     using TupType = typename TupTypeStruct<Tag>::type; \
     using TupTypeVariant = boost::variant<TupType<TypeMetaTag::UDEF>, TupType<TypeMetaTag::PKEY>>;\
     \
-    inline static TupTypeVariant getVal(CLASSNAME* obj, TypeMetaTag tag) { \
-        switch (tag) { \
-            case TypeMetaTag::UDEF: \
-                return getVal_impl<TypeMetaTag::UDEF>(obj); \
-            case TypeMetaTag::PKEY: \
-                return getVal_impl<TypeMetaTag::PKEY>(obj); \
-            default: \
-                static_assert(always_false<T>::value, "TypeMetaTag must be either UDEF or PKEY"); \
-                return TupTypeVariant{}; \
-        } \
-    } \
-    template<TypeMetaTag Tag> \
-    inline static TupTypeVariant getVal_impl(CLASSNAME* obj) { \
-        if constexpr (Tag == TypeMetaTag::UDEF) { \
-            return TupType<TypeMetaTag::UDEF>{ \
-                GENERATE_ObjVal(BOOST_PP_TUPLE_PUSH_FRONT(CLASS_ELEMS, CLASSNAME)) \
-            }; \
-        } else if constexpr (Tag == TypeMetaTag::PKEY) { \
-            return TupType<TypeMetaTag::PKEY>{ \
-                GENERATE_ObjVal(BOOST_PP_TUPLE_PUSH_FRONT( \
-                    (BOOST_PP_TUPLE_ELEM(0, CLASS_ELEMS)), CLASSNAME)) \
-            }; \
-        } else { \
-            static_assert(always_false<T>::value, "TypeMetaTag must be either UDEF or PKEY"); \
-            return TupTypeVariant{}; \
-        } \
-    } \
+    inline static TupTypeVariant getVal(CLASSNAME* obj, TypeMetaTag tag) ; \
     \
     /* TupTypePair for */ \
-    template<TypeMetaTag Tag> struct TupTypePairStruct; \
+    template<TypeMetaTag Tag> struct TupTypePairStruct { \
+        using type = boost::fusion::vector<>; \
+    }; \
     template<TypeMetaTag Tag> \
     using TupTypePairType = typename TupTypePairStruct<Tag>::type; \
     using TupTypePairVariant = boost::variant<TupTypePairType<TypeMetaTag::UDEF>, TupTypePairType<TypeMetaTag::PKEY>>;\
     \
-    inline static TupTypePairVariant tuple_type_pair(CLASSNAME* obj, TypeMetaTag tag) { \
-        switch (tag) { \
-            case TypeMetaTag::UDEF: \
-                return tuple_type_pair_impl<TypeMetaTag::UDEF>(obj); \
-            case TypeMetaTag::PKEY: \
-                return tuple_type_pair_impl<TypeMetaTag::PKEY>(obj); \
-            default: \
-                static_assert(always_false<T>::value, "TypeMetaTag must be either UDEF or PKEY"); \
-                return TupTypePairVariant{}; \
-        } \
-    } \
-    template<TypeMetaTag Tag> \
-    inline static TupTypePairVariant tuple_type_pair_impl(CLASSNAME* obj) { \
-        if constexpr (Tag == TypeMetaTag::UDEF) { \
-            return TupTypePair<TypeMetaTag::UDEF>{ \
-                GENERATE_TupTypePairObj(BOOST_PP_TUPLE_PUSH_FRONT(CLASS_ELEMS, CLASSNAME)) \
-            }; \
-        } else if constexpr (Tag == TypeMetaTag::PKEY) { \
-            return TupTypePair<TypeMetaTag::PKEY>{ \
-                GENERATE_TupTypePairObj(BOOST_PP_TUPLE_PUSH_FRONT( \
-              u     (BOOST_PP_TUPLE_ELEM(0, CLASS_ELEMS)), CLASSNAME)) \
-            }; \
-        } else { \
-            static_assert(always_false<T>::value, "TypeMetaTag must be either UDEF or PKEY"); \
-            return TupTypePairVariant{}; \
-        } \
-    } \
-}; /* TypeMetaData<CLASSNAME> */ \
+    inline static TupTypePairVariant tuple_type_pair(TypeMetaTag tag) ; \
+}; \
 \
-template<> struct TypeMetaData<CLASSNAME>::TupTypeStruct<TypeMetaTag::UDEF> { \
+template<> /* CLASSNAME */ \
+template<> /* TypeMetaTag::UDEF */ \
+struct TypeMetaData<CLASSNAME>::TupTypeStruct<TypeMetaTag::UDEF> { \
     using type = boost::fusion::vector< /* all columns in CLASS_ELEMS */ \
         GENERATE_TupType(BOOST_PP_TUPLE_PUSH_FRONT(CLASS_ELEMS, CLASSNAME)) \
     >; \
 }; \
-template<> struct TypeMetaData<CLASSNAME>::TupTypeStruct<TypeMetaTag::PKEY> { \
+template<> /* CLASSNAME */ \
+template<> /* TypeMetaTag::PKEY */ \
+struct TypeMetaData<CLASSNAME>::TupTypeStruct<TypeMetaTag::PKEY> { \
     using type = boost::fusion::vector< /* only first column in CLASS_ELEMS */ \
         GENERATE_TupType(BOOST_PP_TUPLE_PUSH_FRONT( \
             (BOOST_PP_TUPLE_ELEM(0, CLASS_ELEMS)), CLASSNAME)) \
     >; \
 }; \
 \
-template<> struct TypeMetaData<CLASSNAME>::TupTypePairStruct<TypeMetaTag::UDEF> { \
+template<> /* CLASSNAME */ \
+template<> /* TypeMetaTag::UDEF */ \
+struct TypeMetaData<CLASSNAME>::TupTypePairStruct<TypeMetaTag::UDEF> { \
     using type = boost::fusion::vector< /* all columns in CLASS_ELEMS */ \
         GENERATE_TupTypePair(BOOST_PP_TUPLE_PUSH_FRONT(CLASS_ELEMS, CLASSNAME)) \
     >; \
 }; \
-template<> struct TypeMetaData<CLASSNAME>::TupTypePairStruct<TypeMetaTag::PKEY> { \
+template<> /* CLASSNAME */ \
+template<> /* TypeMetaTag::PKEY */ \
+struct TypeMetaData<CLASSNAME>::TupTypePairStruct<TypeMetaTag::PKEY> { \
     using type = boost::fusion::vector< /* only first column in CLASS_ELEMS */ \
         GENERATE_TupTypePair(BOOST_PP_TUPLE_PUSH_FRONT( \
             (BOOST_PP_TUPLE_ELEM(0, CLASS_ELEMS)), CLASSNAME)) \
     >; \
+\
+\
+inline typename TypeMetaData<CLASSNAME>::TupTypeVariant \
+    TypeMetaData<CLASSNAME>::TgetVal(CLASSNAME* obj, TypeMetaTag tag) { \
+    switch (tag) { \
+        case TypeMetaTag::UDEF: \
+            return TupType<TypeMetaTag::UDEF>{ \
+                GENERATE_ObjVal(BOOST_PP_TUPLE_PUSH_FRONT(CLASS_ELEMS, CLASSNAME)) \
+            }; \
+        case TypeMetaTag::PKEY: \
+            return TupType<TypeMetaTag::PKEY>{ \
+                GENERATE_ObjVal(BOOST_PP_TUPLE_PUSH_FRONT( \
+                    (BOOST_PP_TUPLE_ELEM(0, CLASS_ELEMS)), CLASSNAME)) \
+            }; \
+        default: \
+            assert(false); \
+            return TupTypeVariant{}; \
+    } \
+} \
+\
+inline typename TypeMetaData<CLASSNAME>::TupTypePairVariant \
+    TypeMetaData<CLASSNAME>::tuple_type_pair(TypeMetaTag tag) { \
+    switch (tag) { \
+        case TypeMetaTag::UDEF: \
+            return TupTypePair<TypeMetaTag::UDEF>{ \
+                GENERATE_TupTypePairObj(BOOST_PP_TUPLE_PUSH_FRONT(CLASS_ELEMS, CLASSNAME)) \
+            }; \
+        case TypeMetaTag::PKEY: \
+            return TupTypePair<TypeMetaTag::PKEY>{ \
+                GENERATE_TupTypePairObj(BOOST_PP_TUPLE_PUSH_FRONT( \
+                    (BOOST_PP_TUPLE_ELEM(0, CLASS_ELEMS)), CLASSNAME)) \
+            }; \
+        default: \
+            assert(false); \
+            return TupTypePairVariant{}; \
+    } \
+} \
 }; \
 } /* namespace edadb */
 // namespace edadb for Macro GENERATE_CLASS_TYPEMETADATA
@@ -250,8 +239,8 @@ template<> struct TypeMetaData<CLASSNAME>::TupTypePairStruct<TypeMetaTag::PKEY> 
  * @param CLASS_ELEMS The tuple of class elements.
  * @param COLNAMES The tuple of column names.
  */
-#define TABLE4CLASS_COLNAME(CLASSNAME, TABLENAME, CLASS_ELEMS, COLNAMES) \
-GENERATE_CLASS_TYPEMETADATA(CLASSNAME, TABLENAME, CLASS_ELEMS, COLNAMES, SqlType::Composite) 
+#define TABLE4CLASS_COLNAME(CLASSNAME, TABLENAME, CLASS_ELEMS, COLNAMES, COLTAGS) \
+GENERATE_CLASS_TYPEMETADATA(CLASSNAME, TABLENAME, CLASS_ELEMS, COLNAMES, COLTAGS, SqlType::Composite) 
 
 /**
  * @fn TABLE4CLASS
@@ -260,8 +249,10 @@ GENERATE_CLASS_TYPEMETADATA(CLASSNAME, TABLENAME, CLASS_ELEMS, COLNAMES, SqlType
  * @param TABLENAME The name of the table.
  * @param CLASS_ELEMS The tuple of class elements.
  */
-#define TABLE4CLASS(CLASSNAME, TABLENAME, CLASS_ELEMS) \
-GENERATE_CLASS_TYPEMETADATA(CLASSNAME, TABLENAME, CLASS_ELEMS, (EXPAND_member_names(CLASS_ELEMS)), SqlType::Composite)
+//TODO: params: (CLASSNAME, TABLENAME, CLASS_ELEMS_UDEF, CLASS_ELEMS_PKEY) \
+#define TABLE4CLASS(CLASSNAME, TABLENAME, CLASS_ELEMS, COLTAGS) \
+GENERATE_CLASS_TYPEMETADATA(CLASSNAME, TABLENAME, CLASS_ELEMS, \
+    (EXPAND_member_names(CLASS_ELEMS)), COLTAGS, SqlType::Composite)
 
 /**
  * @fn Table4ExternalClass

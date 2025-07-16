@@ -29,4 +29,4 @@ include_directories(${CMAKE_SOURCE_DIR}/include/edadb/backend/duckdb)
 
 # Add the thirdparty directory for external libraries
 add_subdirectory(src)
-#add_subdirectory(demo)
+add_subdirectory(demo)

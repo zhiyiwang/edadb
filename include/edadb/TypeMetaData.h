@@ -17,10 +17,11 @@ namespace edadb {
  */
 enum struct TypeMetaTag : uint8_t {
     INVD = 0, // invalid, default value
-    UDEF = 1, // user-defined, type meta data contains user defined columns
-    PKEY = 2, // primary key ONLY, type meta data contains primary key columns only
+    ALL = 1, // all user defined columns
+    PKONLY = 2, // primary key ONLY, type meta data contains primary key columns only
     Max  = 3  // Not available, used fok'k enum size
 };
+
 
 /**
  * @brief type meta data info: class name and table name
