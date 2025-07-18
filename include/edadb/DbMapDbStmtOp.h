@@ -361,15 +361,43 @@ protected:
         }
 
 
+        // bind the primary key member(s) to the database
+        // primary key member(s) are always the first element(s) in the tuple
+        auto pk_values = TypeMetaData<T>::getPkVal(obj);
+        if (!boost::fusion::empty(pk_values)) {
+            boost::fusion::for_each(
+                pk_values,
+                [this, &ok](auto const &pk_elem) {
+                    using PkMemElemType = typename std::remove_reference_t<decltype(pk_elem)>;
+                    using PkMemDefType = typename remove_const_and_pointer<PkMemElemType>::type;
+                    using PkMemCppType = typename TypeInfoTrait<PkMemDefType>::CppType;
+                    PkMemCppType *pk_val_ptr = TypeInfoTrait<PkMemDefType>::getCppPtr2Bind(pk_elem);
+
+                    auto pk_mem_values = TypeMetaData<PkMemCppType>::getVal(pk_val_ptr); 
+                    if constexpr(boost::fusion::result_of::size<decltype(pk_mem_values)>::value > 0) {
+                        auto pk_val_pk_ptr = boost::fusion::at_c<0>(pk_mem_values);
+
+                        using PkValDefTypePtr = typename std::remove_reference_t<decltype(pk_val_pk_ptr)>; 
+                        using PkValDefType = typename remove_const_and_pointer<PkValDefTypePtr>::type;
+                        using PkValCppType = typename TypeInfoTrait<PkValDefType>::CppType;
+                        PkValCppType *pk_val_ptr2bind = TypeInfoTrait<PkValDefType>::getCppPtr2Bind(pk_val_pk_ptr);
+                        assert(pk_val_ptr2bind != nullptr &&
+                            "DbMap::Writer::bindObject: primary key value pointer is null");
+                        
+                        int got = dbstmt.bindColumn(bind_idx++, pk_val_ptr2bind);
+                        ok = got < 0 ? got : ok + got;
+                    }
+               } // lambda function
+            ); // boost::fusion::for_each
+        } // if 
+
+
         // ignore no ParentType (= void) during compile time
         // Otherwise, bind DbMap<T> foreign key value from ParentType p
         if constexpr (!std::is_same_v<ParentType, void>) {
             assert(this->dbmap.getForeignKey().valid());
 
             // bind the foreign key value (1st column in parent)
-//            auto fk_val_ptr = boost::fusion::at_c<Config::fk_ref_pk_col_index>
-//                    (TypeMetaData<ParentType>::getVal(p));
-//            int got = dbstmt.bindColumn(bind_idx++, fk_val_ptr);
             auto fk_def_ptr = boost::fusion::at_c<Config::fk_ref_pk_col_index>
                 (TypeMetaData<ParentType>::getVal(p));
             using DefTypePtr = decltype(fk_def_ptr);

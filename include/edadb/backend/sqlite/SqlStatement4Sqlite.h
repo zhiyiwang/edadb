@@ -43,7 +43,7 @@ public:
         sql = "CREATE TABLE IF NOT EXISTS \""+ table_name +"\" (";
 
         /*
-         * get column name and type from TypeMetaData<T>::tuk'kle_type_pair()
+         * get column name and type from TypeMetaData<T>::tuple_type_pair()
          * NOTE:
          * 1. column name: use user defined name
          * 2. type: is the SQL type name string, such as "INTEGER", "TEXT", etc.
@@ -59,6 +59,50 @@ public:
             sql += (i == 0) ? (name[i] + " " + type[i] + " PRIMARY KEY") :
                 (", " + name[i] + " " + type[i]);
         }
+
+
+        // member object variables only has one primary key 
+        const auto& pk_col_name = TypeMetaData<T>::pk_column_names();  
+        const auto& pk_mem_vec = TypeMetaData<T>::pk_tuple_type_pair();
+        const std::size_t N = pk_col_name.size();
+
+        std::size_t idx = 0;
+        boost::fusion::for_each(pk_mem_vec, [&](auto const& member_pair){
+            const std::string& col_name = pk_col_name[idx];
+        
+            using Pair = typename std::remove_reference<decltype(member_pair)>::type;
+            using PkMemElemType = typename Pair::first_type;
+            using PkMemDefType  = typename remove_const_and_pointer<PkMemElemType>::type;
+            using PkMemCppType  = typename TypeInfoTrait<PkMemDefType>::CppType;
+            static_assert(!TypeInfoTrait<PkMemDefType>::is_vector,
+                "SqlStatementImpl::createTableStatement: PkMemElemType cannot be a vector type");
+            
+            const auto& nested_col_names = TypeMetaData<PkMemCppType>::column_names();
+            assert(!nested_col_names.empty());
+            const std::string& nested_pk_col = nested_col_names[0];
+            std::string full_col = col_name + "_" 
+                + TypeMetaData<PkMemCppType>::table_name()
+                + "_" + nested_pk_col;
+
+
+            using NestedPair = std::remove_reference_t<
+                decltype(
+                  boost::fusion::at_c<0>(
+                    TypeMetaData<PkMemCppType>::tuple_type_pair()
+                  )
+                )
+            >;
+            using PkMemPkElemType= typename NestedPair::first_type;
+            using PkMemPkDefType = typename remove_const_and_pointer<PkMemPkElemType>::type;
+            using PkMemPkCppType = typename TypeInfoTrait<PkMemPkDefType>::CppType;
+            std::string sql_type = getSqlTypeString<PkMemPkCppType>();
+
+            sql += ", " + full_col + " " + sql_type;
+                    
+            ++idx;
+        });
+        assert(idx == N);
+
 
         // foreign key constraints
         if (fk.valid()) {
@@ -111,6 +155,36 @@ public:
             sql += (i > 0 ? ", " : "") + name[i];
         }
 
+
+        // member object variables only has one primary key
+        const auto& pk_col_name = TypeMetaData<T>::pk_column_names();
+        const auto& pk_mem_vec = TypeMetaData<T>::pk_tuple_type_pair();
+        const std::size_t N = pk_col_name.size();
+
+        std::size_t idx = 0;
+        boost::fusion::for_each(pk_mem_vec, [&](auto const& member_pair){
+            const std::string& col_name = pk_col_name[idx];
+
+            using Pair = typename std::remove_reference<decltype(member_pair)>::type;
+            using PkMemElemType = typename Pair::first_type;
+            using PkMemDefType  = typename remove_const_and_pointer<PkMemElemType>::type;
+            using PkMemCppType  = typename TypeInfoTrait<PkMemDefType>::CppType;
+            static_assert(!TypeInfoTrait<PkMemDefType>::is_vector,
+                "SqlStatementImpl::insertPlaceHolderStatement: PkMemElemType cannot be a vector type");  
+
+            const auto& nested_col_names = TypeMetaData<PkMemCppType>::column_names();
+            assert(!nested_col_names.empty());
+            const std::string& nested_pk_col = nested_col_names[0];
+            std::string full_col = col_name + "_"
+                + TypeMetaData<PkMemCppType>::table_name()
+                + "_" + nested_pk_col;
+
+            sql += ", " + full_col;
+            ++idx;
+        }); // for_each
+        assert(idx == N);
+
+
         // foreign key columns
         if (fk.valid()) {
             assert(fk.column.size() == fk.type.size());
@@ -127,6 +201,11 @@ public:
         for (size_t i = 0; i < name.size(); ++i) {
             sql += (i > 0 ? ", ?" : "?");
         }
+
+        // foreach primary key member variable, append one place holder 
+        for (size_t i = 0; i < N; ++i) {
+            sql += ", ?"; 
+        } // for
 
         // has foreign key
         if (fk.valid()) {
@@ -158,6 +237,38 @@ public:
         for (int i = 0; i < name.size(); ++i) {
             sql += (i > 0 ? ", " : "") + name[i] + " = ?";
         }
+
+
+        // member object variables only has one primary key
+        const auto& pk_col_name = TypeMetaData<T>::pk_column_names();
+        const auto& pk_mem_vec = TypeMetaData<T>::pk_tuple_type_pair();
+        const std::size_t N = pk_col_name.size();
+
+        std::size_t idx = 0;
+        boost::fusion::for_each(pk_mem_vec, [&](auto const& member_pair){
+            const std::string& col_name = pk_col_name[idx];
+
+            using Pair = typename std::remove_reference<decltype(member_pair)>::type;
+            using PkMemElemType = typename Pair::first_type;
+            using PkMemDefType  = typename remove_const_and_pointer<PkMemElemType>::type;
+            using PkMemCppType  = typename TypeInfoTrait<PkMemDefType>::CppType;
+            static_assert(!TypeInfoTrait<PkMemDefType>::is_vector,
+                "SqlStatementImpl::updatePlaceHolderStatement: PkMemElemType cannot be a vector type"); 
+
+            
+            const auto& nested_col_names = TypeMetaData<PkMemCppType>::column_names();
+            assert(!nested_col_names.empty());
+            const std::string& nested_pk_col = nested_col_names[0];
+            std::string full_col = col_name + "_"
+                + TypeMetaData<PkMemCppType>::table_name()
+                + "_" + nested_pk_col;
+
+            sql += ", " + full_col + " = ?"; // append place holder for each primary key
+            ++idx;
+        }); // for_each
+        assert(idx == N);
+
+
         if (fk.valid()) {
             assert(fk.column.size() == fk.type.size());
 
@@ -208,6 +319,36 @@ public:
         for (int i = 0; i < name.size(); ++i) {
             sql += (i > 0 ? ", " : "") + name[i];
         }
+
+
+        // member object variables only has one primary key
+        const auto& pk_col_name = TypeMetaData<T>::pk_column_names();
+        const auto& pk_mem_vec = TypeMetaData<T>::pk_tuple_type_pair();
+        const std::size_t N = pk_col_name.size();
+
+        std::size_t idx = 0;
+        boost::fusion::for_each(pk_mem_vec, [&](auto const& member_pair){
+            const std::string& col_name = pk_col_name[idx];
+
+            using Pair = typename std::remove_reference<decltype(member_pair)>::type;
+            using PkMemElemType = typename Pair::first_type;
+            using PkMemDefType  = typename remove_const_and_pointer<PkMemElemType>::type;
+            using PkMemCppType  = typename TypeInfoTrait<PkMemDefType>::CppType;
+            static_assert(!TypeInfoTrait<PkMemDefType>::is_vector,
+                "SqlStatementImpl::projectAllStatement: PkMemElemType cannot be a vector type");
+
+            const auto& nested_col_names = TypeMetaData<PkMemCppType>::column_names();
+            assert(!nested_col_names.empty());
+            const std::string& nested_pk_col = nested_col_names[0];
+            std::string full_col = col_name + "_"
+                + TypeMetaData<PkMemCppType>::table_name()
+                + "_" + nested_pk_col; 
+            
+            sql += ", " + full_col; // append primary key column name
+            ++idx;
+        }); // for_each
+        assert(idx == N);
+
 
         // foreign key columns
         if (fk.valid()) {

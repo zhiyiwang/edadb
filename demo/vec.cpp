@@ -5,9 +5,29 @@
 
 #include "edadb.h"
 
+struct IdbLevel {
+public:
+    int _level = 10;
+    std::string _name = "level_name";
+
+public:
+    ~IdbLevel(void) = default;
+    IdbLevel (void) = default;
+    IdbLevel (int l, std::string n) : _level(l), _name(n) {}
+    IdbLevel (const IdbLevel& obj) : _level(obj._level), _name(obj._name) {}    
+public:
+    void clear(void) { _level = 0; _name.clear(); }
+    void print(const std::string& pref = "") const {
+        std::cout << pref << "[IdbLevel]: _level=" << _level << ", _name=\"" << _name << "\"" << std::endl;
+    }
+};
+
+
+
 struct IdbRect {
 public:
     int _x;
+    IdbLevel _level; // nested class
 
 public:
     ~IdbRect(void) = default;
@@ -20,6 +40,7 @@ public:
 
     void print(const std::string& pref = "") const {
         std::cout << pref << "[IdbRect]: _x=" << _x << std::endl;
+        _level.print(pref + "  ");
     }
 };
 
@@ -117,12 +138,13 @@ public:
     } // print
 }; // IdbPort
 
+TABLE4CLASS(IdbLevel, "lvl_tab", (_level, _name))
 
-TABLE4CLASS(IdbRect, "rect_table", (_x))
+TABLE4CLASS_WITH_PKEY(IdbRect, "rect_table", (_x), (_level))
 TABLE4CLASS(IdbRect2, "rect2_table", (_y))
 
-TABLE4CLASS_WVEC(IdbLayerShape, "layer_shape_table", (_name, _layer), (_rects, _rect2s))
-TABLE4CLASS_WVEC(IdbPort, "port_table", (_name), (_layer_shapes, _rects))
+//TABLE4CLASS_WVEC(IdbLayerShape, "layer_shape_table", (_name, _layer), (_rects, _rect2s))
+//TABLE4CLASS_WVEC(IdbPort, "port_table", (_name), (_layer_shapes, _rects))
 
 
 
@@ -163,15 +185,15 @@ int main(void) {
     port2._layer_shapes.push_back(shape2);
     port2._rects.emplace_back(222);
 
-    if (0) {
-        // Check Object ////////////////////////////////////////////
-        std::cout << "================ Demo Vector Init ================" << std::endl;
-        port1.print();
-        port2.print();
-
-        edadb::VecMetaDataPrinter<IdbLayerShape> printer;
-        printer.printStatic();
-    } // if 
+//    if (0) {
+//        // Check Object ////////////////////////////////////////////
+//        std::cout << "================ Demo Vector Init ================" << std::endl;
+//        port1.print();
+//        port2.print();
+//
+//        edadb::VecMetaDataPrinter<IdbLayerShape> printer;
+//        printer.printStatic();
+//    } // if 
 
 
     // init database 
@@ -182,6 +204,42 @@ int main(void) {
         return 1;
     }
     std::cout << std::endl << std::endl;
+
+#if 1
+    // IdbRect ////////////////////////////////////////////
+    {
+        IdbRect rect1(1); rect1._level._level = 100; rect1._level._name = "rect1_level"; 
+        IdbRect rect2(2); rect2._level._level = 200; rect2._level._name = "rect2_level";
+
+        std::cout << "DbMap<" << typeid(IdbRect).name() << ">" << std::endl;
+        edadb::DbMap<IdbRect> dbm_rect;
+
+        // Create table
+        std::cout << "[DbMap CreateTable]" << std::endl;
+        if (!edadb::createTable(dbm_rect)) {
+            std::cerr << "DbMap::createTable failed" << std::endl;
+            return 1; 
+        }
+
+        // Insert objects
+        std::cout << "[DbMap Insert]" << std::endl;
+        if (!edadb::insertObject(dbm_rect, &rect1)) {
+            std::cerr << "DbMap::Writer::insert failed" << std::endl;
+            return 1;
+        }
+        if (!edadb::insertObject(dbm_rect, &rect2)) {
+            std::cerr << "DbMap::Writer::insert failed" << std::endl;
+            return 1;
+        }
+        std::cout << std::endl << std::endl;
+
+        // Scan table
+        std::cout << "[DbMap Scan]" << std::endl;
+        scanTable(dbm_rect);
+        std::cout << std::endl << std::endl;
+    }
+
+#endif 
 
 
 #if 0
@@ -250,7 +308,7 @@ int main(void) {
 #endif
 
 
-#if 1
+#if 0
     // IdbPort ////////////////////////////////////////////
 
     // Define DbMap instance to operate the database table

@@ -143,6 +143,8 @@ protected:
      * @return true if read successfully; otherwise, false.
      */
     bool readObject(T *obj) {
+        bool ok = true;
+
         // 1. reset read index to read  
         this->resetReadIndex();
 
@@ -156,14 +158,47 @@ protected:
         auto values = TypeMetaData<T>::getVal(obj);
         boost::fusion::for_each(
             values,
-            [this](auto const &ne) { this->fetchFromColumn(ne); }
+            [this, &ok](auto const &ne) {
+                int got = this->fetchFromColumn(ne);
+                ok = got < 0 ? got : ok + got;
+            }
         );
+        if (!ok) { return false; } // fetch failed
+             
 
-        // 4. CompositeVector type: use this obj as primary key tuple to read the child
+        // 4. read the primary key value from the object
+        auto pk_values = TypeMetaData<T>::getPkVal(obj);
+        if (!boost::fusion::empty(pk_values)) {
+            boost::fusion::for_each(
+                pk_values,
+                [this, &ok](auto const &pk_elem) {
+                    using PkMemElemType = typename std::remove_reference_t<decltype(pk_elem)>;
+                    using PkMemDefType = typename remove_const_and_pointer<PkMemElemType>::type;
+                    using PkMemCppType = typename TypeInfoTrait<PkMemDefType>::CppType;
+                    PkMemCppType *pk_val_ptr = TypeInfoTrait<PkMemDefType>::getCppPtr2Fetch(pk_elem);
+
+                    auto pk_mem_values = TypeMetaData<PkMemCppType>::getVal(pk_val_ptr);
+                    if constexpr(boost::fusion::result_of::size<decltype(pk_mem_values)>::value > 0) {
+                        auto pk_val_pk_ptr = boost::fusion::at_c<0>(pk_mem_values);
+
+                        using PkValDefTypePtr = typename std::remove_reference_t<decltype(pk_val_pk_ptr)>;
+                        using PkValDefType = typename remove_const_and_pointer<PkValDefTypePtr>::type;
+                        using PkValCppType = typename TypeInfoTrait<PkValDefType>::CppType;
+                        PkValCppType *pk_val_pk = TypeInfoTrait<PkValDefType>::getCppPtr2Fetch(pk_val_pk_ptr);
+
+                        int got = this->fetchFromColumn(pk_val_pk);
+                        ok = got < 0 ? got : ok + got;
+                    } // if
+                } // lambda function
+            ); // for_each
+        } // if
+        if (!ok) { return false; } // fetch failed
+
+
+        // 5. CompositeVector type: use this obj as primary key tuple to read the child
         // constexpr to avoid compile time error
         if constexpr (TypeInfoTrait<T>::sqlType == SqlType::CompositeVector) {
             std::size_t vidx = 0;
-            bool ok = true;
             auto ve = VecMetaData<T>::getVecElem(obj);
             boost::fusion::for_each(
                 ve,
@@ -174,7 +209,7 @@ protected:
             ); // for_each
         } // if 
 
-        return true;
+        return ok;
     } // readObject
 
 
