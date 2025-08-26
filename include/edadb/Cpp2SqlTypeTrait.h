@@ -75,7 +75,8 @@ MAP_CPP_TO_SQL_TYPE(bool          , SqlType::Boolean)
  */
 template<typename T>
 inline std::string const &getSqlTypeString() {
-    return sqlTypeString< Cpp2SqlTypeTrait<T>::sqlType >();
+    using U = canonical_t<T>;
+    return sqlTypeString< Cpp2SqlTypeTrait<U>::sqlType >();
 } // getSqlTypeString
 
  

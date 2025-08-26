@@ -65,6 +65,40 @@ struct remove_cvref_and_make_pointer {
 }; // remove_cvref_and_make_pointer
 
 
+////////////////////////////////////////////////////////////////////////////////
+/*
+ * @brief canonical_type: Type trait to get the canonical type by removing
+ *        const, volatile, reference, pointer, and enum to its underlying type.
+ */
+
+/**
+ * @brief lazy type identity to delay the evaluation of a type
+ */
+template<class T>
+struct type_identity { using type = T; };
+
+template<class T>
+using remove_cvref_t = typename remove_cvref<T>::type;
+
+template<class T>
+struct canonical_type {
+  using A = remove_cvref_t<T>; 
+  using B = std::conditional_t<std::is_pointer_v<A>,
+                               std::remove_pointer_t<A>, A>;
+  // lazy evaluation of underlying_type
+  using type = typename std::conditional_t<
+      std::is_enum_v<B>,
+      std::underlying_type<B>,
+      type_identity<B> // lazy evaluation
+    >::type;
+};
+
+template<class T>
+using canonical_t = typename canonical_type<T>::type;
+
+////////////////////////////////////////////////////////////////////////////////
+
+
 /**
  * @brief Print the type name of a given type
  */

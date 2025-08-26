@@ -258,7 +258,7 @@ protected:
             shadow.fromShadow(cpp_val_ptr);
         }
         else if constexpr (std::is_enum_v<CppType>) {
-            if (not_null = !this->dbstmt.fetchNull(read_idx)) {
+            if (not_null = (!this->dbstmt.fetchNull(read_idx))) {
                 using U = std::underlying_type_t<CppType>; // underlying type of enum
                 U tmp;
                 this->dbstmt.fetchColumn(read_idx++, &tmp);
@@ -267,7 +267,7 @@ protected:
         }
         else {
             // if is nullptr, we need to bind the column to nullptr
-            if (not_null = !this->dbstmt.fetchNull(read_idx)) {
+            if (not_null = (!this->dbstmt.fetchNull(read_idx))) {
                 // read the element from the database
                 // only base type needs to be read
                 this->dbstmt.fetchColumn(read_idx, cpp_val_ptr);
