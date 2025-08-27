@@ -54,10 +54,13 @@ public:
         assert (name.size() == type.size());
         assert (name.size() > 0);
 
+        // Cpp2SqlTypeTrait<T> of class T decide whether define primary key
+        sql += name[0] + " " + type[0];
+        sql += Cpp2SqlTypeTrait<T>::hasPrimKey ? " PRIMARY KEY" : "";
+
         // table columns by object member variables
-        for (int i = 0; i < name.size(); ++i) {
-            sql += (i == 0) ? (name[i] + " " + type[i] + " PRIMARY KEY") :
-                (", " + name[i] + " " + type[i]);
+        for (int i = 1; i < name.size(); ++i) {
+            sql += ", " + name[i] + " " + type[i];
         }
 
 

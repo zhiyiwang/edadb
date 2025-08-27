@@ -23,7 +23,13 @@ namespace edadb {
  */
 template<typename T>
 struct Cpp2SqlTypeTrait {
-    static constexpr SqlType sqlType = SqlType::Unknown;
+public: // static const vars
+    static constexpr SqlType sqlType = SqlType::Unknown; 
+
+public: // static variable vars
+    // table for the cpp table has explicit primary key definition 
+    static inline bool hasPrimKey = true;
+    static void setHasPrimKey(bool value) { hasPrimKey = value; }
 };
 
 // template specialization mapping from C++ types to SQL types
@@ -33,10 +39,12 @@ struct Cpp2SqlTypeTrait {
     template<> \
     struct Cpp2SqlTypeTrait<CPP_TYPE> { \
         static constexpr SqlType sqlType = SQL_TYPE; \
+        static inline bool hasPrimKey = false;  \
     }; \
     template<> \
     struct Cpp2SqlTypeTrait<CPP_TYPE*> { \
         static constexpr SqlType sqlType = Cpp2SqlTypeTrait<CPP_TYPE>::sqlType; \
+        static inline bool hasPrimKey = Cpp2SqlTypeTrait<CPP_TYPE>::hasPrimKey;  \
     }; 
 
 
