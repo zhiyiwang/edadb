@@ -81,6 +81,7 @@ namespace edadb{\
 template<> \
 struct Cpp2SqlTypeTrait<CLASSNAME>{\
     static constexpr SqlType sqlType = SQLTYPE; \
+    static inline bool hasPrimKey = true;              \
 };\
 template<> struct TypeMetaData<CLASSNAME>{\
     using TupType = boost::fusion::vector<GENERATE_TupType(BOOST_PP_TUPLE_PUSH_FRONT(CLASS_ELEMS, CLASSNAME))>;\
@@ -145,6 +146,7 @@ namespace edadb{\
 template<> \
 struct Cpp2SqlTypeTrait<CLASSNAME>{\
     static constexpr SqlType sqlType = SQLTYPE; \
+    static inline bool hasPrimKey = true;              \
 };\
 template<> struct TypeMetaData<CLASSNAME>{\
     using TupType = boost::fusion::vector<GENERATE_TupType(BOOST_PP_TUPLE_PUSH_FRONT(CLASS_ELEMS, CLASSNAME))>;\
@@ -241,6 +243,7 @@ namespace edadb{\
 template<>\
 struct Cpp2SqlTypeTrait<CLASSNAME>{\
     static constexpr SqlType sqlType = SqlType::External; \
+    static inline bool hasPrimKey = true;              \
 };\
 }\
 TABLE4CLASS(edadb::Shadow<CLASSNAME>, "#edadb_shadow_table", CLASS_ELEMS)
@@ -250,6 +253,7 @@ namespace edadb{\
 template<>\
 struct Cpp2SqlTypeTrait<CLASSNAME>{\
     static constexpr SqlType sqlType = SqlType::External; \
+    static inline bool hasPrimKey = true;              \
 };\
 }\
 TABLE4CLASS_WITH_PKEY(edadb::Shadow<CLASSNAME>, "#edadb_shadow_table", CLASS_ELEMS, PK_ELEMS) 
