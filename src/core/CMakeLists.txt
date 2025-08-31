@@ -20,5 +20,8 @@ target_include_directories(edadb PUBLIC
 # link libraries
 target_link_libraries(edadb PUBLIC sqlite3)
 
+# enable debug trace
+target_compile_definitions(edadb PUBLIC "_EDADB_DEBUG_TRACE_SQL_STMT_=1")
+
 
 add_subdirectory(backend)
