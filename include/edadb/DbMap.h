@@ -16,7 +16,7 @@
 #include "TraitUtils.h"
 #include "DbMapBase.h"
 #include "SqlStatement.h"
-#include "SqlStatement4Sqlite.h"
+#include "backend/sqlite/SqlStatement4Sqlite.h"
 #include "TypeMetaData.h"
 #include "VecMetaData.h"
 #include "Table4Class.h"

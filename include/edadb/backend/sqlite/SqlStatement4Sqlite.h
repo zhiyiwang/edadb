@@ -15,11 +15,11 @@
 #include <boost/fusion/include/pair.hpp>
 #include <boost/fusion/include/vector.hpp>
 
-#include "Config.h"
-#include "Cpp2SqlTypeTrait.h"
-#include "TypeMetaData.h"
-#include "VecMetaData.h"    
-#include "SqlStatement.h"
+#include "edadb/Config.h"
+#include "edadb/Cpp2SqlTypeTrait.h"
+#include "edadb/TypeMetaData.h"
+#include "edadb/VecMetaData.h"    
+#include "edadb/SqlStatement.h"
 
 namespace edadb {
 

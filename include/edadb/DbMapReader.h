@@ -13,7 +13,7 @@
 #include "DbMapOperation.h"
 #include "DbMapDbStmtOp.h"
 #include "DbStatement.h"
-#include "DbStatement4Sqlite.h"
+#include "backend/sqlite/DbStatement4Sqlite.h"
 #include "DbMapWriter.h"
 
 

@@ -14,15 +14,15 @@
 
 #include "Macro4Sqlite.h"
 
-#include "Config.h"
-#include "Singleton.h"
+#include "edadb/Config.h"
+#include "edadb/Singleton.h"
 
-#include "DbBackendType.h"
-#include "DbStatement.h"
-#include "DbStatement4Sqlite.h"
-#include "DbManager.h"
+#include "edadb/DbBackendType.h"
+#include "edadb/DbStatement.h"
+#include "edadb/backend/sqlite/DbStatement4Sqlite.h"
+#include "edadb/DbManager.h"
 
-//#define _EDADB_DEBUG_TRACE_SQL_STMT_ 0
+#define _EDADB_DEBUG_TRACE_SQL_STMT_ 1
 
 namespace edadb {
 

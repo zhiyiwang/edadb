@@ -18,7 +18,7 @@
 #include "Cpp2SqlTypeTrait.h"
 #include "DbBackendType.h"
 #include "DbStatement.h"
-#include "DbStatement4Sqlite.h"
+#include "backend/sqlite/DbStatement4Sqlite.h"
 
 namespace edadb {
 
