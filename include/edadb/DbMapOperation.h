@@ -9,7 +9,7 @@
 #include "TraitUtils.h"
 #include "DbMap.h"
 #include "SqlStatement.h"
-#include "SqlStatement4Sqlite.h"
+#include "backend/sqlite/SqlStatement4Sqlite.h"
 
 
 namespace edadb {

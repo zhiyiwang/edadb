@@ -12,7 +12,7 @@
 #include "DbMap.h"
 #include "DbMapOperation.h"
 #include "SqlStatement.h"
-#include "SqlStatement4Sqlite.h"
+#include "backend/sqlite/SqlStatement4Sqlite.h"
 
 
 namespace edadb {

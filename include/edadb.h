@@ -27,16 +27,16 @@
 #include <boost/preprocessor/tuple/rem.hpp>
 #include <boost/iterator/iterator_facade.hpp>
 
-#include "Shadow.h"
-#include "Table4Class.h"
-#include "SqlStatement.h"
-#include "SqlStatement4Sqlite.h"
-#include "DbBackendType.h"
-#include "DbStatement.h"
-#include "DbStatement4Sqlite.h"
-#include "DbManager.h"
-#include "DbManager4Sqlite.h"
-#include "DbMapAll.h"
+#include "edadb/Shadow.h"
+#include "edadb/Table4Class.h"
+#include "edadb/SqlStatement.h"
+#include "edadb/backend/sqlite/SqlStatement4Sqlite.h"
+#include "edadb/DbBackendType.h"
+#include "edadb/DbStatement.h"
+#include "edadb/backend/sqlite/DbStatement4Sqlite.h"
+#include "edadb/DbManager.h"
+#include "edadb/backend/sqlite/DbManager4Sqlite.h"
+#include "edadb/DbMapAll.h"
 
 
 namespace edadb {

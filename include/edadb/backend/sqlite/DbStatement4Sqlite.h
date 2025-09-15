@@ -10,8 +10,8 @@
 
 #include <sqlite3.h>
 
-#include "DbBackendType.h"
-#include "DbStatement.h"
+#include "edadb/DbBackendType.h"
+#include "edadb/DbStatement.h"
 #include "Macro4Sqlite.h"
 
 

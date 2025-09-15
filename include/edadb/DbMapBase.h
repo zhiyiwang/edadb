@@ -9,7 +9,7 @@
 
 #include "Singleton.h"
 #include "DbManager.h"
-#include "DbManager4Sqlite.h"
+#include "edadb/backend/sqlite/DbManager4Sqlite.h"
 
 
 namespace edadb {
