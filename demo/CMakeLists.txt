@@ -1,7 +1,7 @@
 # add executable program
 # all cpp files in this directory will be compiled to the executable demo
-##file(GLOB DEMO_SOURCES "*.cpp")
-file(GLOB DEMO_SOURCES "vec.cpp")
+file(GLOB DEMO_SOURCES "*.cpp")
+##file(GLOB DEMO_SOURCES "vec.cpp")
 
 message(STATUS "CMakeLists.txt: demo dir: ${CMAKE_CURRENT_SOURCE_DIR}")
 message(STATUS "CMakeLists.txt: demo sources: ${DEMO_SOURCES}")

@@ -162,6 +162,13 @@ int scanTable(edadb::DbMap<T>& dbm) {
     return 0;
 } // scanTable
 
+template<typename T>
+int scanTable(void) {
+    edadb::DbMap<T> dbm;
+    dbm.init();
+    return scanTable<T>(dbm);
+} // scanTable
+
 
 
 int main(void) {
@@ -236,6 +243,12 @@ int main(void) {
         // Scan table
         std::cout << "[DbMap Scan]" << std::endl;
         scanTable(dbm_rect);
+        std::cout << std::endl << std::endl;
+
+
+        // scan table without DbMap
+        std::cout << "[DbMap Scan without DbMap]" << std::endl;
+        scanTable<IdbRect>();
         std::cout << std::endl << std::endl;
     }
 

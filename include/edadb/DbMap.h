@@ -60,24 +60,33 @@ public:
 public:
     /**
      * @brief Create the table for the class.
+     * @param crt_tab If true, the function will begin a transaction and commit it after the creation.
      * @return true if success; otherwise, false.
      */
-    bool createTable(void) {
+    bool createTable(bool crt_tab = true) {
         if (!manager.isConnected()) {
             std::cerr << "DbMap::createTable: not inited" << std::endl;
             return false;
         }
 
         // create this table by SqlStatement<T> using this table_name
-        const std::string sql = 
-            SqlStatement<T>::createTableStatement(table_name, foreign_key);
-        if (!manager.exec(sql)) {
-            std::cerr << "DbMap::createTable: create table failed" << std::endl;
-            return false;
+        if (crt_tab) {
+            const std::string sql = 
+                SqlStatement<T>::createTableStatement(table_name, foreign_key);
+            if (!manager.exec(sql)) {
+                std::cerr << "DbMap::createTable: create table failed" << std::endl;
+                return false;
+            } // if
+        } 
+        else if (!child_dbmap_vec.empty()) {
+            // child dbmap already created,
+            // no need to create child table again
+            return true; 
         }
 
+
         // create child table for composite vector type 
-        bool crt_tab = true;
+        bool status = true;
         if constexpr (TypeInfoTrait<T>::sqlType == SqlType::CompositeVector) {
             // seq: TupTypePairType=boost::fusion::vector<BoostFusionPair1, BoostFusionPair2,...>
             // BoostFusionPairX = boost::fusion::pair<ElemType, ElemName>
@@ -100,15 +109,21 @@ public:
                 // VecElemType: VecCppType or VecCppType* as defined in Class 
                 // VecCppType is non-pointer type
                 using VecCppType = typename TypeInfoTrait<DefVec>::VecCppType;
-                if (crt_tab) {
-                    crt_tab = createChildTable<VecCppType>(colName);
-                } // if
-
+                status = status && createChildTable<VecCppType>(colName, crt_tab);
             }); // for_each
         } // if 
 
-        return crt_tab;
+        return status;
     } // createTable
+
+    /**
+     * @brief Initialize the DbMap, create child DbMap if necessary.
+     * @return true if success; otherwise, false.
+     */
+    bool init(void) {
+        return createTable(false);
+    }
+        
 
 
     /**
@@ -128,7 +143,7 @@ public:
 
 private:
     template <typename CppType>
-    bool createChildTable(const std::string &colName) {
+    bool createChildTable(const std::string &colName, bool crt_tab = true) {
         // assert CppType is not pointer type
         static_assert(!std::is_pointer_v<CppType>,
             "DbMap::createChildTable: CppType cannot be a pointer type");
@@ -156,7 +171,7 @@ private:
         // create child dbmap and table
         DbMap<CppType> *child_dbmap = new DbMap<CppType>(child_table_name, fk);
         child_dbmap_vec.push_back(child_dbmap);
-        return child_dbmap->createTable();
+        return child_dbmap->createTable(crt_tab);
     } // createChildTable
 }; // class DbMap
 

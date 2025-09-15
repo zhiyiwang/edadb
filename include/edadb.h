@@ -74,6 +74,12 @@ bool commitTransaction() {
 
 
 
+/**
+ * @brief Create the table for the class. Otherwise, need to call initDbMap first.
+ * @param dbmap The database map to create the table.
+ * @param self_txn If true, the function will begin a transaction and commit it after the creation.
+ * @return true if success; otherwise, false.
+ */
 template<typename T>
 bool createTable(DbMap<T> &dbmap, bool self_txn = true) {
     if (self_txn) {
@@ -81,8 +87,13 @@ bool createTable(DbMap<T> &dbmap, bool self_txn = true) {
     } else {
         return dbmap.createTable();
     }
-}// createTable
+} // createTable
 
+/**
+ * @brief Drop the table for the class.
+ * @tparam T The class type.
+ * @return true if success; otherwise, false.
+ */
 template<typename T>
 bool dropTable() {
     return DbMap<T>::i().dropTable();
