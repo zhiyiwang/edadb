@@ -213,15 +213,17 @@ protected:
                     [this, &ok, &comp_all_nullptr](auto const &ne) {
                         // bind value pointer to nullptr using bindToColumn
                         // ne point to nullptr + offset, so we need to set to nullptr
-                        using SubElemType = decltype(ne);
-                        SubElemType set = static_cast<SubElemType>(nullptr);
-                        static_assert(std::is_pointer_v<SubElemType>,
-                            "DbMap::Writer::bindToColumn: Composite type must be a pointer type"
-                        ); 
+                        // Hint: ne is a const reference point to member variable,
+                        //     we need to remove the const and reference to get the pointer type,
+                        //     Otherwise, the static_assert will fail
+                        using SubElemPtr = std::remove_cv_t<std::remove_reference_t<decltype(ne)>>;
+                        static_assert(std::is_pointer_v<SubElemPtr>,
+                                      "DbMap::Writer::bindToColumn: Composite type must be a pointer type");
 
+                        SubElemPtr sep = nullptr;
                         int got = 0;
                         if (ok >= 0)
-                            got = this->bindToColumn(set, &comp_all_nullptr);
+                            got = this->bindToColumn(sep, &comp_all_nullptr);
                         ok = got < 0 ? got : ok;
                     }
                 ); // boost::fusion::for_each
@@ -259,14 +261,13 @@ protected:
                 boost::fusion::for_each(
                     values,
                     [this, &ok, &ext_all_nullptr](auto const &ne) {
-                        using SubElemType = decltype(ne);
-                        SubElemType set = static_cast<SubElemType>(nullptr);
-                        static_assert(std::is_pointer_v<SubElemType>,
-                            "DbMap::Writer::bindToColumn: External type must be a pointer type"
-                        );
+                        using SubElemPtr = std::remove_cv_t<std::remove_reference_t<decltype(ne)>>;
+                        static_assert(std::is_pointer_v<SubElemPtr>,
+                                      "DbMap::Writer::bindToColumn: External type must be a pointer type"); 
+                        SubElemPtr sep = nullptr;
                         int got = 0;
                         if (ok >= 0)
-                            got = this->bindToColumn(set, &ext_all_nullptr);
+                            got = this->bindToColumn(sep, &ext_all_nullptr);
                         ok = got < 0 ? got : ok;
                     }
                 ); // boost::fusion::for_each

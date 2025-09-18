@@ -59,7 +59,7 @@ public:
         sql += Cpp2SqlTypeTrait<T>::hasPrimKey ? " PRIMARY KEY" : "";
 
         // table columns by object member variables
-        for (int i = 1; i < name.size(); ++i) {
+        for (std::size_t i = 1; i < name.size(); ++i) {
             sql += ", " + name[i] + " " + type[i];
         }
 
