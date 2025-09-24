@@ -270,7 +270,7 @@ TABLE4CLASS_WITH_PKEY(edadb::Shadow<CLASSNAME>, "#edadb_shadow_table", CLASS_ELE
  * @param VEC_ELEMS The tuple of vector elements.
  */
 #define TABLE4CLASS_WVEC_COLNAME(CLASSNAME, TABLENAME, CLASS_ELEMS, COL_NAMES, VEC_ELEMS) \
-GENERATE_CLASS_TYPEMETADATA(CLASSNAME, TABLENAME, CLASS_ELEMS, COL_NAMES, SqlType::Composite) \
+GENERATE_CLASS_TYPEMETADATA(CLASSNAME, TABLENAME, CLASS_ELEMS, COL_NAMES, SqlType::CompositeVector) \
 namespace edadb { \
   template<> struct VecMetaData<CLASSNAME> { \
     using VecElem = boost::fusion::vector< \

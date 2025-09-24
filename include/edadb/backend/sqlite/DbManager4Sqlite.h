@@ -146,19 +146,31 @@ public: // database operation
     */
     bool close() {
         // success close if not connected 
-        if (!isConnected()) {
+        if ((!isConnected()) || (db == nullptr)) {
+            connect_param.clear();
             return true;
         }
 
-        int rc = sqlite3_close(db);
-        bool closed = (rc == SQLITE_OK);
-        if (!closed) {
-            std::cerr << "DbManager4Sqlite::close[sqlite3_close] failed!" << std::endl;
-            EDADB_SQLITE_LOG_ERROR(rc, db, "Failed to close database: " + connect_param);
+        // finalize all the prepared statements
+        finalize_all_stmt();
+
+        int rc = SQLITE_OK;
+        for (int attempt = 0; attempt < 2; ++attempt) {
+            rc = sqlite3_close_v2(db);
+            if (rc != SQLITE_BUSY) break; // busy: retry to finalize; otherwise, break
+            finalize_all_stmt();
         }
-        connect_param.clear();
-        db = nullptr;
-        return closed;
+
+        // close success: reset db pointer
+        if (rc == SQLITE_OK) {
+            db = nullptr;  
+            return true;
+        }
+
+        std::cerr << "DbManager4Sqlite::close[sqlite3_close_v2] failed!" << std::endl;
+        std::cerr << "Error: " << sqlite3_errmsg(db) << std::endl;
+
+        return false;
     } // close
 
 
@@ -258,6 +270,22 @@ private: // sqlite3 trace API
 
         return 0;
     } // traceCallback
+
+
+private: // utility functions
+    /**
+     * @brief finalize all prepared statements for the database connection
+     * @param db The sqlite3 database connection
+    */
+    void finalize_all_stmt(void) {
+        // returns the next prepared statement for the database connection
+        sqlite3_stmt* s = sqlite3_next_stmt(db, nullptr);
+        while (s) {
+            sqlite3_finalize(s);
+            s = sqlite3_next_stmt(db, s);
+        } // while
+    } // finalize_all_stmt
+
 }; // DbManagerImpl<DbBackendType::SQLITE>
 
 
