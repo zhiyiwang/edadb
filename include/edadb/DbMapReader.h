@@ -306,9 +306,10 @@ protected:
         CppType *vec_ptr = TypeTrait::getCppPtr2Bind(ptr);
         using VecCppType = typename TypeTrait::VecCppType;
         auto child_dbmap_vec = this->dbmap.getChildDbMap();
+        assert(!child_dbmap_vec.empty());
+
         DbMap<VecCppType> *child_dbmap =
             static_cast<DbMap<VecCppType> *>(child_dbmap_vec.at(vidx++));
-        assert(!child_dbmap_vec.empty());
         assert(child_dbmap != nullptr);
 
         // create reader to read the child object

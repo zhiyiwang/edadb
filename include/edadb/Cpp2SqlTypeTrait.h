@@ -29,7 +29,7 @@ public: // static const vars
 public: // static variable vars
     // table for the cpp table has explicit primary key definition 
     static inline bool hasPrimKey = true;
-    static void setHasPrimKey(bool value) { hasPrimKey = value; }
+//    static void setHasPrimKey(bool value) { hasPrimKey = value; }
 };
 
 // template specialization mapping from C++ types to SQL types
