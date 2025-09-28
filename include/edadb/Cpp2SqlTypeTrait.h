@@ -56,6 +56,7 @@ public: // static variable vars
 MAP_CPP_TO_SQL_TYPE(std::string   , SqlType::Text)
 
 MAP_CPP_TO_SQL_TYPE(char          , SqlType::TinyInt)
+MAP_CPP_TO_SQL_TYPE(signed char   , SqlType::TinyInt)
 MAP_CPP_TO_SQL_TYPE(unsigned char , SqlType::TinyInt)
 MAP_CPP_TO_SQL_TYPE(short         , SqlType::SmallInt)
 MAP_CPP_TO_SQL_TYPE(unsigned short, SqlType::SmallInt)
