@@ -60,17 +60,17 @@ public:
 public:
     /**
      * @brief Create the table for the class.
-     * @param crt_tab If true, the function will begin a transaction and commit it after the creation.
+     * @param run_sql If true, the function will begin a transaction and commit it after the creation.
      * @return true if success; otherwise, false.
      */
-    bool createTable(bool crt_tab = true) {
+    bool createTable(bool run_sql = true) {
         if (!manager.isConnected()) {
             std::cerr << "DbMap::createTable: not inited" << std::endl;
             return false;
         }
 
         // create this table by SqlStatement<T> using this table_name
-        if (crt_tab) {
+        if (run_sql) {
             const std::string sql = 
                 SqlStatement<T>::createTableStatement(table_name, foreign_key);
             if (!manager.exec(sql)) {
@@ -109,7 +109,7 @@ public:
                 // VecElemType: VecCppType or VecCppType* as defined in Class 
                 // VecCppType is non-pointer type
                 using VecCppType = typename TypeInfoTrait<DefVec>::VecCppType;
-                status = status && createChildTable<VecCppType>(colName, crt_tab);
+                status = status && createChildTable<VecCppType>(colName, run_sql);
             }); // for_each
         } // if 
 
@@ -143,7 +143,7 @@ public:
 
 private:
     template <typename CppType>
-    bool createChildTable(const std::string &colName, bool crt_tab = true) {
+    bool createChildTable(const std::string &colName, bool run_sql = true) {
         // assert CppType is not pointer type
         static_assert(!std::is_pointer_v<CppType>,
             "DbMap::createChildTable: CppType cannot be a pointer type");
@@ -171,7 +171,7 @@ private:
         // create child dbmap and table
         DbMap<CppType> *child_dbmap = new DbMap<CppType>(child_table_name, fk);
         child_dbmap_vec.push_back(child_dbmap);
-        return child_dbmap->createTable(crt_tab);
+        return child_dbmap->createTable(run_sql);
     } // createChildTable
 }; // class DbMap
 
