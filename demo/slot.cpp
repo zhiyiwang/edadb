@@ -1,5 +1,5 @@
 /** 
- * @file slot.cpp
+ * @file static.cpp
  * @brief Demonstration of ORM-like pattern for IdbDesign and IdbSlot classes.
  * @version 1.0
  * @date 2025-10-17
@@ -87,125 +87,119 @@ public:
   }
 };
 
-// ---------- hard code ORM-like adapter classes ----------
-struct IdbSlotAdapter {
-public:
-    // IdbSlot columns
+
+
+// Utility function to convert between object and row
+template <typename T, typename R>
+R* to_row(T* obj) {
+    static_assert(sizeof(T) != sizeof(T), "to_row not specialized for this type");
+    return nullptr;
+} // to_row
+
+template <typename T, typename R>
+void from_row(const R* row, T* obj) {
+    static_assert(sizeof(T) != sizeof(T), "from_row not specialized for this type");
+} // from_row
+
+
+
+// ---------- hard code ORM-like row classes ----------
+struct IdbSlotRow {
     long long    slot_id_ = 0;
     std::string  layer_name_;
-public:
-    IdbSlotAdapter() = default;
-    ~IdbSlotAdapter() = default;
+}; // IdbSlotRow
 
-    int setObj(IdbSlot* s) {
-        if (s == nullptr) return -1;
-        s->set_slot_id(slot_id_);
-        s->set_layer_name(layer_name_);
-        return 0;
-    }
+template <>
+IdbSlotRow* to_row(IdbSlot* obj) {
+    if (obj == nullptr) return nullptr;
+    IdbSlotRow* row = new IdbSlotRow();
+    row->slot_id_ = obj->get_slot_id();
+    row->layer_name_ = obj->get_layer_name();
+    return row;
+} // to_row
 
-    int getObj(IdbSlot* s) {
-        if (s == nullptr) return -1;
-        slot_id_ = s->get_slot_id();
-        layer_name_ = s->get_layer_name();
-        return 0;
-    }
-};
+template <>
+void from_row(const IdbSlotRow* row, IdbSlot* obj) {
+    if (obj == nullptr || row == nullptr) return;
+    obj->set_slot_id(row->slot_id_);
+    obj->set_layer_name(row->layer_name_);
+} // from_row
 
-struct IdbDesignAdapter {
-public:
-    // IdbDesign columns
+
+struct IdbDesignRow {
     long long    design_id  = 0;
     std::string  name;
     std::string  version;
     long long    timestamp  = 0;
   
-    // ignore IdbSlotList:
-    // directly reference the real container (for ORM's _WVEC usage)
-    std::vector<IdbSlotAdapter*> slot_list;
+    std::vector<IdbSlotRow*> slot_list;
+}; // IdbDesignRow
 
-public:
-    IdbDesignAdapter() = default;
-    ~IdbDesignAdapter() {
-        for (auto* s : slot_list) { delete s; }
-        slot_list.clear();
+template <>
+IdbDesignRow* to_row(IdbDesign* obj) {
+    if (obj == nullptr) return nullptr;
+    IdbDesignRow* row = new IdbDesignRow();
+    row->design_id = obj->get_design_id();
+    row->name = obj->get_name();
+    row->version = obj->get_version();
+    row->timestamp = obj->get_timestamp();
+
+    IdbSlotList* sl = obj->get_slot_list();
+    vector<IdbSlot*> &obj_slot_list = sl->get_slots();
+    row->slot_list.reserve(obj_slot_list.size());
+    for (auto* sa: obj_slot_list) 
+        row->slot_list.push_back(to_row<IdbSlot, IdbSlotRow>(sa));
+
+    return row;
+} // to_row
+
+template <>
+void from_row(const IdbDesignRow* row, IdbDesign* obj) {
+    if (obj == nullptr || row == nullptr) return;
+    obj->set_design_id(row->design_id);
+    obj->set_name(row->name);
+    obj->set_version(row->version);
+    obj->set_timestamp(row->timestamp);
+
+    IdbSlotList* sl = obj->get_slot_list();
+    vector<IdbSlot*> &obj_slot_list = sl->get_slots();
+    obj_slot_list.clear();
+    for (auto* sa: row->slot_list) {
+        IdbSlot* s = new IdbSlot();
+        from_row(sa, s);
+        obj_slot_list.push_back(s);
     }
+} // from_row
 
-    /**
-     * set data from adapter (storage columns) to the real object
-     * @return 0 success, else failure
-     */ 
-    int setObj(IdbDesign* obj) {
-        if (obj == nullptr) return -1;
-
-        obj->set_design_id(design_id);
-        obj->set_name(name);
-        obj->set_version(version);
-        obj->set_timestamp(timestamp);
-
-        IdbSlotList* sl = obj->get_slot_list();
-        vector<IdbSlot*> &obj_slot_list = sl->get_slots();
-        assert(obj_slot_list.empty());
-
-        for (auto* sa: slot_list) {
-            IdbSlot* s = new IdbSlot();
-            sa->setObj(s);
-            obj_slot_list.push_back(s);
-        }
-
-        return 0;
-    } // setObj
-
-    /**
-     * get data from the real object to the adapter (storage columns)
-     * @return 0 success, else failure
-     */
-    int getObj(IdbDesign* obj) {
-        design_id = obj->get_design_id();
-        name = obj->get_name();
-        version = obj->get_version();
-        timestamp = obj->get_timestamp();
-
-        IdbSlotList* sl = obj->get_slot_list();
-        vector<IdbSlot*> &obj_slot_list = sl->get_slots();
-        for (auto* sa: obj_slot_list) {
-            IdbSlotAdapter* s_adapter = new IdbSlotAdapter();
-            s_adapter->getObj(sa);
-            slot_list.push_back(s_adapter);
-        }
-
-        return 0;
-    } // getObj
-};
 
 
 // edadb table mapping
-TABLE4CLASS(IdbSlotAdapter, "slot_tab", (slot_id_, layer_name_))
-TABLE4CLASS_WVEC(IdbDesignAdapter, "design_tab", 
+TABLE4CLASS(IdbSlotRow, "slot_tab", (slot_id_, layer_name_))
+TABLE4CLASS_WVEC(IdbDesignRow, "design_tab", 
     (design_id, name, version, timestamp), (slot_list))
 
 
 
 // utility functions
-template <typename T, typename A>
-int scanTable(edadb::DbMap<A>& dbm) {
-  edadb::DbMapReader<A>* rd = nullptr;
+template <typename T, typename R>
+int scanTable(edadb::DbMap<R>& dbm) {
+  edadb::DbMapReader<R>* rd = nullptr;
   T got;
-  A apt;
-  while (edadb::read2Scan<A>(rd, dbm, &apt) > 0) {
-    apt.setObj(&got);
+  R apt;
+  while (edadb::read2Scan<R>(rd, dbm, &apt) > 0) {
+    from_row(&apt, &got);
     got.print();
   }
   assert(rd == nullptr);
   return 0;
 } // scanTable
 
-// T: store class, A: adapter class
-template<typename T, typename A>
+// T: eda class, R: row class
+template<typename T, typename R>
 int scanTable(void) {
-    edadb::DbMap<A> dbm;
+    edadb::DbMap<R> dbm;
     dbm.init();
-    return scanTable<T, A>(dbm);
+    return scanTable<T, R>(dbm);
 } // scanTable
 
 
@@ -221,8 +215,8 @@ int main() {
   d.get_slot_list()->add(new IdbSlot(1002, "M2"));
 
 
-  std::cout << "DbMap<IdbDesignAdapter>" << std::endl;
-  edadb::DbMap<IdbDesignAdapter> design_map;
+  std::cout << "DbMap<IdbDesignRow>" << std::endl;
+  edadb::DbMap<IdbDesignRow> design_map;
 
   // init database
   std::string conn_param = "design_slot.db";
@@ -242,10 +236,9 @@ int main() {
   std::cout << std::endl << std::endl;
 
   // insert object
-  IdbDesignAdapter design_adapter;
-  design_adapter.getObj(&d);
+  IdbDesignRow *design_row = to_row<IdbDesign, IdbDesignRow>(&d);
   std::cout << "[DbMap Insert]" << std::endl;
-  if (!edadb::insertObject(design_map, &design_adapter)) {
+  if (!edadb::insertObject(design_map, design_row)) {
       std::cerr << "DbMap::insertObject failed" << std::endl;
       return 1;
   }
@@ -253,7 +246,7 @@ int main() {
 
   // scan table
   std::cout << "[DbMap Scan without DbMap]" << std::endl;
-  scanTable<IdbDesign, IdbDesignAdapter>();
+  scanTable<IdbDesign, IdbDesignRow>();
   std::cout << std::endl << std::endl;
 
   return 0;
