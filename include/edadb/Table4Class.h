@@ -238,7 +238,7 @@ GENERATE_CLASS_TYPEMETADATA_WITH_PKEY(CLASSNAME, TABLENAME, CLASS_ELEMS, (EXPAND
  * @param CLASSNAME The name of the class. 
  * @param CLASS_ELEMS The tuple of class elements.
  */
-#define TABLE4EXTERNALCLASS(CLASSNAME, CLASS_ELEMS) \
+#define TABLE4EXTERNALCLASS(CLASSNAME, TABLENAME, CLASS_ELEMS) \
 namespace edadb{\
 template<>\
 struct Cpp2SqlTypeTrait<CLASSNAME>{\
@@ -246,9 +246,9 @@ struct Cpp2SqlTypeTrait<CLASSNAME>{\
     static inline bool hasPrimKey = true;              \
 };\
 }\
-TABLE4CLASS(edadb::Shadow<CLASSNAME>, "#edadb_shadow_table", CLASS_ELEMS)
+TABLE4CLASS(edadb::Shadow<CLASSNAME>, TABLENAME, CLASS_ELEMS)
 
-#define TABLE4EXTERNALCLASS_WITH_PKEY(CLASSNAME, CLASS_ELEMS, PK_ELEMS) \
+#define TABLE4EXTERNALCLASS_WITH_PKEY(CLASSNAME, TABLENAME, CLASS_ELEMS, PK_ELEMS) \
 namespace edadb{\
 template<>\
 struct Cpp2SqlTypeTrait<CLASSNAME>{\
@@ -256,7 +256,7 @@ struct Cpp2SqlTypeTrait<CLASSNAME>{\
     static inline bool hasPrimKey = true;              \
 };\
 }\
-TABLE4CLASS_WITH_PKEY(edadb::Shadow<CLASSNAME>, "#edadb_shadow_table", CLASS_ELEMS, PK_ELEMS) 
+TABLE4CLASS_WITH_PKEY(edadb::Shadow<CLASSNAME>, TABLENAME, CLASS_ELEMS, PK_ELEMS)
 
 
 
