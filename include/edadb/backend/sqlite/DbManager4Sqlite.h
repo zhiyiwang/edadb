@@ -174,6 +174,28 @@ public: // database operation
     } // close
 
 
+    /**
+     * @brief Check if a table exists in the database.
+     * @param name The table name.
+     * @return true if exists; otherwise, false.
+     */
+    bool tableExists(std::string name) {
+        if (name.empty()) return false;
+
+        static constexpr const char* kSQL =
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?1 LIMIT 1;";
+        sqlite3_stmt* s = nullptr;
+        if (sqlite3_prepare_v2(db, kSQL, -1, &s, nullptr) != SQLITE_OK)
+            return false;
+        sqlite3_bind_text(s, 1, name.data(), (int)name.size(), SQLITE_STATIC);
+        int rc = sqlite3_step(s);
+        sqlite3_finalize(s);
+
+        return rc == SQLITE_ROW;
+    } // table
+
+
+
 public: // sqlite3 statement operation 
     /**
      * @brief Initialize the SQL statement

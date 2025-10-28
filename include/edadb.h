@@ -72,6 +72,11 @@ bool commitTransaction() {
     return DbMapBase::i().commitTransaction();
 }
 
+inline
+bool tableExists(const std::string& table_name) {
+    return DbMapBase::i().tableExists(table_name);
+}
+
 
 
 /**

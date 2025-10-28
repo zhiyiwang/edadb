@@ -319,7 +319,7 @@ public:
         assert (name.size() == type.size());
         assert (name.size() > 0);
 
-        for (int i = 0; i < name.size(); ++i) {
+        for (size_t i = 0; i < name.size(); ++i) {
             sql += (i > 0 ? ", " : "") + name[i];
         }
 

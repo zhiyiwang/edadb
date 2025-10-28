@@ -73,6 +73,15 @@ public:
     bool commitTransaction() {
         return manager.exec("COMMIT;");
     }
+
+    /**
+     * @brief check if the table exists in the database.
+     * @param name The table name.
+     * @return true if exists; otherwise, false.
+     */
+    bool tableExists(const std::string &name) {
+        return manager.tableExists(name);
+    }   
 }; // DbMapBase
 
 
