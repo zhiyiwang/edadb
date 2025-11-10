@@ -234,12 +234,34 @@ protected:
 
             // @see DbMap<T>::Writer::fetchFromColumn for the recursive calling
             auto values = TypeMetaData<CppType>::getVal(cpp_val_ptr);
-            boost::fusion::for_each(
-                values,
+            boost::fusion::for_each(values,
                 [this, &not_null](auto const &ne) {
                     not_null |= this->fetchFromColumn(ne);
                 }
             ); // for_each
+        }
+        else if constexpr (TypeInfoTrait<DefType>::sqlType == SqlType::CompositeVector) {
+            assert((read_idx > 0) &&
+                   "DbMap<T>::Reader::fetchFromColumn: composite type should not be the first element");
+
+            // fetch the composite members from this table 
+            auto values = TypeMetaData<CppType>::getVal(cpp_val_ptr);
+            boost::fusion::for_each(values,
+                [this, &not_null](auto const &ne) {
+                    not_null |= this->fetchFromColumn(ne);
+                }
+            ); // for_each
+
+//            // fetch the child vectors from child tables (foreign key)
+//            bool ok = true;
+//            std::size_t vidx = 0;
+//            auto ve = VecMetaData<CppType>::getVecElem(cpp_val_ptr);
+//            boost::fusion::for_each(ve,
+//                [&](auto ptr) {
+//                    // fetch the child vector when ok
+//                    ok = ok && fetchChildVector(cpp_val_ptr, vidx, ptr);
+//                } // lambda function
+//            ); // for_each
         }
         else if constexpr (TypeInfoTrait<DefType>::sqlType == SqlType::External) {
             assert((read_idx > 0) &&

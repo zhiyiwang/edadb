@@ -206,86 +206,107 @@ protected:
                 "DbMap<T>::Writer::bindToColumn: composite type should not be the first element");
             
             bool comp_all_nullptr = true;
-            if (is_nullptr) {
-                auto values = TypeMetaData<CppType>::getVal(cpp_val_ptr);
-                boost::fusion::for_each(
-                    values,
-                    [this, &ok, &comp_all_nullptr](auto const &ne) {
+            auto values = TypeMetaData<CppType>::getVal(cpp_val_ptr);
+            boost::fusion::for_each(values,
+                [this, &ok, &comp_all_nullptr, is_nullptr](auto const& ne) {
+                    // direct return if failed
+                    if (ok < 0) return;  
+                
+                    int got = 0;
+                    if (is_nullptr) {
                         // bind value pointer to nullptr using bindToColumn
                         // ne point to nullptr + offset, so we need to set to nullptr
                         // Hint: ne is a const reference point to member variable,
                         //     we need to remove the const and reference to get the pointer type,
                         //     Otherwise, the static_assert will fail
+                        using SubElemPtr =
+                            std::remove_cv_t<std::remove_reference_t<decltype(ne)>>;
+                        static_assert(std::is_pointer_v<SubElemPtr>,
+                            "DbMap::Writer::bindToColumn: Composite type must be a pointer type");
+                        
+                        SubElemPtr sep = nullptr;
+                        got = this->bindToColumn(sep, &comp_all_nullptr);
+                    } else {
+                        got = this->bindToColumn(ne, &comp_all_nullptr);
+                    }
+                
+                    ok = (got < 0) ? got : (ok + got);
+                }
+            );
+        }
+        else if constexpr (sqlType == SqlType::CompositeVector) {
+            assert((bind_idx > 0) &&
+                   "DbMap<T>::Writer::bindToColumn: composite vector type should not be the first element");
+
+            bool comp_all_nullptr = true;
+            auto values = TypeMetaData<CppType>::getVal(cpp_val_ptr);
+            boost::fusion::for_each(values,
+                [this, &ok, &comp_all_nullptr, is_nullptr](auto const& ne) {
+                    if (ok < 0)  return; 
+                
+                    int got = 0;
+                    if (is_nullptr) {
                         using SubElemPtr = std::remove_cv_t<std::remove_reference_t<decltype(ne)>>;
                         static_assert(std::is_pointer_v<SubElemPtr>,
-                                      "DbMap::Writer::bindToColumn: Composite type must be a pointer type");
-
+                                      "DbMap::Writer::bindToColumn: CompositeVector type must be a pointer type");
                         SubElemPtr sep = nullptr;
-                        int got = 0;
-                        if (ok >= 0)
-                            got = this->bindToColumn(sep, &comp_all_nullptr);
-                        ok = got < 0 ? got : ok;
+                        got = this->bindToColumn(sep, &comp_all_nullptr);
+                        ok = (got < 0) ? got : ok;
+                    } else {
+                        got = this->bindToColumn(ne, &comp_all_nullptr);
+                        ok = (got < 0) ? got : (ok + got);
                     }
-                ); // boost::fusion::for_each
-            } else {
-                auto values = TypeMetaData<CppType>::getVal(cpp_val_ptr);
-                boost::fusion::for_each(
-                    /** param 1: Fusion Sequence, a tuple of values */
-                    values,
-                
-                    /**
-                     * param 2: Lambda function (closure) to bind the element
-                     *   [this](auto const& elem): use the current class instance and the element
-                     *   this->bindToColumn(elem): call bindToColumn func using current instance
-                     *   imence, the bindToColumn function will be called recursively and
-                     *       always use this->bind_idx to bind the element
-                     */
-                    [this, &ok, &comp_all_nullptr](auto const &ne) {
-                        int got = 0;
-                        if (ok >= 0)
-                            got = this->bindToColumn(ne, &comp_all_nullptr);
+                }
+            ); // boost::fusion::for_each
 
-                        ok = got < 0 ? got : ok + got;
-                    }
-                ); // boost::fusion::for_each
+            if (!is_nullptr) {
+//                std::size_t vidx = 0;
+//                auto ve = VecMetaData<CppType>::getVecElem(cpp_val_ptr);
+//                boost::fusion::for_each(ve,
+//                    [this, &ok, &comp_all_nullptr](auto const &ne) {
+//                        int got = 0;
+//                        if (ok >= 0)
+//                            got = this->bindToColumn(ne, &comp_all_nullptr);
+//                        ok = got < 0 ? got : ok + got;
+//                    }
+//                ); // boost::fusion::for_each
             }
         }
         else if constexpr (sqlType == SqlType::External) {
             assert((bind_idx > 0) &&
-                   "DbMap<T>::Writer::bindToColumn: external type should not be the first element");
+                "DbMap<T>::Writer::bindToColumn: external type should not be the first element");
 
             bool ext_all_nullptr = true;
+
             Shadow<CppType> shadow;
+            auto values = TypeMetaData<Shadow<CppType>>::getVal(&shadow);
+
             if (is_nullptr) {
-                auto values = TypeMetaData<Shadow<CppType>>::getVal(&shadow);
-                boost::fusion::for_each(
-                    values,
-                    [this, &ok, &ext_all_nullptr](auto const &ne) {
+                boost::fusion::for_each(values,
+                    [this, &ok, &ext_all_nullptr](auto const& ne) {
                         using SubElemPtr = std::remove_cv_t<std::remove_reference_t<decltype(ne)>>;
                         static_assert(std::is_pointer_v<SubElemPtr>,
-                                      "DbMap::Writer::bindToColumn: External type must be a pointer type"); 
+                                      "DbMap::Writer::bindToColumn: External type must be a pointer type");
                         SubElemPtr sep = nullptr;
                         int got = 0;
                         if (ok >= 0)
                             got = this->bindToColumn(sep, &ext_all_nullptr);
-                        ok = got < 0 ? got : ok;
+                        ok = (got < 0) ? got : ok;
                     }
                 ); // boost::fusion::for_each
             } else {
                 // transform the object of external type to Shadow
                 shadow.toShadow(cpp_val_ptr);
-
-                auto values = TypeMetaData<Shadow<CppType>>::getVal(&shadow);
-                boost::fusion::for_each(
-                    values,
-                    [this, &ok, &ext_all_nullptr](auto const &ne) {
+            
+                boost::fusion::for_each(values,
+                    [this, &ok, &ext_all_nullptr](auto const& ne) {
                         int got = 0;
                         if (ok >= 0)
                             got = this->bindToColumn(ne, &ext_all_nullptr);
-                        ok = got < 0 ? got : ok + got;
+                        ok = (got < 0) ? got : (ok + got);
                     }
                 ); // boost::fusion::for_each
-            } // if is_nullptr 
+            } // if is_nullptr
         }
         else if constexpr (std::is_enum_v<CppType>) {
             if (is_nullptr) {

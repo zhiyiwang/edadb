@@ -8,11 +8,13 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <typeindex>
 
 #include <boost/fusion/include/pair.hpp> 
 #include <boost/fusion/include/at_c.hpp> 
 #include <boost/fusion/include/for_each.hpp>
 
+#include "TypeStack.h"
 #include "TraitUtils.h"
 #include "DbMapBase.h"
 #include "SqlStatement.h"
@@ -72,7 +74,7 @@ public:
         // create this table by SqlStatement<T> using this table_name
         if (run_sql) {
             const std::string sql = 
-                SqlStatement<T>::createTableStatement(table_name, foreign_key);
+                SqlStatement<T>::createTableStatement(this->table_name, this->foreign_key);
             if (!manager.exec(sql)) {
                 std::cerr << "DbMap::createTable: create table failed" << std::endl;
                 return false;
@@ -84,34 +86,33 @@ public:
             return true; 
         }
 
+        // table and column name sequence to build foreign key constraint
+        std::vector<std::string> tab_names;
+        std::vector<std::string> col_names;
 
-        // create child table for composite vector type 
         bool status = true;
         if constexpr (TypeInfoTrait<T>::sqlType == SqlType::CompositeVector) {
-            // seq: TupTypePairType=boost::fusion::vector<BoostFusionPair1, BoostFusionPair2,...>
-            // BoostFusionPairX = boost::fusion::pair<ElemType, ElemName>
-            // ElemType = T** or T* (defined T* or T in class)
-            // ElemName = string, the name of the element
-            auto seq = VecMetaData<T>::tuple_type_pair(); 
-            boost::fusion::for_each(seq, [&](auto elem){ // elem is BoostFusionPair
-                using DefVecPtr = typename decltype(elem)::first_type;
-
-                // DefVec is vector<VecElemType> or vector<VecElemType>* defined in class
-                using DefVec = typename remove_const_and_pointer<DefVecPtr>::type;
-                static_assert(
-                    TypeInfoTrait<DefVec>::is_vector,
-                    "DbMap::createTable: DefVecPtr must be a vector type"
-                );
-
-                // elem.second is the name of the member variable
-                const std::string &colName = elem.second; 
-
-                // VecElemType: VecCppType or VecCppType* as defined in Class 
-                // VecCppType is non-pointer type
-                using VecCppType = typename TypeInfoTrait<DefVec>::VecCppType;
-                status = status && createChildTable<VecCppType>(colName, run_sql);
-            }); // for_each
-        } // if 
+            /**
+             * T is a composite vector type,
+             * create child table for each element type in the vector
+             */
+            status = createCompositeVectorTable<TypeStack<T>>(this, tab_names, col_names, run_sql);
+            if (!status) {
+                std::cerr << "DbMap::createTable: createCompositeVectorTable failed" << std::endl;
+                return status;
+            }
+        }
+        else if constexpr (TypeInfoTrait<T>::sqlType == SqlType::Composite) {
+            /**
+             * T is a composite type,
+             * recursively create child table for each nested composite vector/member type
+             */
+            status = createCompositeTable<TypeStack<T>>(this, tab_names, col_names, run_sql);
+            if (!status) {
+                std::cerr << "DbMap::createTable: createCompositeTable failed" << std::endl;
+                return status;
+            }
+        }
 
         return status;
     } // createTable
@@ -125,7 +126,6 @@ public:
     }
         
 
-
     /**
      * @brief Drop the table for the class.
      * @return true if success; otherwise, false.
@@ -136,43 +136,158 @@ public:
             return false;
         }
 
-        const std::string sql = "DROP TABLE IF EXISTS \"" + table_name + "\";";
+        const std::string sql = "DROP TABLE IF EXISTS \"" + this->table_name + "\";";
         return manager.exec(sql);
     }
 
 
 private:
-    template <typename CppType>
-    bool createChildTable(const std::string &colName, bool run_sql = true) {
-        // assert CppType is not pointer type
-        static_assert(!std::is_pointer_v<CppType>,
-            "DbMap::createChildTable: CppType cannot be a pointer type");
+    /**
+     * @brief Create the child table for the vector member variable.
+     * @tparam TypeStack The type stack for tracking the parent-child relationship.
+     * @param dbmap The root DbMap pointer, which is the primary-key-referenced table.
+     * @param tab_names The table name vector for building foreign key constraint.
+     * @param col_names The column name vector for building foreign key constraint.
+     * @param run_sql If true, execute the create table SQL statement.
+     * @return true if success; otherwise, false.
+     */
+    template <typename TypeStack>
+    bool createCompositeVectorTable(DbMap<T> *dbmap, std::vector<std::string> &tab_names, std::vector<std::string> &col_names, bool run_sql) {
+        bool status = true;
 
-        // "this table name" + "_" + "child defined table name"
-        std::string child_table_name = 
-            table_name + "_" + TypeMetaData<CppType>::table_name() + "_" + colName;
+        using CompVectorType = typename Last<TypeStack>::type;
+        tab_names.push_back(TypeMetaData<CompVectorType>::table_name());  
 
-        // create constraint for foreign key
+        auto seq = VecMetaData<CompVectorType>::tuple_type_pair();
+        boost::fusion::for_each(seq, [&](auto elem){ 
+            // early return if failed
+            if (!status) return;
+
+            using ChildVecPtrType = typename decltype(elem)::first_type;
+            using ChildVecType = typename remove_const_and_pointer<ChildVecPtrType>::type;
+            static_assert(TypeInfoTrait<ChildVecType>::is_vector,
+                "DbMap::createTable4CompositeVectorMember: ChildVecPtr must be a vector type"
+            );
+            using ChildVecElemCppType = typename TypeInfoTrait<ChildVecType>::VecCppType;
+            using TS = PushBack_t<TypeStack, ChildVecElemCppType>;
+            col_names.push_back(elem.second); // member name 
+            status = createChildTable<TS>(dbmap, tab_names, col_names, run_sql);
+            col_names.pop_back();
+        }); // for_each
+        tab_names.pop_back();
+
+        return status;
+    } // createCompositeVectorTable
+
+
+    template <typename TypeStack>
+    bool createChildTable(DbMap<T> *dbmap, std::vector<std::string> &tab_names, std::vector<std::string> &col_names, bool run_sql) {
+        using ParentType = typename LastTwo<TypeStack>::second_last;
+        using ChildType  = typename LastTwo<TypeStack>::last;
+        static_assert(!std::is_pointer_v<ChildType>,
+            "DbMap::createChildTable: ChildType cannot be a pointer type");
+
+        //////// create foreign key constraint ////////////////
         ForeignKey fk;
-        fk.table = table_name;
 
-        // use the first element as the foreign key
+        /**
+         * foreign key table (parent table) is dbmap's table name:
+         * all composite/composite vector childrens are flatten to point to the root table
+         */
+        fk.table = dbmap->getTableName(); 
+
+
+        // foreign key column name prefix
+        std::string fk_name;
+        for (auto &cn : col_names) {
+            fk_name += "_" + cn + "_";
+        }
+        // append primary key column name to foreign key column name 
         const uint32_t primary_key_index = Config::fk_ref_pk_col_index;
+        const auto &cols = TypeMetaData<ParentType>::column_names();
+        fk_name += cols[primary_key_index];
+        fk.column.push_back(fk_name);
 
-        // get primary key name and type from this class
-        const auto &cols = TypeMetaData<T>::column_names();
-        fk.column.push_back( cols[primary_key_index] );
-
+        // foreign key types
         using PrimKeyType = typename boost::fusion::result_of::value_at_c<
-                typename TypeMetaData<T>::TupType, primary_key_index>::type;
+                typename TypeMetaData<ParentType>::TupType, primary_key_index >::type;
         fk.type.push_back( getSqlTypeString<PrimKeyType>() );
 
 
+        // primary column name is in DbMap<T> table, get the column name
+        assert(TypeMetaData<T>::table_name() == tab_names[0]);
+        assert(tab_names.size() == col_names.size());
+
+        std::string child_table_name;
+        for (uint32_t i = 0; i < col_names.size(); ++i) {
+            std::string postfix = (i == 0) ? "" : "_";
+            postfix += tab_names[i] + "_" + col_names[i];
+            child_table_name.append(postfix);
+        }
+
         // create child dbmap and table
-        DbMap<CppType> *child_dbmap = new DbMap<CppType>(child_table_name, fk);
+        // NOTE: child dbmap for vector element points to root of Composite/CompositeVector type
+        DbMap<ChildType> *child_dbmap = new DbMap<ChildType>(child_table_name, fk);
         child_dbmap_vec.push_back(child_dbmap);
         return child_dbmap->createTable(run_sql);
     } // createChildTable
+
+
+private:
+    /**
+     * @brief Create the child table for the member variable.
+     * @tparam TypeStack The type stack for tracking the parent-child relationship.
+     * @param dbmap The root DbMap pointer, which is the primary-key-referenced table.
+     * @param tab_names The table name vector for building foreign key constraint.
+     * @param col_names The column name vector for building foreign key constraint.
+     * @param run_sql If true, execute the create table SQL statement.
+     * @return true if success; otherwise, false.
+    */
+    template <typename TypeStack>
+    bool createCompositeTable(DbMap<T> *dbmap, std::vector<std::string> &tab_names, std::vector<std::string> &col_names, bool run_sql) {
+
+        bool status = true;
+
+        using CParentType = typename Last<TypeStack>::type;
+        tab_names.push_back(TypeMetaData<CParentType>::table_name());
+
+        /**
+         * seq: TupTypePairType=boost::fusion::vector<BoostFusionPair1, BoostFusionPair2,...>
+         * BoostFusionPairX = boost::fusion::pair<ElemType, ElemName>
+         *   ElemType = T** or T* (defined T* or T in class)
+         *   ElemName = string, the name of the element
+         */
+        auto seq = TypeMetaData<CParentType>::tuple_type_pair();
+        boost::fusion::for_each(seq, [&](auto elem) { 
+            using DefPtrType = typename decltype(elem)::first_type;
+            using DefType = typename remove_const_and_pointer<DefPtrType>::type; 
+            using DefCppType = typename TypeInfoTrait<DefType>::CppType;
+            using TS = PushBack_t<TypeStack, DefCppType>;
+
+            /**
+             * For each composite/composite vector member variable,
+             * recursively create child table
+             */
+            static constexpr SqlType sqlType = TypeInfoTrait<DefCppType>::sqlType;
+            if constexpr (sqlType == SqlType::Composite) {
+                col_names.push_back(elem.second); // member name
+                status = createCompositeTable<TS>(dbmap, tab_names, col_names, run_sql);
+                col_names.pop_back();
+            }
+            else if constexpr (sqlType == SqlType::CompositeVector) {
+                col_names.push_back(elem.second); // member name
+                status = createCompositeTable<TS>(dbmap, tab_names, col_names, run_sql);
+                if (!status) return;
+
+                status = createCompositeVectorTable<TS>(dbmap, tab_names, col_names, run_sql);
+                col_names.pop_back();
+            } // if-else
+        }); // for_each
+
+        tab_names.pop_back();
+
+        return status;
+    } // createCompositeTable
 }; // class DbMap
 
 

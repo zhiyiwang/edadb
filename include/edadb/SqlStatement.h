@@ -102,14 +102,19 @@ protected:  // some utility functions
             std::string column_name = cnames[index++];
 
             static constexpr SqlType sqlType = TypeInfoTrait<DefType>::sqlType;
-            if constexpr (sqlType == SqlType::Composite) {
+            /**
+             * Check if the SQL type is composite or composite vector.
+             * Both types need to be expanded to get the nested column names.
+             * For SqlType::CompositeVector type,
+             * edadb::DbMap<T> needs to create its child table as primary-key-referenced table.
+             */
+            if constexpr ((sqlType == SqlType::Composite) || (sqlType == SqlType::CompositeVector)) {
                 assert((index > 0) &&
                     "SqlStatementBase::ColumnNameType::operator(): composite type should not be the first element");
 
                 const auto vecs = TypeMetaData<CppType>::tuple_type_pair();
                 const std::string next_pref = prefix + "_" + column_name + "_";
-                boost::fusion::for_each(
-                    vecs, ColumnNameType<CppType>(name, type, next_pref));
+                boost::fusion::for_each(vecs, ColumnNameType<CppType>(name, type, next_pref));
             }
             else if constexpr (sqlType == SqlType::External) {
                 assert ((index > 0) &&

@@ -51,8 +51,8 @@ public:
         std::vector<std::string> name, type;
         const auto vecs = TypeMetaData<T>::tuple_type_pair();
         boost::fusion::for_each(vecs, ColumnNameType<T>(name, type));
-        assert (name.size() == type.size());
-        assert (name.size() > 0);
+        assert(name.size() == type.size());
+        assert(name.size() > 0);
 
         // Cpp2SqlTypeTrait<T> of class T decide whether define primary key
         sql += name[0] + " " + type[0];
@@ -70,7 +70,7 @@ public:
         const std::size_t N = pk_col_name.size();
 
         std::size_t idx = 0;
-        boost::fusion::for_each(pk_mem_vec, [&](auto const& member_pair){
+        boost::fusion::for_each(pk_mem_vec, [&](auto const& member_pair) {
             const std::string& col_name = pk_col_name[idx];
         
             using Pair = typename std::remove_reference<decltype(member_pair)>::type;
