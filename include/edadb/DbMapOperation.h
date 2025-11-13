@@ -50,7 +50,7 @@ struct DbMapOpTrait<T, DbMapOperation::INSERT> {
     }
     static std::string getSQL(DbMap<T> &dbmap) {
         return SqlStatement<T>::insertPlaceHolderStatement(
-            dbmap.getTableName(), dbmap.getForeignKey());
+            dbmap.getThisForeignKey(), dbmap.getWorkForeignKey());
     }
     static DbMapOperation op() {
         return DbMapOperation::INSERT;
@@ -65,7 +65,7 @@ struct DbMapOpTrait<T, DbMapOperation::UPDATE> {
     }
     static std::string getSQL(DbMap<T> &dbmap) {
         return SqlStatement<T>::updatePlaceHolderStatement(
-            dbmap.getTableName(), dbmap.getForeignKey());
+            dbmap.getThisForeignKey(), dbmap.getWorkForeignKey());
     }
     static DbMapOperation op() {
         return DbMapOperation::UPDATE;
@@ -79,7 +79,8 @@ struct DbMapOpTrait<T, DbMapOperation::DELETE> {
         return "Delete";
     }
     static std::string getSQL(DbMap<T> &dbmap) {
-        return SqlStatement<T>::deletePlaceHolderStatement(dbmap.getTableName());
+        return SqlStatement<T>::deletePlaceHolderStatement(
+            dbmap.getThisForeignKey());
     }
     static DbMapOperation op() {
         return DbMapOperation::DELETE;
@@ -94,7 +95,7 @@ struct DbMapOpTrait<T, DbMapOperation::SCAN> {
     }
     static std::string getSQL(DbMap<T> &dbmap) {
         return SqlStatement<T>::scanStatement(
-            dbmap.getTableName(), dbmap.getForeignKey());
+            dbmap.getThisForeignKey(), dbmap.getWorkForeignKey());
     }
     static DbMapOperation op() {
         return DbMapOperation::SCAN;
@@ -109,7 +110,7 @@ struct DbMapOpTrait<T, DbMapOperation::QUERY_PREDICATE> {
     }
     static std::string getSQL(DbMap<T> &dbmap, const std::string &pred) {
         return SqlStatement<T>::queryPredicateStatement(
-            dbmap.getTableName(), dbmap.getForeignKey(), pred);
+            dbmap.getThisForeignKey(), dbmap.getWorkForeignKey());
     }
     static DbMapOperation op() {
         return DbMapOperation::QUERY_PREDICATE;
@@ -124,7 +125,7 @@ struct DbMapOpTrait<T, DbMapOperation::QUERY_PRIMARY_KEY> {
     }
     static std::string getSQL(DbMap<T> &dbmap) {
         return SqlStatement<T>::queryPrimaryKeyStatement(
-            dbmap.getTableName(), dbmap.getForeignKey());
+            dbmap.getThisForeignKey(), dbmap.getWorkForeignKey());
     }
     static DbMapOperation op() {
         return DbMapOperation::QUERY_PRIMARY_KEY;
@@ -139,7 +140,7 @@ struct DbMapOpTrait<T, DbMapOperation::QUERY_FOREIGN_KEY> {
     }
     static std::string getSQL(DbMap<T> &dbmap) {
         return SqlStatement<T>::queryForeignKeyStatement(
-            dbmap.getTableName(), dbmap.getForeignKey());
+            dbmap.getThisForeignKey(), dbmap.getWorkForeignKey());
     }
     static DbMapOperation op() {
         return DbMapOperation::QUERY_FOREIGN_KEY;
